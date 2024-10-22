@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RC Lap Timer
 
-## Getting Started
+A web-based lap timing system for RC cars, built with Next.js and TypeScript. This application allows users to record lap times for RC cars, manage multiple drivers and their cars, and maintain a history of racing sessions.
 
-First, run the development server:
+## Features
 
+- ⏱️ High-precision lap timing
+- 👥 Multiple driver support
+- 🚗 Multiple car management per driver
+- 📊 Session statistics (average and mean lap times)
+- 💾 Local storage persistence
+- 📤 Export/Import functionality for data backup
+- 🔍 Session history with detailed statistics
+- 🎯 Confirmation dialogs for important actions
+
+## Tech Stack
+
+- Next.js 14
+- TypeScript
+- Tailwind CSS
+- shadcn/ui components
+- Radix UI primitives
+- Lucide React icons
+
+## Prerequisites
+
+- Node.js 18.17 or later
+- npm or yarn package manager
+
+## Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/rc-lap-timer.git
+cd rc-lap-timer
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
+### Adding a Driver
+1. Click the "New Driver" button
+2. Enter the driver's name
+3. Click "Add"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Adding a Car
+1. Select a driver
+2. Click the "New Car" button
+3. Enter the car's name
+4. Click "Add"
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Recording Lap Times
+1. Select a driver and car
+2. Click "Start Lap Timer"
+3. Click "Record Lap" each time the car completes a lap
+4. Click "Stop Lap Timer" when the session is complete
 
-## Deploy on Vercel
+### Managing Sessions
+- View current and previous session statistics
+- Export data for backup
+- Import previously exported data
+- Delete individual sessions or clear all sessions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Data Persistence
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application uses localStorage to persist:
+- Driver information
+- Car information
+- Session history
+
+Data can be exported to JSON files for backup and imported when needed.
+
+## Development
+
+### Project Structure
+```
+rc-lap-timer/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── ui/
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   └── ...
+│   │   └── rc-timer/
+│   │       └── lap-timer.tsx
+│   └── lib/
+│       └── utils.ts
+├── public/
+└── package.json
+```
+
+### Custom Components
+The application uses shadcn/ui components for the UI, which are built on top of Radix UI primitives.
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
