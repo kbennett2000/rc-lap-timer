@@ -65,16 +65,16 @@
         ## Steps:
 
         ### 1. Set up Raspberry Pi OS
-           - Install Raspberry Pi OS using the Raspberry Pi Imager or another tool.
-           - Connect to the Pi via SSH or a monitor and keyboard.
+        #### Install Raspberry Pi OS using the Raspberry Pi Imager or another tool.
+        #### Connect to the Pi via SSH or a monitor and keyboard.
 
         ### 2. Install and Configure the Web Server
-           - Install `nginx` or another lightweight web server.
-             ```bash
-             sudo apt update
-             sudo apt install nginx
-             ```
-           - Place your React web app files in the `/var/www/html/` directory.
+        #### Install `nginx` or another lightweight web server.
+        ```bash
+        sudo apt update
+        sudo apt install nginx
+        ```
+        #### Place your React web app files in the `/var/www/html/` directory.
 
         ### 3. Install and Configure Hostapd and Dnsmasq
            - Install the necessary software to make the Pi a Wi-Fi access point:
