@@ -1,6 +1,8 @@
 # Items to do:
 - add timestamp to session display
 - add lap counter to stopwatch display
+    - pre-set number of laps, or set to "unlimited"
+    - if pre-set, disable "Stop Lap Timer" button
 - importing/exporting driver/car lists
 - auto export each session to 1 persistent JSON data file
 - auto import data on app load

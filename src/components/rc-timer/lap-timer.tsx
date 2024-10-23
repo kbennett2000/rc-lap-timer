@@ -49,7 +49,7 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Driver, Car, Session, LapStats, StoredData } from "@/types/rc-timer";
+import { Driver, Car, Session, LapStats, StoredData, BestLapRecord } from "@/types/rc-timer";
 
 export default function LapTimer() {
   // 2. State definitions

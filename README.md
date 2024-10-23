@@ -4,10 +4,10 @@ A web-based lap timing system for RC cars, built with Next.js and TypeScript. Th
 
 ## Features
 
-- ⏱️ High-precision lap timing
+- ⏱️ Kinda High-precision lap timing
 - 👥 Multiple driver support
 - 🚗 Multiple car management per driver
-- 📊 Session statistics (average and mean lap times)
+- 📊 Session statistics
 - 💾 Local storage persistence
 - 📤 Export/Import functionality for data backup
 - 🔍 Session history with detailed statistics
