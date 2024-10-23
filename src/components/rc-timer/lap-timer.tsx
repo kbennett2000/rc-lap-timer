@@ -77,6 +77,11 @@ export default function LapTimer() {
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<string | null>(null);
+  const [selectedLapCount, setSelectedLapCount] = useState<
+    "unlimited" | number
+  >("unlimited");
+  const [inputLapCount, setInputLapCount] = useState<string>("");
+  const [showLapCountInput, setShowLapCountInput] = useState<boolean>(false);
 
   // 3. Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -142,6 +147,33 @@ export default function LapTimer() {
     return driver ? driver.cars : [];
   };
 
+  const validateLapCount = (value: string): boolean => {
+    const num = parseInt(value, 10);
+    return !isNaN(num) && num > 0 && num <= 999;
+  };
+
+  const handleSessionCompletion = (completedLaps: number[]): void => {
+    setIsRunning(false);
+
+    const driver = drivers.find((d) => d.id === selectedDriver);
+    const car = driver?.cars.find((c) => c.id === selectedCar);
+
+    const newSession: Session = {
+      id: Date.now(),
+      date: sessionStartTime!,
+      driverId: selectedDriver,
+      driverName: driver?.name ?? "",
+      carId: selectedCar,
+      carName: car?.name ?? "",
+      laps: completedLaps,
+      stats: calculateStats(completedLaps),
+      totalLaps: selectedLapCount,
+    };
+
+    setCurrentSession(newSession);
+    setSavedSessions([newSession, ...savedSessions]);
+  };
+
   // 6. Driver and Car Management
   const addNewDriver = (): void => {
     if (!newDriverName.trim()) return;
@@ -184,7 +216,8 @@ export default function LapTimer() {
     setStartTime(Date.now());
     setIsRunning(true);
     setLaps([]);
-    setSessionStartTime(new Date().toISOString()); // Record the session start time
+    setSessionStartTime(new Date().toISOString()); // Set session start time
+    setCurrentSession(null); // Reset current session when starting new
   };
 
   const recordLap = (): void => {
@@ -193,7 +226,17 @@ export default function LapTimer() {
     const lastLapEndTime = laps.reduce((sum, lap) => sum + lap, 0);
     const currentLapTime = currentTime - lastLapEndTime;
 
-    setLaps((prevLaps) => [...prevLaps, currentLapTime]);
+    const newLaps = [...laps, currentLapTime];
+    setLaps(newLaps);
+
+    // Check if we've reached the selected number of laps
+    if (
+      selectedLapCount !== "unlimited" &&
+      newLaps.length >= selectedLapCount
+    ) {
+      // Automatically stop the timer and save the session
+      handleSessionCompletion(newLaps);
+    }
   };
 
   const stopTimer = (): void => {
@@ -201,26 +244,7 @@ export default function LapTimer() {
     const finalLapTime =
       currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
     const finalLaps = [...laps, finalLapTime];
-    setLaps(finalLaps);
-    setIsRunning(false);
-
-    const driver = drivers.find((d) => d.id === selectedDriver);
-    const car = driver?.cars.find((c) => c.id === selectedCar);
-
-    const newSession: Session = {
-      id: Date.now(),
-      date: sessionStartTime, // Use the recorded start time
-      driverId: selectedDriver,
-      driverName: driver?.name ?? "",
-      carId: selectedCar,
-      carName: car?.name ?? "",
-      laps: finalLaps,
-      stats: calculateStats(finalLaps),
-    };
-
-    setCurrentSession(newSession);
-    setSavedSessions([newSession, ...savedSessions]);
-    setSessionStartTime(null); // Reset the session start time
+    handleSessionCompletion(finalLaps);
   };
 
   // 8. Data Management
@@ -542,12 +566,13 @@ export default function LapTimer() {
         )}
       </Card>
 
-      {/* Driver & Car Selection Card */}
+      {/* Session Configuration Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Driver & Car Selection</CardTitle>
+          <CardTitle>Session Configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Driver Selection */}
           <div className="space-y-2">
             <Label>Driver</Label>
             <div className="flex space-x-2">
@@ -583,6 +608,7 @@ export default function LapTimer() {
             )}
           </div>
 
+          {/* Car Selection */}
           {selectedDriver && (
             <div className="space-y-2">
               <Label>Car</Label>
@@ -619,6 +645,99 @@ export default function LapTimer() {
               )}
             </div>
           )}
+
+          {/* Lap Count Selection */}
+          {selectedDriver && selectedCar && (
+            <div className="space-y-2">
+              <Label>Number of Laps</Label>
+              <div className="flex space-x-2">
+                <Select
+                  value={
+                    showLapCountInput ? "custom" : selectedLapCount.toString()
+                  }
+                  onValueChange={(value) => {
+                    if (value === "custom") {
+                      setShowLapCountInput(true);
+                      setInputLapCount("");
+                    } else if (value === "unlimited") {
+                      setShowLapCountInput(false);
+                      setSelectedLapCount("unlimited");
+                    } else {
+                      setShowLapCountInput(false);
+                      setSelectedLapCount(parseInt(value, 10));
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select number of laps" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unlimited">Unlimited</SelectItem>
+                    <SelectItem value="3">3 Laps</SelectItem>
+                    <SelectItem value="5">5 Laps</SelectItem>
+                    <SelectItem value="10">10 Laps</SelectItem>
+                    <SelectItem value="custom">Custom...</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {showLapCountInput && (
+                <div className="flex space-x-2 mt-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="999"
+                    placeholder="Enter number of laps"
+                    value={inputLapCount}
+                    onChange={(e) => setInputLapCount(e.target.value)}
+                  />
+                  <Button
+                    onClick={() => {
+                      if (validateLapCount(inputLapCount)) {
+                        setSelectedLapCount(parseInt(inputLapCount, 10));
+                        setShowLapCountInput(false);
+                      } else {
+                        alert("Please enter a valid number of laps (1-999)");
+                      }
+                    }}
+                  >
+                    Set
+                  </Button>
+                </div>
+              )}
+
+              <div className="text-sm text-muted-foreground mt-1">
+                {selectedLapCount === "unlimited"
+                  ? "Session will continue until manually stopped"
+                  : `Session will automatically complete after ${selectedLapCount} laps`}
+              </div>
+            </div>
+          )}
+
+          {/* Session Settings Summary */}
+          {selectedDriver && selectedCar && selectedLapCount && (
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+              <h3 className="font-semibold mb-2">Session Settings</h3>
+              <div className="space-y-1 text-sm">
+                <div>
+                  Driver: {drivers.find((d) => d.id === selectedDriver)?.name}
+                </div>
+                <div>
+                  Car:{" "}
+                  {
+                    getCurrentDriverCars().find((c) => c.id === selectedCar)
+                      ?.name
+                  }
+                </div>
+                <div>
+                  Laps:{" "}
+                  {selectedLapCount === "unlimited"
+                    ? "Unlimited"
+                    : selectedLapCount}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -629,31 +748,39 @@ export default function LapTimer() {
             {formatTime(currentTime)}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex justify-center space-x-4">
-          <Button
-            onClick={startTimer}
-            disabled={isRunning || !selectedDriver || !selectedCar}
-            className="bg-green-500 hover:bg-green-600"
-          >
-            <PlayCircle className="mr-2 h-4 w-4" />
-            Start Lap Timer
-          </Button>
-          <Button
-            onClick={recordLap}
-            disabled={!isRunning}
-            className="bg-blue-500 hover:bg-blue-600"
-          >
-            <ListPlus className="mr-2 h-4 w-4" />
-            Record Lap
-          </Button>
-          <Button
-            onClick={stopTimer}
-            disabled={!isRunning}
-            className="bg-red-500 hover:bg-red-600"
-          >
-            <StopCircle className="mr-2 h-4 w-4" />
-            Stop Lap Timer
-          </Button>
+        <CardContent className="space-y-4">
+          {/* Add lap counter */}
+          <div className="text-center text-lg font-mono mb-4">
+            Lap: {laps.length + 1}
+          </div>
+
+          {/* Timer controls */}
+          <div className="flex justify-center space-x-4">
+            <Button
+              onClick={startTimer}
+              disabled={isRunning || !selectedDriver || !selectedCar}
+              className="bg-green-500 hover:bg-green-600"
+            >
+              <PlayCircle className="mr-2 h-4 w-4" />
+              Start Lap Timer
+            </Button>
+            <Button
+              onClick={recordLap}
+              disabled={!isRunning}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              <ListPlus className="mr-2 h-4 w-4" />
+              Record Lap
+            </Button>
+            <Button
+              onClick={stopTimer}
+              disabled={!isRunning}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              <StopCircle className="mr-2 h-4 w-4" />
+              Stop Lap Timer
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -680,7 +807,9 @@ export default function LapTimer() {
                   </div>
                   <div className="font-mono">
                     Time:{" "}
-                    {sessionStartTime
+                    {currentSession
+                      ? formatDateTime(currentSession.date)
+                      : sessionStartTime
                       ? formatDateTime(sessionStartTime)
                       : "Not started"}
                   </div>
