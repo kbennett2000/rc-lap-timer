@@ -1,4 +1,10 @@
 # Items to do:
+- Once the current session has completed, move the data to the previous sessions section
+- In the Session Comparison section where selections are made for comparison, let's add filters for Drivers and Cars. 
+    - Selecting a Driver should populate the Cars filter with the cars they own.
+    - If no driver is selected the Car filter should not be enabled
+- Let's add a filter in the Session Comparison section for date ranges. Allow the user to select a start and end date to display sessions for.
+- Let's add a filter in the Best Laps Comparison section for date ranges. Allow the user to select a start and end date to display sessions for.
 
 # Other things to add:
 - Add more statistical information?

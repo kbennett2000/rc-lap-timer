@@ -1002,7 +1002,7 @@ export default function LapTimer() {
             <AlertDialogTitle>Delete Session</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete the session from{" "}
-              {sessionToDelete?.date}? This action cannot be undone.
+              {sessionToDelete?.date}? If you delete this session, it's gone for good. So make sure this what you really want to do!!
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1026,8 +1026,7 @@ export default function LapTimer() {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear All Sessions</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete all saved sessions? This action
-              cannot be undone.
+              WHOA!! You're about to delete ALL YOUR SESSSIONS! Literally all the laps you've ever recorded are going to get deleted and YOU CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
