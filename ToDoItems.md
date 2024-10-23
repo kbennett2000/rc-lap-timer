@@ -2,6 +2,9 @@
 - add timestamp to session display
 - add lap counter to stopwatch display
 - importing/exporting driver/car lists
+- auto export each session to 1 persistent JSON data file
+- auto import data on app load
+-- remove import/export buttons, corresponding code
 
 # Other things to add:
 - Add more statistical information?
@@ -35,3 +38,11 @@
 - Split times within laps
 - Pit stop tracking
 - Weather conditions recording
+
+# Deployment:
+- RPI image
+-- initial configuration UI
+-- add to local home network
+-- address by name or static local IP?
+-- access via browser on mobile device
+-- instructions for field use including battery powered wifi router
