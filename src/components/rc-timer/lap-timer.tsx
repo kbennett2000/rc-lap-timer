@@ -225,25 +225,45 @@ export default function LapTimer() {
     }
   };
 
+  const isDriverNameUnique = (name: string): boolean => {
+    return !drivers.some(
+      (driver) => driver.name.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+  };
+
   // 6. Driver and Car Management
   const handleAddDriver = () => {
-    if (!newDriverName.trim()) {
+    const trimmedName = newDriverName.trim();
+
+    if (!trimmedName) {
       alert("Please enter a driver name");
+      return;
+    }
+
+    if (!isDriverNameUnique(trimmedName)) {
+      alert(
+        `A driver named "${trimmedName}" already exists. Please use a different name.`
+      );
       return;
     }
 
     const newDriver: Driver = {
       id: Date.now().toString(),
-      name: newDriverName.trim(),
+      name: trimmedName,
       cars: [],
     };
 
     setDrivers((prevDrivers) => [...prevDrivers, newDriver]);
-    setSelectedDriver(newDriver.id); // Auto-select the new driver
+    setSelectedDriver(newDriver.id);
     setNewDriverName("");
     setShowNewDriver(false);
-    setSelectedCar(""); // Reset car selection since this is a new driver
+    setSelectedCar("");
     saveData();
+  };
+
+  const handleDriverNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setNewDriverName(newName);
   };
 
   const handleAddCar = () => {
@@ -581,18 +601,31 @@ export default function LapTimer() {
               </Button>
             </div>
             {showNewDriver && (
-              <div className="flex space-x-2 mt-2">
-                <Input
-                  placeholder="Enter driver name"
-                  value={newDriverName}
-                  onChange={(e) => setNewDriverName(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddDriver();
+              <div className="space-y-2">
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Enter driver name"
+                    value={newDriverName}
+                    onChange={handleDriverNameChange}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddDriver();
+                      }
+                    }}
+                    className={
+                      newDriverName.trim() && !isDriverNameUnique(newDriverName)
+                        ? "border-red-500"
+                        : ""
                     }
-                  }}
-                />
-                <Button onClick={handleAddDriver}>Add</Button>
+                  />
+                  <Button onClick={handleAddDriver}>Add</Button>
+                </div>
+                {newDriverName.trim() && !isDriverNameUnique(newDriverName) && (
+                  <div className="text-sm text-red-500">
+                    This driver name already exists. Please choose a different
+                    name.
+                  </div>
+                )}
               </div>
             )}
           </div>
