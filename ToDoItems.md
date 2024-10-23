@@ -41,14 +41,7 @@
     - access via browser on mobile device
     - instructions for field use including battery powered wifi router
         - RPI hosted WiFi:
-        `I would like to setup a raspberry pi to run a react web application for use in the field. users will connect to a wifi network and use the application via their mobile phones. does the raspberry pi have the ability to host the wifi network or do i need a portable router?`
-        
         # Setting Up a Raspberry Pi to Host a Wi-Fi Network for a React Web Application
-
-        Yes, a Raspberry Pi can host a Wi-Fi network by creating a wireless access point (AP). You don't necessarily need a portable router, though adding one could provide better performance, range, and stability, depending on your needs.
-
-        Here’s an overview of how you can set up a Raspberry Pi as a Wi-Fi access point to run your React web application:
-
         ## Requirements:
         - **Raspberry Pi 3, 4, or Zero W** (which have built-in Wi-Fi).
         - **MicroSD card with Raspberry Pi OS**.
@@ -154,9 +147,3 @@
         ### 9. Test the Setup
         #### The Raspberry Pi should now be broadcasting a Wi-Fi network with the name you set in `hostapd.conf`.
         #### Users can connect their mobile devices to the Pi’s Wi-Fi network and access the React web app via the Pi’s IP address (e.g., `192.168.4.1`).
-
-        ## Pros of Using a Portable Router:
-        #### **Better Range and Performance**: If you need strong Wi-Fi coverage or have many users, a portable router may offer more reliable performance than a Raspberry Pi.
-        #### **Simpler Management**: Some portable routers have built-in features like multiple SSIDs, better security, and more advanced configuration options.
-
-        However, for small-scale use cases with a few users, the Raspberry Pi should be sufficient.
