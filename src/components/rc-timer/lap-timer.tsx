@@ -1,7 +1,7 @@
 "use client";
 
 // 1. Imports
-import { formatTime } from '@/lib/utils';
+import { formatTime, formatDateTime } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
 import {
   LineChart,
@@ -49,7 +49,14 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Driver, Car, Session, LapStats, StoredData, BestLapRecord } from "@/types/rc-timer";
+import {
+  Driver,
+  Car,
+  Session,
+  LapStats,
+  StoredData,
+  BestLapRecord,
+} from "@/types/rc-timer";
 
 export default function LapTimer() {
   // 2. State definitions
@@ -69,6 +76,7 @@ export default function LapTimer() {
   const [showNewCar, setShowNewCar] = useState<boolean>(false);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<string | null>(null);
 
   // 3. Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -176,18 +184,20 @@ export default function LapTimer() {
     setStartTime(Date.now());
     setIsRunning(true);
     setLaps([]);
-    setCurrentSession(null); // Reset current session when starting new session
+    setSessionStartTime(new Date().toISOString()); // Record the session start time
   };
 
   const recordLap = (): void => {
     if (!isRunning) return;
-    const lapTime =
-      currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
-    setLaps([...laps, lapTime]);
+
+    const lastLapEndTime = laps.reduce((sum, lap) => sum + lap, 0);
+    const currentLapTime = currentTime - lastLapEndTime;
+
+    setLaps((prevLaps) => [...prevLaps, currentLapTime]);
   };
 
   const stopTimer = (): void => {
-    if (!isRunning) return;
+    if (!isRunning || !sessionStartTime) return;
     const finalLapTime =
       currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
     const finalLaps = [...laps, finalLapTime];
@@ -196,22 +206,21 @@ export default function LapTimer() {
 
     const driver = drivers.find((d) => d.id === selectedDriver);
     const car = driver?.cars.find((c) => c.id === selectedCar);
-    const bestLap = Math.min(...finalLaps);
 
     const newSession: Session = {
       id: Date.now(),
-      date: new Date().toLocaleString(),
+      date: sessionStartTime, // Use the recorded start time
       driverId: selectedDriver,
       driverName: driver?.name ?? "",
       carId: selectedCar,
       carName: car?.name ?? "",
       laps: finalLaps,
       stats: calculateStats(finalLaps),
-      bestLap,
     };
 
     setCurrentSession(newSession);
     setSavedSessions([newSession, ...savedSessions]);
+    setSessionStartTime(null); // Reset the session start time
   };
 
   // 8. Data Management
@@ -300,49 +309,23 @@ export default function LapTimer() {
     return Array.isArray(savedSessions) && savedSessions.length > 0;
   };
 
-  interface LapAnalysis {
-    time: number;
-    isBest: boolean;
-  }
-
-  const analyzeLaps = (laps: number[]): LapAnalysis[] => {
-    if (!laps.length) return [];
-    const bestLap = Math.min(...laps);
-    return laps.map((lap) => ({
-      time: lap,
-      isBest: lap === bestLap,
-    }));
-  };
-
   const findBestLaps = (sessions: Session[]): BestLapRecord[] => {
     const bestLaps: BestLapRecord[] = [];
-
-    sessions.forEach((session) => {
-      // Skip sessions with no laps or invalid data
-      if (
-        !session.laps ||
-        !Array.isArray(session.laps) ||
-        session.laps.length === 0
-      ) {
-        return;
-      }
-
+    
+    sessions.forEach(session => {
       const bestLapTime = Math.min(...session.laps);
       const lapNumber = session.laps.indexOf(bestLapTime) + 1;
-
-      // Only add if we have valid driver and car names
-      if (session.driverName?.trim() && session.carName?.trim()) {
-        bestLaps.push({
-          sessionId: session.id,
-          date: session.date,
-          driverName: session.driverName,
-          carName: session.carName,
-          lapTime: bestLapTime,
-          lapNumber: lapNumber,
-        });
-      }
+      
+      bestLaps.push({
+        sessionId: session.id,
+        date: session.date,  // Use the full session timestamp
+        driverName: session.driverName,
+        carName: session.carName,
+        lapTime: bestLapTime,
+        lapNumber: lapNumber
+      });
     });
-
+  
     // Sort by lap time (fastest first)
     return bestLaps.sort((a, b) => a.lapTime - b.lapTime);
   };
@@ -422,51 +405,49 @@ export default function LapTimer() {
 
           {/* Best Laps Table */}
           <div className="rounded-md border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-2 text-left">Rank</th>
-                  <th className="p-2 text-left">Driver</th>
-                  <th className="p-2 text-left">Car</th>
-                  <th className="p-2 text-right">Lap Time</th>
-                  <th className="p-2 text-right">Lap #</th>
-                  <th className="p-2 text-right">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBestLaps.map((lap, index) => (
-                  <tr
-                    key={`${lap.sessionId}-${lap.lapNumber}`}
-                    className={`border-b ${index === 0 ? "bg-green-50" : ""} 
-                      hover:bg-muted/50 transition-colors`}
-                  >
-                    <td className="p-2">
-                      {index === 0 ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Best
-                        </span>
-                      ) : (
-                        `#${index + 1}`
-                      )}
-                    </td>
-                    <td className="p-2">{lap.driverName}</td>
-                    <td className="p-2">{lap.carName}</td>
-                    <td className="p-2 text-right font-mono">
-                      {formatTime(lap.lapTime)}
-                      {index === 0 && (
-                        <span className="ml-2 text-xs text-green-600">
-                          ⚡ Fastest
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-2 text-right">{lap.lapNumber}</td>
-                    <td className="p-2 text-right text-sm text-muted-foreground">
-                      {new Date(lap.date).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <table className="w-full">
+  <thead>
+    <tr className="border-b bg-muted/50">
+      <th className="p-2 text-left">Rank</th>
+      <th className="p-2 text-left">Driver</th>
+      <th className="p-2 text-left">Car</th>
+      <th className="p-2 text-right">Lap Time</th>
+      <th className="p-2 text-right">Lap #</th>
+      <th className="p-2 text-right">Session Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    {filteredBestLaps.map((lap, index) => (
+      <tr 
+        key={`${lap.sessionId}-${lap.lapNumber}`}
+        className={`border-b ${index === 0 ? 'bg-green-50' : ''} 
+          hover:bg-muted/50 transition-colors`}
+      >
+        <td className="p-2">
+          {index === 0 ? (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Best
+            </span>
+          ) : (
+            `#${index + 1}`
+          )}
+        </td>
+        <td className="p-2">{lap.driverName}</td>
+        <td className="p-2">{lap.carName}</td>
+        <td className="p-2 text-right font-mono">
+          {formatTime(lap.lapTime)}
+          {index === 0 && (
+            <span className="ml-2 text-xs text-green-600">⚡ Fastest</span>
+          )}
+        </td>
+        <td className="p-2 text-right">{lap.lapNumber}</td>
+        <td className="p-2 text-right text-sm text-muted-foreground">
+          {formatDateTime(lap.date)}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
           </div>
 
           {filteredBestLaps.length === 0 && (
@@ -479,30 +460,11 @@ export default function LapTimer() {
     );
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-semibold mb-2">Lap {label}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="text-sm">
-              <span style={{ color: entry.color }}>{entry.name}: </span>
-              <span className="font-mono">{formatTime(entry.value)}</span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const handleSessionSelection = (sessionId: string) => {
-    setSelectedSessions((prev) => {
-      if (prev.includes(sessionId)) {
-        return prev.filter((id) => id !== sessionId);
-      }
-      return [...prev, sessionId];
-    });
+  const getBestLap = (laps: number[]) => {
+    if (laps.length === 0) return null;
+    const bestTime = Math.min(...laps);
+    const bestLapIndex = laps.indexOf(bestTime);
+    return { time: bestTime, lapNumber: bestLapIndex + 1 };
   };
 
   // 9. Render Component
@@ -682,54 +644,49 @@ export default function LapTimer() {
                         ?.name
                     }
                   </div>
+                  <div className="font-mono">
+                    Time:{" "}
+                    {sessionStartTime
+                      ? formatDateTime(sessionStartTime)
+                      : "Not started"}
+                  </div>
                   <h3 className="font-semibold mt-4">Lap Times:</h3>
-                  {analyzeLaps(currentSession?.laps || laps).map(
-                    (lap, index) => (
+                  {laps.map((lap, index) => {
+                    const bestLap = getBestLap(laps);
+                    const isBestLap =
+                      bestLap && index === bestLap.lapNumber - 1;
+                    return (
                       <div
                         key={index}
                         className={`font-mono ${
-                          lap.isBest
+                          isBestLap
                             ? "text-green-600 font-bold flex items-center"
                             : ""
                         }`}
                       >
-                        Lap {index + 1}: {formatTime(lap.time)}
-                        {lap.isBest && (
+                        Lap {index + 1}: {formatTime(lap)}
+                        {isBestLap && (
                           <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                             Best Lap
                           </span>
                         )}
                       </div>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
                 <div>
                   <h3 className="font-semibold">Statistics:</h3>
                   <div className="font-mono">
-                    Average:{" "}
-                    {formatTime(
-                      currentSession
-                        ? currentSession.stats.average
-                        : calculateStats(laps).average
-                    )}
+                    Average: {formatTime(calculateStats(laps).average)}
                   </div>
                   <div className="font-mono">
-                    Mean:{" "}
-                    {formatTime(
-                      currentSession
-                        ? currentSession.stats.mean
-                        : calculateStats(laps).mean
-                    )}
+                    Mean: {formatTime(calculateStats(laps).mean)}
                   </div>
-                  <div className="font-mono text-green-600 font-bold mt-2">
-                    Best Lap:{" "}
-                    {formatTime(
-                      currentSession
-                        ? currentSession.bestLap ??
-                            Math.min(...currentSession.laps)
-                        : Math.min(...laps)
-                    )}
-                  </div>
+                  {laps.length > 0 && (
+                    <div className="font-mono text-green-600 font-bold mt-2">
+                      Best Lap: {formatTime(Math.min(...laps))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -738,11 +695,24 @@ export default function LapTimer() {
       )}
 
       {/* Previous Sessions Display */}
-      {Array.isArray(savedSessions) && savedSessions.length > 0 && (
+      {savedSessions.length > 0 && (
         <Card>
-          {/* ... CardHeader remains the same ... */}
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Previous Sessions</CardTitle>
+            <div className="flex space-x-2">
+              <Button
+                onClick={() => setShowClearAllDialog(true)}
+                variant="destructive"
+                size="sm"
+                className="bg-red-500 hover:bg-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear All
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {savedSessions
                 .filter((session) =>
                   currentSession ? session.id !== currentSession.id : true
@@ -752,34 +722,53 @@ export default function LapTimer() {
                     key={session.id}
                     className="border-t pt-4 first:border-t-0 first:pt-0"
                   >
-                    {/* ... header remains the same ... */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex justify-between items-center mb-2">
                       <div>
-                        <div className="font-mono mb-2">
-                          Driver: {session.driverName}
+                        <h3 className="font-semibold">
+                          {formatDateTime(session.date)}
+                        </h3>
+                        <div className="text-sm text-muted-foreground">
+                          Driver: {session.driverName} - Car: {session.carName}
                         </div>
-                        <div className="font-mono mb-2">
-                          Car: {session.carName}
-                        </div>
-                        {analyzeLaps(session.laps).map((lap, index) => (
-                          <div
-                            key={index}
-                            className={`font-mono ${
-                              lap.isBest
-                                ? "text-green-600 font-bold flex items-center"
-                                : ""
-                            }`}
-                          >
-                            Lap {index + 1}: {formatTime(lap.time)}
-                            {lap.isBest && (
-                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                Best Lap
-                              </span>
-                            )}
-                          </div>
-                        ))}
+                      </div>
+                      <Button
+                        onClick={() => setSessionToDelete(session)}
+                        variant="destructive"
+                        size="sm"
+                        className="bg-red-500 hover:bg-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <h4 className="font-semibold mb-2">Lap Times:</h4>
+                        {session.laps.map((lap, index) => {
+                          const bestLap = getBestLap(session.laps);
+                          const isBestLap =
+                            bestLap && index === bestLap.lapNumber - 1;
+                          return (
+                            <div
+                              key={index}
+                              className={`font-mono ${
+                                isBestLap
+                                  ? "text-green-600 font-bold flex items-center"
+                                  : ""
+                              }`}
+                            >
+                              Lap {index + 1}: {formatTime(lap)}
+                              {isBestLap && (
+                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                  Best Lap
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                       <div>
+                        <h4 className="font-semibold mb-2">Statistics:</h4>
                         <div className="font-mono">
                           Average: {formatTime(session.stats.average)}
                         </div>
@@ -787,13 +776,15 @@ export default function LapTimer() {
                           Mean: {formatTime(session.stats.mean)}
                         </div>
                         <div className="font-mono text-green-600 font-bold mt-2">
-                          Best Lap:{" "}
-                          {formatTime(
-                            session.bestLap ?? Math.min(...session.laps)
-                          )}
+                          Best Lap: {formatTime(Math.min(...session.laps))}
+                        </div>
+                        <div className="font-mono">
+                          Total Laps: {session.laps.length}
                         </div>
                       </div>
                     </div>
+
+                    <div className="mt-4 border-b"></div>
                   </div>
                 ))}
             </div>

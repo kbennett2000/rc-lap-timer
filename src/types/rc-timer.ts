@@ -16,14 +16,16 @@ export interface LapStats {
 
 export interface Session {
   id: number;
-  date: string;
+  date: string;  // ISO string format
   driverId: string;
   driverName: string;
   carId: string;
   carName: string;
   laps: number[];
-  stats: LapStats;
-  bestLap?: number;
+  stats: {
+    average: number;
+    mean: number;
+  };
 }
 
 export interface StoredData {
@@ -33,12 +35,13 @@ export interface StoredData {
 
 export interface BestLapRecord {
   sessionId: number;
-  date: string;
+  date: string;  // This will store the full timestamp
   driverName: string;
   carName: string;
   lapTime: number;
   lapNumber: number;
 }
+
  export interface ComparisonData {
   lapNumber: number;
   [key: string]: number | string; // For dynamic session data
