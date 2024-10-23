@@ -78,88 +78,88 @@
 
         ### 3. Install and Configure Hostapd and Dnsmasq
         #### Install the necessary software to make the Pi a Wi-Fi access point:
-             ```bash
-             sudo apt install hostapd dnsmasq
-             ```
+        ```bash
+        sudo apt install hostapd dnsmasq
+        ```
 
         ### 4. Configure Hostapd (Wi-Fi Access Point)
            #### Edit the hostapd configuration file:
-             ```bash
-             sudo nano /etc/hostapd/hostapd.conf
-             ```
+        ```bash
+        sudo nano /etc/hostapd/hostapd.conf
+        ```
            #### Add this configuration:
-             ```
-             interface=wlan0
-             driver=nl80211
-             ssid=YourNetworkName
-             hw_mode=g
-             channel=7
-             wmm_enabled=0
-             macaddr_acl=0
-             auth_algs=1
-             ignore_broadcast_ssid=0
-             wpa=2
-             wpa_passphrase=YourSecurePassword
-             wpa_key_mgmt=WPA-PSK
-             rsn_pairwise=CCMP
-             ```
-           #### Update the hostapd default config:
-             ```bash
-             sudo nano /etc/default/hostapd
-             ```
-           #### Un-comment and set the DAEMON_CONF line:
-             ```
-             DAEMON_CONF="/etc/hostapd/hostapd.conf"
-             ```
+        ```
+        interface=wlan0
+        driver=nl80211
+        ssid=YourNetworkName
+        hw_mode=g
+        channel=7
+        wmm_enabled=0
+        macaddr_acl=0
+        auth_algs=1
+        ignore_broadcast_ssid=0
+        wpa=2
+        wpa_passphrase=YourSecurePassword
+        wpa_key_mgmt=WPA-PSK
+        rsn_pairwise=CCMP
+        ```
+        #### Update the hostapd default config:
+        ```bash
+        sudo nano /etc/default/hostapd
+        ```
+        #### Un-comment and set the DAEMON_CONF line:
+        ```
+        DAEMON_CONF="/etc/hostapd/hostapd.conf"
+        ```
 
         ### 5. Configure Dnsmasq (DHCP server)
-           #### Backup the original dnsmasq configuration:
-             ```bash
-             sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
-             ```
-           #### Create a new configuration file:
-             ```bash
-             sudo nano /etc/dnsmasq.conf
-             ```
-           #### Add the following content:
-             ```
-             interface=wlan0
-             dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
-             ```
+        #### Backup the original dnsmasq configuration:
+        ```bash
+        sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+        ```
+        #### Create a new configuration file:
+        ```bash
+        sudo nano /etc/dnsmasq.conf
+        ```
+        #### Add the following content:
+        ```
+        interface=wlan0
+        dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+        ```
 
         ### 6. Configure Network Settings
-           #### Update your `/etc/dhcpcd.conf` to assign a static IP to the wlan0 interface:
-             ```bash
-             sudo nano /etc/dhcpcd.conf
-             ```
-           #### Add:
-             ```
-             interface wlan0
-             static ip_address=192.168.4.1/24
-             nohook wpa_supplicant
-             ```
+        #### Update your `/etc/dhcpcd.conf` to assign a static IP to the wlan0 interface:
+        ```bash
+        sudo nano /etc/dhcpcd.conf
+        ```
+        #### Add:
+        ```
+        interface wlan0
+        static ip_address=192.168.4.1/24
+        nohook wpa_supplicant
+        ```
 
         ### 7. Enable IP Forwarding
-           #### Enable packet forwarding for IPv4:
-             ```bash
-             sudo nano /etc/sysctl.conf
-             ```
-           #### Un-comment the line:
-             ```
-             net.ipv4.ip_forward=1
-             ```
+        #### Enable packet forwarding for IPv4:
+        ```bash
+        sudo nano /etc/sysctl.conf
+        ```
+        #### Un-comment the line:
+        ```
+        net.ipv4.ip_forward=1
+        ```
 
         ### 8. Start the Access Point
-           #### Restart services:
-             ```bash
-             sudo systemctl restart dhcpcd
-             sudo systemctl start hostapd
-             sudo systemctl start dnsmasq
-             ```
+        #### Restart services:
+        ```bash
+        sudo systemctl restart dhcpcd
+        sudo systemctl start hostapd
+        sudo systemctl start dnsmasq
+        ```
 
         ### 9. Test the Setup
-           #### The Raspberry Pi should now be broadcasting a Wi-Fi network with the name you set in `hostapd.conf`.
-           #### Users can connect their mobile devices to the Pi’s Wi-Fi network and access the React web app via the Pi’s IP address (e.g., `192.168.4.1`).
+        #### The Raspberry Pi should now be broadcasting a Wi-Fi network with the name you set in `hostapd.conf`.
+        #### Users can connect their mobile devices to the Pi’s Wi-Fi network and access the React web app via the Pi’s IP address (e.g., `192.168.4.1`).
 
         ## Pros of Using a Portable Router:
         #### **Better Range and Performance**: If you need strong Wi-Fi coverage or have many users, a portable router may offer more reliable performance than a Raspberry Pi.
