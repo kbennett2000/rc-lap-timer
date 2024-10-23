@@ -311,21 +311,21 @@ export default function LapTimer() {
 
   const findBestLaps = (sessions: Session[]): BestLapRecord[] => {
     const bestLaps: BestLapRecord[] = [];
-    
-    sessions.forEach(session => {
+
+    sessions.forEach((session) => {
       const bestLapTime = Math.min(...session.laps);
       const lapNumber = session.laps.indexOf(bestLapTime) + 1;
-      
+
       bestLaps.push({
         sessionId: session.id,
-        date: session.date,  // Use the full session timestamp
+        date: session.date, // Use the full session timestamp
         driverName: session.driverName,
         carName: session.carName,
         lapTime: bestLapTime,
-        lapNumber: lapNumber
+        lapNumber: lapNumber,
       });
     });
-  
+
     // Sort by lap time (fastest first)
     return bestLaps.sort((a, b) => a.lapTime - b.lapTime);
   };
@@ -336,28 +336,39 @@ export default function LapTimer() {
 
     const bestLaps = findBestLaps(sessions);
 
-    // Get unique drivers and cars for filters, filtering out empty or undefined values
+    // Get unique drivers
     const uniqueDrivers = Array.from(
-      new Set(
-        bestLaps
-          .map((lap) => lap.driverName)
-          .filter((name) => name && name.trim() !== "")
-      )
-    );
+      new Set(bestLaps.map((lap) => lap.driverName))
+    ).filter((name) => name && name.trim() !== "");
 
-    const uniqueCars = Array.from(
-      new Set(
-        bestLaps
-          .map((lap) => lap.carName)
-          .filter((name) => name && name.trim() !== "")
-      )
-    );
+    // Get cars for selected driver
+    const getAvailableCars = (driverName: string) => {
+      return Array.from(
+        new Set(
+          bestLaps
+            .filter((lap) => lap.driverName === driverName)
+            .map((lap) => lap.carName)
+        )
+      ).filter((name) => name && name.trim() !== "");
+    };
+
+    // Reset car filter when driver changes
+    useEffect(() => {
+      if (filterDriver === "all" || filterCar !== "all") {
+        setFilterCar("all");
+      }
+    }, [filterDriver]);
 
     // Filter the best laps
     const filteredBestLaps = bestLaps.filter((lap) => {
       if (filterDriver !== "all" && lap.driverName !== filterDriver)
         return false;
-      if (filterCar !== "all" && lap.carName !== filterCar) return false;
+      if (
+        filterDriver !== "all" &&
+        filterCar !== "all" &&
+        lap.carName !== filterCar
+      )
+        return false;
       return true;
     });
 
@@ -371,7 +382,13 @@ export default function LapTimer() {
           <div className="flex space-x-4 mb-4">
             <div className="space-y-2">
               <Label>Filter by Driver</Label>
-              <Select value={filterDriver} onValueChange={setFilterDriver}>
+              <Select
+                value={filterDriver}
+                onValueChange={(value) => {
+                  setFilterDriver(value);
+                  setFilterCar("all"); // Reset car filter when driver changes
+                }}
+              >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="All Drivers" />
                 </SelectTrigger>
@@ -385,19 +402,34 @@ export default function LapTimer() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <Label>Filter by Car</Label>
-              <Select value={filterCar} onValueChange={setFilterCar}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All Cars" />
+              <Select
+                value={filterCar}
+                onValueChange={setFilterCar}
+                disabled={filterDriver === "all"}
+              >
+                <SelectTrigger
+                  className="w-[200px]"
+                  disabled={filterDriver === "all"}
+                >
+                  <SelectValue
+                    placeholder={
+                      filterDriver === "all"
+                        ? "Select a driver first"
+                        : "All Cars"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cars</SelectItem>
-                  {uniqueCars.map((car) => (
-                    <SelectItem key={car} value={car}>
-                      {car}
-                    </SelectItem>
-                  ))}
+                  {filterDriver !== "all" &&
+                    getAvailableCars(filterDriver).map((car) => (
+                      <SelectItem key={car} value={car}>
+                        {car}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -405,53 +437,55 @@ export default function LapTimer() {
 
           {/* Best Laps Table */}
           <div className="rounded-md border">
-          <table className="w-full">
-  <thead>
-    <tr className="border-b bg-muted/50">
-      <th className="p-2 text-left">Rank</th>
-      <th className="p-2 text-left">Driver</th>
-      <th className="p-2 text-left">Car</th>
-      <th className="p-2 text-right">Lap Time</th>
-      <th className="p-2 text-right">Lap #</th>
-      <th className="p-2 text-right">Session Time</th>
-    </tr>
-  </thead>
-  <tbody>
-    {filteredBestLaps.map((lap, index) => (
-      <tr 
-        key={`${lap.sessionId}-${lap.lapNumber}`}
-        className={`border-b ${index === 0 ? 'bg-green-50' : ''} 
-          hover:bg-muted/50 transition-colors`}
-      >
-        <td className="p-2">
-          {index === 0 ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              Best
-            </span>
-          ) : (
-            `#${index + 1}`
-          )}
-        </td>
-        <td className="p-2">{lap.driverName}</td>
-        <td className="p-2">{lap.carName}</td>
-        <td className="p-2 text-right font-mono">
-          {formatTime(lap.lapTime)}
-          {index === 0 && (
-            <span className="ml-2 text-xs text-green-600">⚡ Fastest</span>
-          )}
-        </td>
-        <td className="p-2 text-right">{lap.lapNumber}</td>
-        <td className="p-2 text-right text-sm text-muted-foreground">
-          {formatDateTime(lap.date)}
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="p-2 text-left">Rank</th>
+                  <th className="p-2 text-left">Driver</th>
+                  <th className="p-2 text-left">Car</th>
+                  <th className="p-2 text-right">Lap Time</th>
+                  <th className="p-2 text-right">Lap #</th>
+                  <th className="p-2 text-right">Session Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBestLaps.map((lap, index) => (
+                  <tr
+                    key={`${lap.sessionId}-${lap.lapNumber}`}
+                    className={`border-b ${index === 0 ? "bg-green-50" : ""} 
+                      hover:bg-muted/50 transition-colors`}
+                  >
+                    <td className="p-2">
+                      {index === 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Best
+                        </span>
+                      ) : (
+                        `#${index + 1}`
+                      )}
+                    </td>
+                    <td className="p-2">{lap.driverName}</td>
+                    <td className="p-2">{lap.carName}</td>
+                    <td className="p-2 text-right font-mono">
+                      {formatTime(lap.lapTime)}
+                      {index === 0 && (
+                        <span className="ml-2 text-xs text-green-600">
+                          ⚡ Fastest
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-2 text-right">{lap.lapNumber}</td>
+                    <td className="p-2 text-right text-sm text-muted-foreground">
+                      {formatDateTime(lap.date)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {filteredBestLaps.length === 0 && (
-            <div className="text-center py-4 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground">
               No lap times found for the selected filters.
             </div>
           )}
