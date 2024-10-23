@@ -22,8 +22,6 @@ import {
   StopCircle,
   ListPlus,
   Trash2,
-  Download,
-  Upload,
   User,
   Car as CarIcon,
 } from "lucide-react";
@@ -56,6 +54,7 @@ import {
   LapStats,
   StoredData,
   BestLapRecord,
+  PersistentData,
 } from "@/types/rc-timer";
 
 export default function LapTimer() {
@@ -132,6 +131,18 @@ export default function LapTimer() {
     setSelectedCar("");
   }, [selectedDriver]);
 
+  // Load data on component mount
+  useEffect(() => {
+    loadSavedData();
+  }, []);
+
+  // Auto-save whenever sessions or drivers change
+  useEffect(() => {
+    if (savedSessions.length > 0 || drivers.length > 0) {
+      saveData();
+    }
+  }, [savedSessions, drivers]);
+
   // 5. Utility Functions
   const calculateStats = (lapTimes: number[]): LapStats => {
     if (lapTimes.length === 0) return { average: 0, mean: 0 };
@@ -142,9 +153,9 @@ export default function LapTimer() {
     return { average, mean };
   };
 
-  const getCurrentDriverCars = (): Car[] => {
+  const getCurrentDriverCars = () => {
     const driver = drivers.find((d) => d.id === selectedDriver);
-    return driver ? driver.cars : [];
+    return driver?.cars || [];
   };
 
   const validateLapCount = (value: string): boolean => {
@@ -171,40 +182,97 @@ export default function LapTimer() {
     };
 
     setCurrentSession(newSession);
-    setSavedSessions([newSession, ...savedSessions]);
+    setSavedSessions((prev) => [newSession, ...prev]);
+    // Auto-save happens via useEffect
+  };
+
+  // Load data function
+  const loadSavedData = async () => {
+    try {
+      const response = await fetch("/api/data");
+      if (!response.ok) throw new Error("Failed to load data");
+
+      const data: PersistentData = await response.json();
+      setSavedSessions(data.sessions || []);
+      setDrivers(data.drivers || []);
+      console.log("Data loaded:", data.lastUpdated);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
+  };
+
+  // Save data function
+  const saveData = async () => {
+    try {
+      const data: PersistentData = {
+        sessions: savedSessions,
+        drivers: drivers,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const response = await fetch("/api/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Failed to save data");
+      console.log("Data saved:", data.lastUpdated);
+    } catch (error) {
+      console.error("Error saving data:", error);
+    }
   };
 
   // 6. Driver and Car Management
-  const addNewDriver = (): void => {
-    if (!newDriverName.trim()) return;
+  const handleAddDriver = () => {
+    if (!newDriverName.trim()) {
+      alert("Please enter a driver name");
+      return;
+    }
+
     const newDriver: Driver = {
       id: Date.now().toString(),
       name: newDriverName.trim(),
       cars: [],
     };
-    setDrivers([...drivers, newDriver]);
-    setSelectedDriver(newDriver.id);
+
+    setDrivers((prevDrivers) => [...prevDrivers, newDriver]);
+    setSelectedDriver(newDriver.id); // Auto-select the new driver
     setNewDriverName("");
     setShowNewDriver(false);
+    setSelectedCar(""); // Reset car selection since this is a new driver
+    saveData();
   };
 
-  const addNewCar = (): void => {
-    if (!newCarName.trim() || !selectedDriver) return;
+  const handleAddCar = () => {
+    if (!selectedDriver || !newCarName.trim()) {
+      alert("Please select a driver and enter a car name");
+      return;
+    }
+
     const newCar: Car = {
       id: Date.now().toString(),
       name: newCarName.trim(),
     };
-    setDrivers(
-      drivers.map((driver) => {
+
+    setDrivers((prevDrivers) =>
+      prevDrivers.map((driver) => {
         if (driver.id === selectedDriver) {
-          return { ...driver, cars: [...driver.cars, newCar] };
+          return {
+            ...driver,
+            cars: [...driver.cars, newCar],
+          };
         }
         return driver;
       })
     );
-    setSelectedCar(newCar.id);
+
+    setSelectedCar(newCar.id); // Auto-select the new car
     setNewCarName("");
     setShowNewCar(false);
+    saveData();
   };
 
   // 7. Timer Controls
@@ -244,7 +312,27 @@ export default function LapTimer() {
     const finalLapTime =
       currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
     const finalLaps = [...laps, finalLapTime];
-    handleSessionCompletion(finalLaps);
+    setLaps(finalLaps);
+    setIsRunning(false);
+
+    const driver = drivers.find((d) => d.id === selectedDriver);
+    const car = driver?.cars.find((c) => c.id === selectedCar);
+
+    const newSession: Session = {
+      id: Date.now(),
+      date: sessionStartTime,
+      driverId: selectedDriver,
+      driverName: driver?.name ?? "",
+      carId: selectedCar,
+      carName: car?.name ?? "",
+      laps: finalLaps,
+      stats: calculateStats(finalLaps),
+      totalLaps: selectedLapCount,
+    };
+
+    setCurrentSession(newSession);
+    setSavedSessions((prev) => [newSession, ...prev]);
+    // Auto-save happens via useEffect
   };
 
   // 8. Data Management
@@ -265,72 +353,6 @@ export default function LapTimer() {
       setSavedSessions([]);
     }
     setShowClearAllDialog(false);
-  };
-
-  const exportData = (): void => {
-    // Add safety check at the start of the function
-    if (!hasRecordedSessions()) {
-      alert("Please record at least one session before exporting data.");
-      return;
-    }
-
-    try {
-      const data: StoredData = {
-        sessions: savedSessions,
-        drivers: drivers,
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `rc-lap-timer-data-${
-        new Date().toISOString().split("T")[0]
-      }.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      alert("Data exported successfully!");
-    } catch (error) {
-      console.error("Error exporting data:", error);
-      alert("Error exporting data. Please try again.");
-    }
-  };
-
-  const importData = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const imported = JSON.parse(e.target.result as string) as StoredData;
-        if (imported.sessions && imported.drivers) {
-          console.log("Importing data:", imported); // Debug log
-          setSavedSessions(imported.sessions);
-          setDrivers(imported.drivers);
-
-          // Force a re-render by updating state
-          setCurrentSession(null);
-          setLaps([]);
-          setIsRunning(false);
-          setSelectedDriver("");
-          setSelectedCar("");
-        }
-      } catch (error) {
-        console.error("Error importing data:", error);
-        alert("Error importing data. Please check the file format.");
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = "";
-  };
-
-  const hasRecordedSessions = (): boolean => {
-    return Array.isArray(savedSessions) && savedSessions.length > 0;
   };
 
   const findBestLaps = (sessions: Session[]): BestLapRecord[] => {
@@ -528,44 +550,6 @@ export default function LapTimer() {
   // 9. Render Component
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4">
-      {/* Data Management Card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Data Management</CardTitle>
-          <div className="flex space-x-2">
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              size="sm"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Import Data
-            </Button>
-            <Button
-              onClick={exportData}
-              variant="outline"
-              size="sm"
-              disabled={!hasRecordedSessions()}
-              title={
-                !hasRecordedSessions()
-                  ? "Record at least one session before exporting"
-                  : "Export recorded sessions"
-              }
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export Data
-            </Button>
-          </div>
-        </CardHeader>
-        {!hasRecordedSessions() && (
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Record at least one lap timing session to enable data export.
-            </p>
-          </CardContent>
-        )}
-      </Card>
-
       {/* Session Configuration Card */}
       <Card>
         <CardHeader>
@@ -602,13 +586,18 @@ export default function LapTimer() {
                   placeholder="Enter driver name"
                   value={newDriverName}
                   onChange={(e) => setNewDriverName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddDriver();
+                    }
+                  }}
                 />
-                <Button onClick={addNewDriver}>Add</Button>
+                <Button onClick={handleAddDriver}>Add</Button>
               </div>
             )}
           </div>
 
-          {/* Car Selection */}
+          {/* Car Selection - Only show if driver is selected */}
           {selectedDriver && (
             <div className="space-y-2">
               <Label>Car</Label>
@@ -639,8 +628,13 @@ export default function LapTimer() {
                     placeholder="Enter car name"
                     value={newCarName}
                     onChange={(e) => setNewCarName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddCar();
+                      }
+                    }}
                   />
-                  <Button onClick={addNewCar}>Add</Button>
+                  <Button onClick={handleAddCar}>Add</Button>
                 </div>
               )}
             </div>
@@ -964,15 +958,6 @@ export default function LapTimer() {
       {Array.isArray(savedSessions) && savedSessions.length > 1 && (
         <SessionComparison sessions={savedSessions} />
       )}
-
-      {/* Hidden file input for import */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept=".json"
-        onChange={importData}
-      />
 
       {/* Delete Session Dialog */}
       <AlertDialog

@@ -1,8 +1,4 @@
 # Items to do:
-- importing/exporting driver/car lists
-- auto export each session to 1 persistent JSON data file
-- auto import data on app load
-    - remove import/export buttons, corresponding code
 
 # Other things to add:
 - Add more statistical information?

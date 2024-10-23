@@ -46,3 +46,9 @@ export interface BestLapRecord {
   lapNumber: number;
   [key: string]: number | string; // For dynamic session data
 }
+
+export interface PersistentData {
+  sessions: Session[];
+  drivers: Driver[];
+  lastUpdated: string;
+}
