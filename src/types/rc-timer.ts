@@ -23,9 +23,23 @@ export interface Session {
   carName: string;
   laps: number[];
   stats: LapStats;
+  bestLap?: number;
 }
 
 export interface StoredData {
   sessions: Session[];
   drivers: Driver[];
+}
+
+export interface BestLapRecord {
+  sessionId: number;
+  date: string;
+  driverName: string;
+  carName: string;
+  lapTime: number;
+  lapNumber: number;
+}
+ export interface ComparisonData {
+  lapNumber: number;
+  [key: string]: number | string; // For dynamic session data
 }
