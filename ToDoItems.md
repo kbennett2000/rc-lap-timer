@@ -83,11 +83,11 @@
         ```
 
         ### 4. Configure Hostapd (Wi-Fi Access Point)
-           #### Edit the hostapd configuration file:
+        #### Edit the hostapd configuration file:
         ```bash
         sudo nano /etc/hostapd/hostapd.conf
         ```
-           #### Add this configuration:
+        #### Add this configuration:
         ```
         interface=wlan0
         driver=nl80211
