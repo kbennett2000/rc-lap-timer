@@ -1,6 +1,6 @@
 # Items to do:
 
-- Once the current session has completed, move the data to the previous sessions section
+I would like the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
 - In the Session Comparison section where selections are made for comparison, let's add filters for Drivers and Cars. 
     - Selecting a Driver should populate the Cars filter with the cars they own.
     - If no driver is selected the Car filter should not be enabled

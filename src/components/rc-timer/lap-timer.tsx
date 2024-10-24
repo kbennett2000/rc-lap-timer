@@ -181,9 +181,10 @@ export default function LapTimer() {
       totalLaps: selectedLapCount,
     };
 
-    setCurrentSession(newSession);
     setSavedSessions((prev) => [newSession, ...prev]);
-    // Auto-save happens via useEffect
+    setCurrentSession(null); // Reset current session
+    setLaps([]); // Clear lap data
+    saveData();
   };
 
   // Load data function
@@ -361,27 +362,7 @@ export default function LapTimer() {
     const finalLapTime =
       currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
     const finalLaps = [...laps, finalLapTime];
-    setLaps(finalLaps);
-    setIsRunning(false);
-
-    const driver = drivers.find((d) => d.id === selectedDriver);
-    const car = driver?.cars.find((c) => c.id === selectedCar);
-
-    const newSession: Session = {
-      id: Date.now(),
-      date: sessionStartTime,
-      driverId: selectedDriver,
-      driverName: driver?.name ?? "",
-      carId: selectedCar,
-      carName: car?.name ?? "",
-      laps: finalLaps,
-      stats: calculateStats(finalLaps),
-      totalLaps: selectedLapCount,
-    };
-
-    setCurrentSession(newSession);
-    setSavedSessions((prev) => [newSession, ...prev]);
-    // Auto-save happens via useEffect
+    handleSessionCompletion(finalLaps);
   };
 
   // 8. Data Management
@@ -823,7 +804,16 @@ export default function LapTimer() {
         <CardContent className="space-y-4">
           {/* Add lap counter */}
           <div className="text-center text-lg font-mono mb-4">
-            Lap: {laps.length + 1}
+            {isRunning && (
+              <>
+                Lap: {laps.length + 1}
+                {selectedLapCount !== "unlimited" && (
+                  <span className="ml-2 text-muted-foreground">
+                    of {selectedLapCount}
+                  </span>
+                )}
+              </>
+            )}
           </div>
 
           {/* Timer controls */}
@@ -856,8 +846,8 @@ export default function LapTimer() {
         </CardContent>
       </Card>
 
-      {/* Current Session Display */}
-      {(laps.length > 0 || currentSession) && (
+      {/* Current Session - Only show if there's an active session */}
+      {isRunning && laps.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Current Session</CardTitle>
@@ -879,9 +869,7 @@ export default function LapTimer() {
                   </div>
                   <div className="font-mono">
                     Time:{" "}
-                    {currentSession
-                      ? formatDateTime(currentSession.date)
-                      : sessionStartTime
+                    {sessionStartTime
                       ? formatDateTime(sessionStartTime)
                       : "Not started"}
                   </div>
