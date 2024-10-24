@@ -218,13 +218,15 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
   // Filter sessions based on selected driver and car
   const getFilteredSessions = () => {
-    return sessions.filter((session) => {
-      if (filterDriver !== "all" && session.driverName !== filterDriver)
-        return false;
-      if (filterCar !== "all" && session.carName !== filterCar) return false;
-      if (!isWithinDateRange(session.date)) return false;
-      return true;
-    });
+    return sessions
+      .filter((session) => {
+        if (filterDriver !== "all" && session.driverName !== filterDriver)
+          return false;
+        if (filterCar !== "all" && session.carName !== filterCar) return false;
+        if (!isWithinDateRange(session.date)) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   return (

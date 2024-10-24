@@ -13,7 +13,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ import {
   User,
   Car as CarIcon,
 } from "lucide-react";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +34,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
 import {
   Select,
   SelectContent,
@@ -44,7 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -56,6 +52,23 @@ import {
   BestLapRecord,
   PersistentData,
 } from "@/types/rc-timer";
+import {
+  addDays,
+  format,
+  isBefore,
+  isAfter,
+  startOfDay,
+  endOfDay,
+  parseISO,
+} from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import cn from "classnames";
 
 export default function LapTimer() {
   // 2. State definitions
@@ -144,6 +157,35 @@ export default function LapTimer() {
   }, [savedSessions, drivers]);
 
   // 5. Utility Functions
+
+  interface DatePreset {
+    label: string;
+    days: number | "month" | "year";
+  }
+
+  const DATE_PRESETS: DatePreset[] = [
+    { label: "Last 7 days", days: 7 },
+    { label: "Last 30 days", days: 30 },
+    { label: "Last 90 days", days: 90 },
+    { label: "This month", days: "month" },
+    { label: "This year", days: "year" },
+  ];
+
+  const getPresetDates = (preset: DatePreset) => {
+    const to = new Date();
+    let from: Date;
+
+    if (preset.days === "month") {
+      from = new Date(to.getFullYear(), to.getMonth(), 1);
+    } else if (preset.days === "year") {
+      from = new Date(to.getFullYear(), 0, 1);
+    } else {
+      from = addDays(to, -preset.days);
+    }
+
+    return { from, to };
+  };
+
   const calculateStats = (lapTimes: number[]): LapStats => {
     if (lapTimes.length === 0) return { average: 0, mean: 0 };
     const sum = lapTimes.reduce((a, b) => a + b, 0);
@@ -435,16 +477,63 @@ export default function LapTimer() {
       }
     }, [filterDriver]);
 
-    // Filter the best laps
-    const filteredBestLaps = bestLaps.filter((lap) => {
+    const [dateRange, setDateRange] = useState<{
+      from: Date | undefined;
+      to: Date | undefined;
+    }>(() => {
+      // Initialize with "Last 7 days"
+      const to = new Date();
+      const from = addDays(to, -7);
+      return { from, to };
+    });
+
+    // Add useEffect to initialize filters on mount
+    useEffect(() => {
+      // Set initial date range (Last 7 days)
+      const to = new Date();
+      const from = addDays(to, -7);
+      setDateRange({ from, to });
+    }, []);
+
+    // Add date range check to your filtering logic
+    const isWithinDateRange = (sessionDate: string) => {
+      if (!dateRange.from && !dateRange.to) return true;
+
+      const date = parseISO(sessionDate);
+
+      if (dateRange.from && !dateRange.to) {
+        return (
+          isAfter(date, startOfDay(dateRange.from)) ||
+          format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
+        );
+      }
+
+      if (!dateRange.from && dateRange.to) {
+        return (
+          isBefore(date, endOfDay(dateRange.to)) ||
+          format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
+        );
+      }
+
+      if (dateRange.from && dateRange.to) {
+        return (
+          (isAfter(date, startOfDay(dateRange.from)) ||
+            format(date, "yyyy-MM-dd") ===
+              format(dateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(dateRange.to)) ||
+            format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
+        );
+      }
+
+      return true;
+    };
+
+    // Update your filteredBestLaps to include date filtering
+    const filteredBestLaps = findBestLaps(sessions).filter((lap) => {
       if (filterDriver !== "all" && lap.driverName !== filterDriver)
         return false;
-      if (
-        filterDriver !== "all" &&
-        filterCar !== "all" &&
-        lap.carName !== filterCar
-      )
-        return false;
+      if (filterCar !== "all" && lap.carName !== filterCar) return false;
+      if (!isWithinDateRange(lap.date)) return false;
       return true;
     });
 
@@ -455,7 +544,7 @@ export default function LapTimer() {
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="flex space-x-4 mb-4">
+          <div className="space-x-4 mb-4">
             <div className="space-y-2">
               <Label>Filter by Driver</Label>
               <Select
@@ -508,6 +597,148 @@ export default function LapTimer() {
                     ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="space-y-2">
+              <Label>Filter by Date Range</Label>
+
+              {/* Preset Buttons */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {DATE_PRESETS.map((preset) => {
+                  const presetDates = getPresetDates(preset);
+                  const isActive =
+                    dateRange.from &&
+                    dateRange.to &&
+                    format(dateRange.from, "yyyy-MM-dd") ===
+                      format(presetDates.from, "yyyy-MM-dd") &&
+                    format(dateRange.to, "yyyy-MM-dd") ===
+                      format(presetDates.to, "yyyy-MM-dd");
+
+                  return (
+                    <Button
+                      key={preset.label}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "hover:bg-muted",
+                        isActive
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : ""
+                      )}
+                      onClick={() => {
+                        const { from, to } = getPresetDates(preset);
+                        setDateRange({ from, to });
+                      }}
+                    >
+                      {preset.label}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Date Range Selectors */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from
+                        ? format(dateRange.from, "PPP")
+                        : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.from}
+                      onSelect={(date) =>
+                        setDateRange((prev) => ({ ...prev, from: date }))
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.to && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.to
+                        ? format(dateRange.to, "PPP")
+                        : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.to}
+                      onSelect={(date) =>
+                        setDateRange((prev) => ({ ...prev, to: date }))
+                      }
+                      disabled={(date) =>
+                        dateRange.from ? isBefore(date, dateRange.from) : false
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setDateRange({ from: undefined, to: undefined })
+                  }
+                  className="w-full sm:w-auto"
+                >
+                  Reset Dates
+                </Button>
+              </div>
+
+              {/* Date Range Summary */}
+              {(dateRange.from || dateRange.to) && (
+                <div className="text-sm text-muted-foreground">
+                  {dateRange.from &&
+                  dateRange.to &&
+                  format(dateRange.from, "yyyy-MM-dd") ===
+                    format(
+                      getPresetDates(DATE_PRESETS[0]).from,
+                      "yyyy-MM-dd"
+                    ) &&
+                  format(dateRange.to, "yyyy-MM-dd") ===
+                    format(getPresetDates(DATE_PRESETS[0]).to, "yyyy-MM-dd") ? (
+                    "Showing best laps from the last 7 days"
+                  ) : (
+                    <>
+                      Showing best laps
+                      {dateRange.from &&
+                        !dateRange.to &&
+                        ` from ${format(dateRange.from, "PPP")}`}
+                      {!dateRange.from &&
+                        dateRange.to &&
+                        ` until ${format(dateRange.to, "PPP")}`}
+                      {dateRange.from &&
+                        dateRange.to &&
+                        ` from ${format(dateRange.from, "PPP")} to ${format(
+                          dateRange.to,
+                          "PPP"
+                        )}`}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
