@@ -1,4 +1,5 @@
 # Items to do:
+- Make Best Laps Comparison a component like Session Comparison
 
 - Tab UI:
     - TAB1
@@ -11,7 +12,6 @@
         - Best Laps Comparison
     - TAB4
         - Session Comparison
-
 
 - Add "Today" to date range selections, make default value.
 - Add date range selection functionality to Previous Sessions tab
