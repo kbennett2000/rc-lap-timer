@@ -1,6 +1,5 @@
 "use client";
 
-import { formatTime, formatDateTime } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import {
   LineChart,
@@ -14,7 +13,15 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Session } from "@/types/rc-timer";
+import { formatDateTime, formatTime } from "@/lib/utils";
 
 interface ComparisonData {
   lap: number;
@@ -23,43 +30,97 @@ interface ComparisonData {
 
 export function SessionComparison({ sessions }: { sessions: Session[] }) {
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
+  const [filterDriver, setFilterDriver] = useState<string>("all");
+  const [filterCar, setFilterCar] = useState<string>("all");
+  const [chartData, setChartData] = useState<ComparisonData[]>([]);
 
-  // Add this function to handle session selection
-  const handleSessionSelection = (sessionId: string) => {
-    setSelectedSessions((prev) => {
-      if (prev.includes(sessionId)) {
-        // If already selected, remove it
-        return prev.filter((id) => id !== sessionId);
-      } else {
-        // If not selected, add it
-        return [...prev, sessionId];
-      }
-    });
-  };
+  // Update chart data when selections change
+  useEffect(() => {
+    const data = prepareChartData();
+    console.log("Chart data prepared:", data);
+    setChartData(data);
+  }, [selectedSessions]);
 
-  // Simplified data preparation
-  const prepareChartData = () => {
+  const prepareChartData = (): ComparisonData[] => {
     // Get selected session objects
-    const selectedSessionsData = selectedSessions
+    const selectedSessionData = selectedSessions
       .map((id) => sessions.find((s) => s.id.toString() === id))
       .filter((s): s is Session => s !== undefined);
 
+    console.log("Selected sessions:", selectedSessionData);
+
+    if (selectedSessionData.length === 0) return [];
+
     // Find maximum number of laps
-    const maxLaps = Math.max(
-      ...selectedSessionsData.map((session) => session.laps.length)
-    );
+    const maxLaps = Math.max(...selectedSessionData.map((s) => s.laps.length));
 
     // Create data points
-    return Array.from({ length: maxLaps }, (_, i) => {
-      const dataPoint: any = { lap: i + 1 };
+    const data = Array.from({ length: maxLaps }, (_, i) => {
+      const dataPoint: ComparisonData = {
+        lapNumber: i + 1,
+      };
 
-      // Add lap times for each session
-      selectedSessionsData.forEach((session) => {
-        const key = `Session ${session.id}`;
-        dataPoint[key] = i < session.laps.length ? session.laps[i] : null;
+      // Add lap times for each session with unique keys
+      selectedSessionData.forEach((session) => {
+        // Create a unique key including the date
+        const sessionDate = new Date(session.date);
+        const formattedDate = sessionDate.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const sessionKey = `${session.driverName} - ${session.carName} (${formattedDate})`;
+        dataPoint[sessionKey] =
+          i < session.laps.length ? session.laps[i] : null;
       });
 
       return dataPoint;
+    });
+
+    console.log("Generated chart data:", data);
+    return data;
+  };
+
+  // Handle session selection
+  const handleSessionSelect = (sessionId: string) => {
+    console.log("Session selected:", sessionId);
+    setSelectedSessions((prev) => {
+      const newSelection = prev.includes(sessionId)
+        ? prev.filter((id) => id !== sessionId)
+        : [...prev, sessionId];
+      console.log("New selection:", newSelection);
+      return newSelection;
+    });
+  };
+
+  // Get unique drivers from sessions
+  const getUniqueDrivers = () => {
+    const drivers = new Set(sessions.map((session) => session.driverName));
+    return Array.from(drivers);
+  };
+
+  // Get cars for selected driver
+  const getDriverCars = (driverName: string) => {
+    const driverSessions = sessions.filter(
+      (session) => session.driverName === driverName
+    );
+    const cars = new Set(driverSessions.map((session) => session.carName));
+    return Array.from(cars);
+  };
+
+  // Reset car filter when driver changes
+  useEffect(() => {
+    setFilterCar("all");
+  }, [filterDriver]);
+
+  // Filter sessions based on selected driver and car
+  const getFilteredSessions = () => {
+    return sessions.filter((session) => {
+      if (filterDriver !== "all" && session.driverName !== filterDriver)
+        return false;
+      if (filterCar !== "all" && session.carName !== filterCar) return false;
+      return true;
     });
   };
 
@@ -69,13 +130,74 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
         <CardTitle>Session Comparison</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Filters Section */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Driver Filter */}
+            <div className="space-y-2">
+              <Label>Filter by Driver</Label>
+              <Select
+                value={filterDriver}
+                onValueChange={(value) => {
+                  setFilterDriver(value);
+                  setSelectedSessions([]); // Clear selections when filter changes
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Drivers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Drivers</SelectItem>
+                  {getUniqueDrivers().map((driver) => (
+                    <SelectItem key={driver} value={driver}>
+                      {driver}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Car Filter */}
+            <div className="space-y-2">
+              <Label>Filter by Car</Label>
+              <Select
+                value={filterCar}
+                onValueChange={(value) => {
+                  setFilterCar(value);
+                  setSelectedSessions([]); // Clear selections when filter changes
+                }}
+                disabled={filterDriver === "all"}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      filterDriver === "all"
+                        ? "Select a driver first"
+                        : "All Cars"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cars</SelectItem>
+                  {filterDriver !== "all" &&
+                    getDriverCars(filterDriver).map((car) => (
+                      <SelectItem key={car} value={car}>
+                        {car}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
         {/* Session Selection */}
         <div className="space-y-2">
           <Label>
             Select Sessions to Compare (Selected: {selectedSessions.length})
           </Label>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sessions.map((session) => (
+            {getFilteredSessions().map((session) => (
               <div
                 key={session.id}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors
@@ -84,7 +206,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                       ? "border-blue-500 bg-blue-50"
                       : "hover:bg-gray-50"
                   }`}
-                onClick={() => handleSessionSelection(session.id.toString())}
+                onClick={() => handleSessionSelect(session.id.toString())}
               >
                 <div className="font-medium">{session.driverName}</div>
                 <div className="text-sm text-muted-foreground">
@@ -98,22 +220,23 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
           </div>
         </div>
 
-        {selectedSessions.length > 0 && (
-          <div className="h-[400px]">
+        {/* Chart Section */}
+        {selectedSessions.length > 0 && chartData.length > 0 && (
+          <div className="h-[400px] mt-6">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={prepareChartData()}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
-                  dataKey="lap"
+                  dataKey="lapNumber"
                   label={{ value: "Lap Number", position: "bottom" }}
                 />
                 <YAxis
                   label={{
-                    value: "Time (seconds)",
+                    value: "Lap Time",
                     angle: -90,
                     position: "insideLeft",
                   }}
-                  tickFormatter={(value) => (value / 1000).toFixed(1)}
+                  tickFormatter={(value) => formatTime(value)}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
@@ -124,7 +247,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                           {payload.map((entry: any, index: number) => (
                             <div key={index} className="text-sm">
                               <span style={{ color: entry.color }}>
-                                {entry.name}
+                                {entry.name}:
                               </span>
                               <span className="font-mono ml-2">
                                 {formatTime(entry.value)}
@@ -138,22 +261,35 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                   }}
                 />
                 <Legend />
+
                 {selectedSessions.map((sessionId, index) => {
                   const session = sessions.find(
                     (s) => s.id.toString() === sessionId
                   );
                   if (!session) return null;
 
-                  const key = `Session ${session.id}`;
+                  const sessionDate = new Date(session.date);
+                  const formattedDate = sessionDate.toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  const sessionKey = `${session.driverName} - ${session.carName} (${formattedDate})`;
+
+                  console.log("Adding line for session:", sessionKey);
+
                   return (
                     <Line
-                      key={session.id}
-                      name={`${session.driverName} - ${session.carName}`}
+                      key={sessionId}
                       type="monotone"
-                      dataKey={key}
-                      stroke={getLineColors(index)}
-                      dot={true}
+                      dataKey={sessionKey}
+                      name={sessionKey}
+                      stroke={getLineColor(index)}
                       strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 8 }}
+                      connectNulls={false}
                     />
                   );
                 })}
@@ -161,13 +297,18 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
             </ResponsiveContainer>
           </div>
         )}
+
+        {chartData.length === 0 && selectedSessions.length > 0 && (
+          <div className="text-center py-4 text-muted-foreground">
+            No lap data available for the selected sessions.
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-// Color function
-function getLineColors(index: number): string {
+const getLineColor = (index: number): string => {
   const colors = [
     "#2563eb", // blue
     "#dc2626", // red
@@ -177,4 +318,4 @@ function getLineColors(index: number): string {
     "#0891b2", // cyan
   ];
   return colors[index % colors.length];
-}
+};

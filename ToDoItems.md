@@ -1,9 +1,4 @@
 # Items to do:
-
-I would like the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
-- In the Session Comparison section where selections are made for comparison, let's add filters for Drivers and Cars. 
-    - Selecting a Driver should populate the Cars filter with the cars they own.
-    - If no driver is selected the Car filter should not be enabled
 - Let's add a filter in the Session Comparison section for date ranges. Allow the user to select a start and end date to display sessions for.
 - Let's add a filter in the Best Laps Comparison section for date ranges. Allow the user to select a start and end date to display sessions for.
 - Add Total Session Time to statistics being tracked, stored, and displayed for each session
@@ -13,6 +8,7 @@ I would like the ability for multiple users to use this app at the same time. Ea
 - Add animation when user clicks "Start Lap Timer"
 - Add animation when user clicks "Record Lap"
 - Add animation when user clicks "Stop Lap Timer"
+- Add the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
 
 # Other things to add:
 - Add more statistical information?
