@@ -3,7 +3,6 @@
 // 1. Imports
 import { formatTime, formatDateTime } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Driver, Car, Session, LapStats, StoredData, BestLapRecord, PersistentData } from "@/types/rc-timer";
+import { Driver, Car, Session, BestLapRecord, PersistentData } from "@/types/rc-timer";
 import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -48,7 +47,6 @@ export default function LapTimer() {
 
   // 3. Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 4. Effects
   useEffect(() => {
@@ -908,7 +906,7 @@ export default function LapTimer() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add lap counter */}
-          <div className={cn("text-center text-lg font-mono mb-4 transition-all text-5xl font-bold", lapAnimation && "animate-lap-record")}>
+          <div className={cn("text-center font-mono mb-4 transition-all text-4xl font-bold", lapAnimation && "animate-lap-record")}>
             Lap: {laps.length + 1}
             {selectedLapCount !== "unlimited" && <span className="ml-2 text-muted-foreground">of {selectedLapCount}</span>}
           </div>

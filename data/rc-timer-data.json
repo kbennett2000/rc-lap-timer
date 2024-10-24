@@ -1,6 +1,48 @@
 {
   "sessions": [
     {
+      "id": 1729812013885,
+      "date": "2024-10-24T23:20:13.885Z",
+      "driverId": "1729719141784",
+      "driverName": "Alice",
+      "carId": "1729719287450",
+      "carName": "SC10 Pro4",
+      "laps": [
+        5471,
+        4975,
+        4994,
+        5041,
+        4962
+      ],
+      "stats": {
+        "average": 5088.6,
+        "mean": 4994,
+        "totalTime": 25443
+      },
+      "totalLaps": "unlimited"
+    },
+    {
+      "id": 1729811971201,
+      "date": "2024-10-24T23:19:31.201Z",
+      "driverId": "1729719141784",
+      "driverName": "Alice",
+      "carId": "1729719287450",
+      "carName": "SC10 Pro4",
+      "laps": [
+        5360,
+        5041,
+        5054,
+        4865,
+        5151
+      ],
+      "stats": {
+        "average": 5094.2,
+        "mean": 5054,
+        "totalTime": 25471
+      },
+      "totalLaps": 5
+    },
+    {
       "id": 1729782683215,
       "date": "2024-10-24T15:11:23.215Z",
       "driverId": "1729719141784",
@@ -233,5 +275,5 @@
       ]
     }
   ],
-  "lastUpdated": "2024-10-24T15:30:16.922Z"
+  "lastUpdated": "2024-10-24T23:23:30.498Z"
 }

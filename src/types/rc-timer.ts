@@ -9,11 +9,6 @@ export interface Car {
   name: string;
 }
 
-export interface LapStats {
-  average: number;
-  mean: number;
-}
-
 export interface Session {
   id: number;
   date: string;
@@ -28,11 +23,6 @@ export interface Session {
     totalTime: number; // Add this field
   };
   totalLaps: "unlimited" | number;
-}
-
-export interface StoredData {
-  sessions: Session[];
-  drivers: Driver[];
 }
 
 export interface BestLapRecord {
