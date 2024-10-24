@@ -28,6 +28,9 @@
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7"
   },
+  "prettier": {
+    "printWidth": 300
+  },
   "devDependencies": {
     "@types/node": "^20.11.20",
     "@types/react": "^18.2.58",

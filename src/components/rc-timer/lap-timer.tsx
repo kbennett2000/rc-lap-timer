@@ -3,70 +3,19 @@
 // 1. Imports
 import { formatTime, formatDateTime } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  PlayCircle,
-  StopCircle,
-  ListPlus,
-  Trash2,
-  User,
-  Car as CarIcon,
-} from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Driver,
-  Car,
-  Session,
-  LapStats,
-  StoredData,
-  BestLapRecord,
-  PersistentData,
-} from "@/types/rc-timer";
-import {
-  addDays,
-  format,
-  isBefore,
-  isAfter,
-  startOfDay,
-  endOfDay,
-  parseISO,
-} from "date-fns";
+import { Driver, Car, Session, LapStats, StoredData, BestLapRecord, PersistentData } from "@/types/rc-timer";
+import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import cn from "classnames";
 
@@ -89,9 +38,7 @@ export default function LapTimer() {
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<string | null>(null);
-  const [selectedLapCount, setSelectedLapCount] = useState<
-    "unlimited" | number
-  >("unlimited");
+  const [selectedLapCount, setSelectedLapCount] = useState<"unlimited" | number>("unlimited");
   const [inputLapCount, setInputLapCount] = useState<string>("");
   const [showLapCountInput, setShowLapCountInput] = useState<boolean>(false);
   // State for animation triggers
@@ -117,10 +64,7 @@ export default function LapTimer() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      "rc-lap-timer-sessions",
-      JSON.stringify(savedSessions)
-    );
+    localStorage.setItem("rc-lap-timer-sessions", JSON.stringify(savedSessions));
   }, [savedSessions]);
 
   useEffect(() => {
@@ -195,8 +139,7 @@ export default function LapTimer() {
   // Add the date filter function
   const isWithinDateRange = (sessionDate: string | null): boolean => {
     // If no date range is selected, show all sessions
-    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to)
-      return true;
+    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to) return true;
 
     // If session date is null or invalid, don't show the session
     if (!sessionDate) return false;
@@ -205,29 +148,17 @@ export default function LapTimer() {
       const date = parseISO(sessionDate);
 
       if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
-        return (
-          isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
-          format(date, "yyyy-MM-dd") ===
-            format(previousSessionsDateRange.from, "yyyy-MM-dd")
-        );
+        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
       }
 
       if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return (
-          isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
-          format(date, "yyyy-MM-dd") ===
-            format(previousSessionsDateRange.to, "yyyy-MM-dd")
-        );
+        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
       }
 
       if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
         return (
-          (isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
-            format(date, "yyyy-MM-dd") ===
-              format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
-            format(date, "yyyy-MM-dd") ===
-              format(previousSessionsDateRange.to, "yyyy-MM-dd"))
+          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
         );
       }
 
@@ -309,9 +240,7 @@ export default function LapTimer() {
   };
 
   const sortSessionsByDate = (sessions: Session[]): Session[] => {
-    return [...sessions].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    return [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   // Load data function
@@ -354,9 +283,7 @@ export default function LapTimer() {
   };
 
   const isDriverNameUnique = (name: string): boolean => {
-    return !drivers.some(
-      (driver) => driver.name.toLowerCase().trim() === name.toLowerCase().trim()
-    );
+    return !drivers.some((driver) => driver.name.toLowerCase().trim() === name.toLowerCase().trim());
   };
 
   // 6. Driver and Car Management
@@ -369,9 +296,7 @@ export default function LapTimer() {
     }
 
     if (!isDriverNameUnique(trimmedName)) {
-      alert(
-        `A driver named "${trimmedName}" already exists. Please use a different name.`
-      );
+      alert(`A driver named "${trimmedName}" already exists. Please use a different name.`);
       return;
     }
 
@@ -414,9 +339,7 @@ export default function LapTimer() {
 
     const currentDriver = drivers.find((d) => d.id === selectedDriver);
     if (!isCarNameUniqueForDriver(trimmedName)) {
-      alert(
-        `${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`
-      );
+      alert(`${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`);
       return;
     }
 
@@ -447,9 +370,7 @@ export default function LapTimer() {
     const currentDriver = drivers.find((d) => d.id === selectedDriver);
     if (!currentDriver) return true;
 
-    return !currentDriver.cars.some(
-      (car) => car.name.toLowerCase().trim() === name.toLowerCase().trim()
-    );
+    return !currentDriver.cars.some((car) => car.name.toLowerCase().trim() === name.toLowerCase().trim());
   };
 
   // 7. Timer Controls
@@ -477,10 +398,7 @@ export default function LapTimer() {
     setLaps(newLaps);
 
     // Check if we've reached the selected number of laps
-    if (
-      selectedLapCount !== "unlimited" &&
-      newLaps.length >= selectedLapCount
-    ) {
+    if (selectedLapCount !== "unlimited" && newLaps.length >= selectedLapCount) {
       // Automatically stop the timer and save the session
       handleSessionCompletion(newLaps);
     }
@@ -490,26 +408,21 @@ export default function LapTimer() {
     if (!isRunning) return;
     setStopAnimation(true);
     setTimeout(() => setStopAnimation(false), 500);
-    const finalLapTime =
-      currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
+    const finalLapTime = currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
     const finalLaps = [...laps, finalLapTime];
     handleSessionCompletion(finalLaps);
   };
 
   // 8. Data Management
   const deleteSession = (sessionId: number): void => {
-    setSavedSessions(
-      savedSessions.filter((session) => session.id !== sessionId)
-    );
+    setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
     setSessionToDelete(null);
   };
 
   const clearAllSessions = (): void => {
     // If there's a current session, keep only that one
     if (currentSessionId) {
-      setSavedSessions(
-        savedSessions.filter((session) => session.id === currentSessionId)
-      );
+      setSavedSessions(savedSessions.filter((session) => session.id === currentSessionId));
     } else {
       setSavedSessions([]);
     }
@@ -537,12 +450,9 @@ export default function LapTimer() {
     return bestLaps.sort((a, b) => a.lapTime - b.lapTime);
   };
 
-  const isWithinPreviousSessionsDateRange = (
-    sessionDate: string | null
-  ): boolean => {
+  const isWithinPreviousSessionsDateRange = (sessionDate: string | null): boolean => {
     // If no date range is selected, show all sessions
-    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to)
-      return true;
+    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to) return true;
 
     // If session date is null or invalid, don't show the session
     if (!sessionDate) return false;
@@ -551,29 +461,17 @@ export default function LapTimer() {
       const date = parseISO(sessionDate);
 
       if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
-        return (
-          isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
-          format(date, "yyyy-MM-dd") ===
-            format(previousSessionsDateRange.from, "yyyy-MM-dd")
-        );
+        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
       }
 
       if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return (
-          isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
-          format(date, "yyyy-MM-dd") ===
-            format(previousSessionsDateRange.to, "yyyy-MM-dd")
-        );
+        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
       }
 
       if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
         return (
-          (isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
-            format(date, "yyyy-MM-dd") ===
-              format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
-            format(date, "yyyy-MM-dd") ===
-              format(previousSessionsDateRange.to, "yyyy-MM-dd"))
+          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
         );
       }
 
@@ -591,19 +489,11 @@ export default function LapTimer() {
     const bestLaps = findBestLaps(sessions);
 
     // Get unique drivers
-    const uniqueDrivers = Array.from(
-      new Set(bestLaps.map((lap) => lap.driverName))
-    ).filter((name) => name && name.trim() !== "");
+    const uniqueDrivers = Array.from(new Set(bestLaps.map((lap) => lap.driverName))).filter((name) => name && name.trim() !== "");
 
     // Get cars for selected driver
     const getAvailableCars = (driverName: string) => {
-      return Array.from(
-        new Set(
-          bestLaps
-            .filter((lap) => lap.driverName === driverName)
-            .map((lap) => lap.carName)
-        )
-      ).filter((name) => name && name.trim() !== "");
+      return Array.from(new Set(bestLaps.filter((lap) => lap.driverName === driverName).map((lap) => lap.carName))).filter((name) => name && name.trim() !== "");
     };
 
     // Reset car filter when driver changes
@@ -645,27 +535,15 @@ export default function LapTimer() {
         const date = parseISO(sessionDate);
 
         if (dateRange.from && !dateRange.to) {
-          return (
-            isAfter(date, startOfDay(dateRange.from)) ||
-            format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
-          );
+          return isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd");
         }
 
         if (!dateRange.from && dateRange.to) {
-          return (
-            isBefore(date, endOfDay(dateRange.to)) ||
-            format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
-          );
+          return isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd");
         }
 
         if (dateRange.from && dateRange.to) {
-          return (
-            (isAfter(date, startOfDay(dateRange.from)) ||
-              format(date, "yyyy-MM-dd") ===
-                format(dateRange.from, "yyyy-MM-dd")) &&
-            (isBefore(date, endOfDay(dateRange.to)) ||
-              format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
-          );
+          return (isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) && (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"));
         }
 
         return true;
@@ -677,8 +555,7 @@ export default function LapTimer() {
 
     // Update your filteredBestLaps to include date filtering
     const filteredBestLaps = findBestLaps(sessions).filter((lap) => {
-      if (filterDriver !== "all" && lap.driverName !== filterDriver)
-        return false;
+      if (filterDriver !== "all" && lap.driverName !== filterDriver) return false;
       if (filterCar !== "all" && lap.carName !== filterCar) return false;
       if (!isWithinDateRange(lap.date)) return false;
       return true;
@@ -717,22 +594,9 @@ export default function LapTimer() {
 
             <div className="space-y-2">
               <Label>Filter by Car</Label>
-              <Select
-                value={filterCar}
-                onValueChange={setFilterCar}
-                disabled={filterDriver === "all"}
-              >
-                <SelectTrigger
-                  className="w-[200px]"
-                  disabled={filterDriver === "all"}
-                >
-                  <SelectValue
-                    placeholder={
-                      filterDriver === "all"
-                        ? "Select a driver first"
-                        : "All Cars"
-                    }
-                  />
+              <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
+                <SelectTrigger className="w-[200px]" disabled={filterDriver === "all"}>
+                  <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cars</SelectItem>
@@ -754,25 +618,14 @@ export default function LapTimer() {
               <div className="flex flex-wrap gap-2 mb-4">
                 {DATE_PRESETS.map((preset) => {
                   const presetDates = getPresetDates(preset);
-                  const isActive =
-                    dateRange.from &&
-                    dateRange.to &&
-                    format(dateRange.from, "yyyy-MM-dd") ===
-                      format(presetDates.from, "yyyy-MM-dd") &&
-                    format(dateRange.to, "yyyy-MM-dd") ===
-                      format(presetDates.to, "yyyy-MM-dd");
+                  const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
 
                   return (
                     <Button
                       key={preset.label}
                       variant="outline"
                       size="sm"
-                      className={cn(
-                        "hover:bg-muted",
-                        isActive
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : ""
-                      )}
+                      className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
                       onClick={() => {
                         const { from, to } = getPresetDates(preset);
                         setDateRange({ from, to });
@@ -788,68 +641,29 @@ export default function LapTimer() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !dateRange.from && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.from
-                        ? format(dateRange.from, "PPP")
-                        : "Select start date"}
+                      {dateRange.from ? format(dateRange.from, "PPP") : "Select start date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.from}
-                      onSelect={(date) =>
-                        setDateRange((prev) => ({ ...prev, from: date }))
-                      }
-                      initialFocus
-                    />
+                    <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
                   </PopoverContent>
                 </Popover>
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !dateRange.to && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.to
-                        ? format(dateRange.to, "PPP")
-                        : "Select end date"}
+                      {dateRange.to ? format(dateRange.to, "PPP") : "Select end date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.to}
-                      onSelect={(date) =>
-                        setDateRange((prev) => ({ ...prev, to: date }))
-                      }
-                      disabled={(date) =>
-                        dateRange.from ? isBefore(date, dateRange.from) : false
-                      }
-                      initialFocus
-                    />
+                    <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} disabled={(date) => (dateRange.from ? isBefore(date, dateRange.from) : false)} initialFocus />
                   </PopoverContent>
                 </Popover>
 
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setDateRange({ from: undefined, to: undefined })
-                  }
-                  className="w-full sm:w-auto"
-                >
+                <Button variant="outline" onClick={() => setDateRange({ from: undefined, to: undefined })} className="w-full sm:w-auto">
                   Reset Dates
                 </Button>
               </div>
@@ -857,41 +671,16 @@ export default function LapTimer() {
               {/* Date Range Summary */}
               {(dateRange.from || dateRange.to) && (
                 <div className="text-sm text-muted-foreground">
-                  {dateRange.from &&
-                  dateRange.to &&
-                  format(dateRange.from, "yyyy-MM-dd") ===
-                    format(startOfDay(new Date()), "yyyy-MM-dd") &&
-                  format(dateRange.to, "yyyy-MM-dd") ===
-                    format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                  {dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
                     "Showing sessions from today"
-                  ) : dateRange.from &&
-                    dateRange.to &&
-                    format(dateRange.from, "yyyy-MM-dd") ===
-                      format(
-                        getPresetDates(DATE_PRESETS[1]).from,
-                        "yyyy-MM-dd"
-                      ) &&
-                    format(dateRange.to, "yyyy-MM-dd") ===
-                      format(
-                        getPresetDates(DATE_PRESETS[1]).to,
-                        "yyyy-MM-dd"
-                      ) ? (
+                  ) : dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).to, "yyyy-MM-dd") ? (
                     "Showing sessions from the last 7 days"
                   ) : (
                     <>
                       Showing sessions
-                      {dateRange.from &&
-                        !dateRange.to &&
-                        ` from ${format(dateRange.from, "PPP")}`}
-                      {!dateRange.from &&
-                        dateRange.to &&
-                        ` until ${format(dateRange.to, "PPP")}`}
-                      {dateRange.from &&
-                        dateRange.to &&
-                        ` from ${format(dateRange.from, "PPP")} to ${format(
-                          dateRange.to,
-                          "PPP"
-                        )}`}
+                      {dateRange.from && !dateRange.to && ` from ${format(dateRange.from, "PPP")}`}
+                      {!dateRange.from && dateRange.to && ` until ${format(dateRange.to, "PPP")}`}
+                      {dateRange.from && dateRange.to && ` from ${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}`}
                     </>
                   )}
                 </div>
@@ -919,40 +708,22 @@ export default function LapTimer() {
                     className={`border-b ${index === 0 ? "bg-green-50" : ""} 
                       hover:bg-muted/50 transition-colors`}
                   >
-                    <td className="p-2">
-                      {index === 0 ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Best
-                        </span>
-                      ) : (
-                        `#${index + 1}`
-                      )}
-                    </td>
+                    <td className="p-2">{index === 0 ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Best</span> : `#${index + 1}`}</td>
                     <td className="p-2">{lap.driverName}</td>
                     <td className="p-2">{lap.carName}</td>
                     <td className="p-2 text-right font-mono">
                       {formatTime(lap.lapTime)}
-                      {index === 0 && (
-                        <span className="ml-2 text-xs text-green-600">
-                          ⚡ Fastest
-                        </span>
-                      )}
+                      {index === 0 && <span className="ml-2 text-xs text-green-600">⚡ Fastest</span>}
                     </td>
                     <td className="p-2 text-right">{lap.lapNumber}</td>
-                    <td className="p-2 text-right text-sm text-muted-foreground">
-                      {formatDateTime(lap.date)}
-                    </td>
+                    <td className="p-2 text-right text-sm text-muted-foreground">{formatDateTime(lap.date)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {filteredBestLaps.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No lap times found for the selected filters.
-            </div>
-          )}
+          {filteredBestLaps.length === 0 && <div className="text-center py-8 text-muted-foreground">No lap times found for the selected filters.</div>}
         </CardContent>
       </Card>
     );
@@ -990,10 +761,7 @@ export default function LapTimer() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                onClick={() => setShowNewDriver(!showNewDriver)}
-              >
+              <Button variant="outline" onClick={() => setShowNewDriver(!showNewDriver)}>
                 <User className="mr-2 h-4 w-4" />
                 New Driver
               </Button>
@@ -1010,20 +778,11 @@ export default function LapTimer() {
                         handleAddDriver();
                       }
                     }}
-                    className={
-                      newDriverName.trim() && !isDriverNameUnique(newDriverName)
-                        ? "border-red-500"
-                        : ""
-                    }
+                    className={newDriverName.trim() && !isDriverNameUnique(newDriverName) ? "border-red-500" : ""}
                   />
                   <Button onClick={handleAddDriver}>Add</Button>
                 </div>
-                {newDriverName.trim() && !isDriverNameUnique(newDriverName) && (
-                  <div className="text-sm text-red-500">
-                    This driver name already exists. Please choose a different
-                    name.
-                  </div>
-                )}
+                {newDriverName.trim() && !isDriverNameUnique(newDriverName) && <div className="text-sm text-red-500">This driver name already exists. Please choose a different name.</div>}
               </div>
             )}
           </div>
@@ -1045,10 +804,7 @@ export default function LapTimer() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowNewCar(!showNewCar)}
-                >
+                <Button variant="outline" onClick={() => setShowNewCar(!showNewCar)}>
                   <CarIcon className="mr-2 h-4 w-4" />
                   New Car
                 </Button>
@@ -1066,22 +822,11 @@ export default function LapTimer() {
                           handleAddCar();
                         }
                       }}
-                      className={
-                        newCarName.trim() &&
-                        !isCarNameUniqueForDriver(newCarName)
-                          ? "border-red-500"
-                          : ""
-                      }
+                      className={newCarName.trim() && !isCarNameUniqueForDriver(newCarName) ? "border-red-500" : ""}
                     />
                     <Button onClick={handleAddCar}>Add</Button>
                   </div>
-                  {newCarName.trim() &&
-                    !isCarNameUniqueForDriver(newCarName) && (
-                      <div className="text-sm text-red-500">
-                        {drivers.find((d) => d.id === selectedDriver)?.name}{" "}
-                        already has a car with this name.
-                      </div>
-                    )}
+                  {newCarName.trim() && !isCarNameUniqueForDriver(newCarName) && <div className="text-sm text-red-500">{drivers.find((d) => d.id === selectedDriver)?.name} already has a car with this name.</div>}
                 </div>
               )}
             </div>
@@ -1093,9 +838,7 @@ export default function LapTimer() {
               <Label>Number of Laps</Label>
               <div className="flex space-x-2">
                 <Select
-                  value={
-                    showLapCountInput ? "custom" : selectedLapCount.toString()
-                  }
+                  value={showLapCountInput ? "custom" : selectedLapCount.toString()}
                   onValueChange={(value) => {
                     if (value === "custom") {
                       setShowLapCountInput(true);
@@ -1124,14 +867,7 @@ export default function LapTimer() {
 
               {showLapCountInput && (
                 <div className="flex space-x-2 mt-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    max="999"
-                    placeholder="Enter number of laps"
-                    value={inputLapCount}
-                    onChange={(e) => setInputLapCount(e.target.value)}
-                  />
+                  <Input type="number" min="1" max="999" placeholder="Enter number of laps" value={inputLapCount} onChange={(e) => setInputLapCount(e.target.value)} />
                   <Button
                     onClick={() => {
                       if (validateLapCount(inputLapCount)) {
@@ -1147,11 +883,7 @@ export default function LapTimer() {
                 </div>
               )}
 
-              <div className="text-sm text-muted-foreground mt-1">
-                {selectedLapCount === "unlimited"
-                  ? "Session will continue until manually stopped"
-                  : `Session will automatically complete after ${selectedLapCount} laps`}
-              </div>
+              <div className="text-sm text-muted-foreground mt-1">{selectedLapCount === "unlimited" ? "Session will continue until manually stopped" : `Session will automatically complete after ${selectedLapCount} laps`}</div>
             </div>
           )}
 
@@ -1160,22 +892,9 @@ export default function LapTimer() {
             <div className="mt-4 p-4 bg-muted/50 rounded-lg">
               <h3 className="font-semibold mb-2">Session Settings</h3>
               <div className="space-y-1 text-sm">
-                <div>
-                  Driver: {drivers.find((d) => d.id === selectedDriver)?.name}
-                </div>
-                <div>
-                  Car:{" "}
-                  {
-                    getCurrentDriverCars().find((c) => c.id === selectedCar)
-                      ?.name
-                  }
-                </div>
-                <div>
-                  Laps:{" "}
-                  {selectedLapCount === "unlimited"
-                    ? "Unlimited"
-                    : selectedLapCount}
-                </div>
+                <div>Driver: {drivers.find((d) => d.id === selectedDriver)?.name}</div>
+                <div>Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}</div>
+                <div>Laps: {selectedLapCount === "unlimited" ? "Unlimited" : selectedLapCount}</div>
               </div>
             </div>
           )}
@@ -1185,63 +904,26 @@ export default function LapTimer() {
       {/* Timer Display */}
       <Card>
         <CardHeader>
-          <CardTitle
-            className={cn(
-              "text-center text-5xl font-mono transition-all",
-              isRunning && "animate-time-pulse"
-            )}
-          >
-            {formatTime(currentTime)}
-          </CardTitle>
+          <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add lap counter */}
-          <div
-            className={cn(
-              "text-center text-lg font-mono mb-4 transition-all text-5xl font-bold",
-              lapAnimation && "animate-lap-record"
-            )}
-          >
+          <div className={cn("text-center text-lg font-mono mb-4 transition-all text-5xl font-bold", lapAnimation && "animate-lap-record")}>
             Lap: {laps.length + 1}
-            {selectedLapCount !== "unlimited" && (
-              <span className="ml-2 text-muted-foreground">
-                of {selectedLapCount}
-              </span>
-            )}
+            {selectedLapCount !== "unlimited" && <span className="ml-2 text-muted-foreground">of {selectedLapCount}</span>}
           </div>
 
           {/* Timer controls */}
           <div className="flex justify-center space-x-4">
-            <Button
-              onClick={startTimer}
-              disabled={isRunning || !selectedDriver || !selectedCar}
-              className={cn(
-                "bg-green-500 hover:bg-green-600 transition-all",
-                startAnimation && "animate-timer-start"
-              )}
-            >
+            <Button onClick={startTimer} disabled={isRunning || !selectedDriver || !selectedCar} className={cn("bg-green-500 hover:bg-green-600 transition-all", startAnimation && "animate-timer-start")}>
               <PlayCircle className="mr-2 h-4 w-4" />
               Start Lap Timer
             </Button>
-            <Button
-              onClick={recordLap}
-              disabled={!isRunning}
-              className={cn(
-                "bg-blue-500 hover:bg-blue-600 transition-all",
-                lapAnimation && "animate-lap-record"
-              )}
-            >
+            <Button onClick={recordLap} disabled={!isRunning} className={cn("bg-blue-500 hover:bg-blue-600 transition-all", lapAnimation && "animate-lap-record")}>
               <ListPlus className="mr-2 h-4 w-4" />
               Record Lap
             </Button>
-            <Button
-              onClick={stopTimer}
-              disabled={!isRunning}
-              className={cn(
-                "bg-red-500 hover:bg-red-600 transition-all",
-                stopAnimation && "animate-timer-stop"
-              )}
-            >
+            <Button onClick={stopTimer} disabled={!isRunning} className={cn("bg-red-500 hover:bg-red-600 transition-all", stopAnimation && "animate-timer-stop")}>
               <StopCircle className="mr-2 h-4 w-4" />
               Stop Lap Timer
             </Button>
@@ -1260,62 +942,29 @@ export default function LapTimer() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="font-semibold">Session Info:</h3>
-                  <div className="font-mono">
-                    Driver: {drivers.find((d) => d.id === selectedDriver)?.name}
-                  </div>
-                  <div className="font-mono">
-                    Car:{" "}
-                    {
-                      getCurrentDriverCars().find((c) => c.id === selectedCar)
-                        ?.name
-                    }
-                  </div>
-                  <div className="font-mono">
-                    Time:{" "}
-                    {sessionStartTime
-                      ? formatDateTime(sessionStartTime)
-                      : "Not started"}
-                  </div>
+                  <div className="font-mono">Driver: {drivers.find((d) => d.id === selectedDriver)?.name}</div>
+                  <div className="font-mono">Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}</div>
+                  <div className="font-mono">Time: {sessionStartTime ? formatDateTime(sessionStartTime) : "Not started"}</div>
                   <h3 className="font-semibold mt-4">Lap Times:</h3>
                   {laps.map((lap, index) => {
                     const bestLap = getBestLap(laps);
-                    const isBestLap =
-                      bestLap && index === bestLap.lapNumber - 1;
+                    const isBestLap = bestLap && index === bestLap.lapNumber - 1;
                     return (
-                      <div
-                        key={index}
-                        className={`font-mono ${
-                          isBestLap
-                            ? "text-green-600 font-bold flex items-center"
-                            : ""
-                        }`}
-                      >
+                      <div key={index} className={`font-mono ${isBestLap ? "text-green-600 font-bold flex items-center" : ""}`}>
                         Lap {index + 1}: {formatTime(lap)}
-                        {isBestLap && (
-                          <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                            Best Lap
-                          </span>
-                        )}
+                        {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
                       </div>
                     );
                   })}
                 </div>
                 <div>
                   <h3 className="font-semibold">Statistics:</h3>
-                  <div className="font-mono">
-                    Average: {formatTime(calculateStats(laps).average)}
-                  </div>
-                  <div className="font-mono">
-                    Mean: {formatTime(calculateStats(laps).mean)}
-                  </div>
+                  <div className="font-mono">Average: {formatTime(calculateStats(laps).average)}</div>
+                  <div className="font-mono">Mean: {formatTime(calculateStats(laps).mean)}</div>
                   {laps.length > 0 && (
                     <>
-                      <div className="font-mono text-green-600 font-bold mt-2">
-                        Best Lap: {formatTime(Math.min(...laps))}
-                      </div>
-                      <div className="font-mono mt-2">
-                        Total Time: {formatTime(calculateStats(laps).totalTime)}
-                      </div>
+                      <div className="font-mono text-green-600 font-bold mt-2">Best Lap: {formatTime(Math.min(...laps))}</div>
+                      <div className="font-mono mt-2">Total Time: {formatTime(calculateStats(laps).totalTime)}</div>
                     </>
                   )}
                 </div>
@@ -1336,12 +985,7 @@ export default function LapTimer() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label>Filter by Date Range</Label>
-                <Button
-                  onClick={() => setShowClearAllDialog(true)}
-                  variant="destructive"
-                  size="sm"
-                  className="bg-red-500 hover:bg-red-600"
-                >
+                <Button onClick={() => setShowClearAllDialog(true)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
                   <Trash2 className="mr-2 h-4 w-4" />
                   Clear All
                 </Button>
@@ -1351,25 +995,14 @@ export default function LapTimer() {
               <div className="flex flex-wrap gap-2 mb-4">
                 {DATE_PRESETS.map((preset) => {
                   const presetDates = getPresetDates(preset);
-                  const isActive =
-                    previousSessionsDateRange.from &&
-                    previousSessionsDateRange.to &&
-                    format(previousSessionsDateRange.from, "yyyy-MM-dd") ===
-                      format(presetDates.from, "yyyy-MM-dd") &&
-                    format(previousSessionsDateRange.to, "yyyy-MM-dd") ===
-                      format(presetDates.to, "yyyy-MM-dd");
+                  const isActive = previousSessionsDateRange.from && previousSessionsDateRange.to && format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
 
                   return (
                     <Button
                       key={preset.label}
                       variant="outline"
                       size="sm"
-                      className={cn(
-                        "hover:bg-muted",
-                        isActive
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : ""
-                      )}
+                      className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
                       onClick={() => {
                         const { from, to } = getPresetDates(preset);
                         setPreviousSessionsDateRange({ from, to });
@@ -1385,18 +1018,9 @@ export default function LapTimer() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !previousSessionsDateRange.from &&
-                          "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.from && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {previousSessionsDateRange.from
-                        ? format(previousSessionsDateRange.from, "PPP")
-                        : "Select start date"}
+                      {previousSessionsDateRange.from ? format(previousSessionsDateRange.from, "PPP") : "Select start date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -1416,17 +1040,9 @@ export default function LapTimer() {
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !previousSessionsDateRange.to && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.to && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {previousSessionsDateRange.to
-                        ? format(previousSessionsDateRange.to, "PPP")
-                        : "Select end date"}
+                      {previousSessionsDateRange.to ? format(previousSessionsDateRange.to, "PPP") : "Select end date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -1439,11 +1055,7 @@ export default function LapTimer() {
                           to: date,
                         }))
                       }
-                      disabled={(date) =>
-                        previousSessionsDateRange.from
-                          ? isBefore(date, previousSessionsDateRange.from)
-                          : false
-                      }
+                      disabled={(date) => (previousSessionsDateRange.from ? isBefore(date, previousSessionsDateRange.from) : false)}
                       initialFocus
                     />
                   </PopoverContent>
@@ -1464,34 +1076,16 @@ export default function LapTimer() {
               </div>
 
               {/* Date Range Summary */}
-              {(previousSessionsDateRange.from ||
-                previousSessionsDateRange.to) && (
+              {(previousSessionsDateRange.from || previousSessionsDateRange.to) && (
                 <div className="text-sm text-muted-foreground">
-                  {previousSessionsDateRange.from &&
-                  previousSessionsDateRange.to &&
-                  format(previousSessionsDateRange.from, "yyyy-MM-dd") ===
-                    format(startOfDay(new Date()), "yyyy-MM-dd") &&
-                  format(previousSessionsDateRange.to, "yyyy-MM-dd") ===
-                    format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                  {previousSessionsDateRange.from && previousSessionsDateRange.to && format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") && format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
                     "Showing sessions from today"
                   ) : (
                     <>
                       Showing sessions
-                      {previousSessionsDateRange.from &&
-                        !previousSessionsDateRange.to &&
-                        ` from ${format(
-                          previousSessionsDateRange.from,
-                          "PPP"
-                        )}`}
-                      {!previousSessionsDateRange.from &&
-                        previousSessionsDateRange.to &&
-                        ` until ${format(previousSessionsDateRange.to, "PPP")}`}
-                      {previousSessionsDateRange.from &&
-                        previousSessionsDateRange.to &&
-                        ` from ${format(
-                          previousSessionsDateRange.from,
-                          "PPP"
-                        )} to ${format(previousSessionsDateRange.to, "PPP")}`}
+                      {previousSessionsDateRange.from && !previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")}`}
+                      {!previousSessionsDateRange.from && previousSessionsDateRange.to && ` until ${format(previousSessionsDateRange.to, "PPP")}`}
+                      {previousSessionsDateRange.from && previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")} to ${format(previousSessionsDateRange.to, "PPP")}`}
                     </>
                   )}
                 </div>
@@ -1500,34 +1094,16 @@ export default function LapTimer() {
 
             {/* Sessions List */}
             <div className="space-y-6">
-              {sortSessionsByDate(
-                savedSessions
-                  .filter((session) =>
-                    currentSession ? session.id !== currentSession.id : true
-                  )
-                  .filter((session) =>
-                    isWithinPreviousSessionsDateRange(session.date)
-                  )
-              ).map((session) => (
-                <div
-                  key={session.id}
-                  className="border-t pt-4 first:border-t-0 first:pt-0"
-                >
+              {sortSessionsByDate(savedSessions.filter((session) => (currentSession ? session.id !== currentSession.id : true)).filter((session) => isWithinPreviousSessionsDateRange(session.date))).map((session) => (
+                <div key={session.id} className="border-t pt-4 first:border-t-0 first:pt-0">
                   <div className="flex justify-between items-center mb-2">
                     <div>
-                      <h3 className="font-semibold">
-                        {formatDateTime(session.date)}
-                      </h3>
+                      <h3 className="font-semibold">{formatDateTime(session.date)}</h3>
                       <div className="text-sm text-muted-foreground">
                         Driver: {session.driverName} - Car: {session.carName}
                       </div>
                     </div>
-                    <Button
-                      onClick={() => setSessionToDelete(session)}
-                      variant="destructive"
-                      size="sm"
-                      className="bg-red-500 hover:bg-red-600"
-                    >
+                    <Button onClick={() => setSessionToDelete(session)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -1542,99 +1118,53 @@ export default function LapTimer() {
                         const isWorstLap = lap === worstLap;
 
                         return (
-                          <div
-                            key={index}
-                            className={cn(
-                              "font-mono flex items-center",
-                              isBestLap ? "text-green-600 font-bold" : "",
-                              isWorstLap ? "text-red-600 font-bold" : ""
-                            )}
-                          >
+                          <div key={index} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
                             <span className="min-w-[100px]">
                               Lap {index + 1}: {formatTime(lap)}
                             </span>
-                            {isBestLap && (
-                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                Best Lap
-                              </span>
-                            )}
-                            {isWorstLap && (
-                              <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
-                                Slowest Lap
-                              </span>
-                            )}
+                            {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
+                            {isWorstLap && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
                           </div>
                         );
                       })}
                     </div>
                     <div>
                       <h4 className="font-semibold mb-2">Statistics:</h4>
-                      <div className="font-mono">
-                        Average: {formatTime(session.stats.average)}
-                      </div>
-                      <div className="font-mono">
-                        Mean: {formatTime(session.stats.mean)}
-                      </div>
+                      <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
+                      <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div>
                       <div className="space-y-1 mt-2">
-                        <div className="font-mono text-green-600 font-bold">
-                          Best Lap: {formatTime(Math.min(...session.laps))}
-                        </div>
-                        <div className="font-mono text-red-600 font-bold">
-                          Slowest Lap: {formatTime(Math.max(...session.laps))}
-                        </div>
+                        <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(Math.min(...session.laps))}</div>
+                        <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(Math.max(...session.laps))}</div>
                       </div>
-                      <div className="font-mono mt-2">
-                        Total Time: {formatTime(session.stats.totalTime)}
-                      </div>
-                      <div className="font-mono">
-                        Total Laps: {session.laps.length}
-                      </div>
+                      <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
+                      <div className="font-mono">Total Laps: {session.laps.length}</div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {savedSessions.filter((session) => isWithinDateRange(session.date))
-              .length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No sessions found for the selected date range.
-              </div>
-            )}
+            {savedSessions.filter((session) => isWithinDateRange(session.date)).length === 0 && <div className="text-center py-8 text-muted-foreground">No sessions found for the selected date range.</div>}
           </CardContent>
         </Card>
       )}
 
       {/* Best Lap Comparison Display */}
-      {Array.isArray(savedSessions) && savedSessions.length > 0 && (
-        <BestLapsComparison sessions={savedSessions} />
-      )}
+      {Array.isArray(savedSessions) && savedSessions.length > 0 && <BestLapsComparison sessions={savedSessions} />}
 
       {/* Session Comparison Display */}
-      {Array.isArray(savedSessions) && savedSessions.length > 1 && (
-        <SessionComparison sessions={savedSessions} />
-      )}
+      {Array.isArray(savedSessions) && savedSessions.length > 1 && <SessionComparison sessions={savedSessions} />}
 
       {/* Delete Session Dialog */}
-      <AlertDialog
-        open={!!sessionToDelete}
-        onOpenChange={() => setSessionToDelete(null)}
-      >
+      <AlertDialog open={!!sessionToDelete} onOpenChange={() => setSessionToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Session</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the session from{" "}
-              {sessionToDelete?.date}? If you delete this session, it's gone for
-              good. So make sure this what you really want to do!!
-            </AlertDialogDescription>
+            <AlertDialogDescription>Are you sure you want to delete the session from {sessionToDelete?.date}? If you delete this session, it's gone for good. So make sure this what you really want to do!!</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteSession(sessionToDelete?.id!)}
-              className="bg-red-500 hover:bg-red-600"
-            >
+            <AlertDialogAction onClick={() => deleteSession(sessionToDelete?.id!)} className="bg-red-500 hover:bg-red-600">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1642,25 +1172,15 @@ export default function LapTimer() {
       </AlertDialog>
 
       {/* Clear All Dialog */}
-      <AlertDialog
-        open={showClearAllDialog}
-        onOpenChange={setShowClearAllDialog}
-      >
+      <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Clear All Sessions</AlertDialogTitle>
-            <AlertDialogDescription>
-              WHOA!! You're about to delete ALL YOUR SESSSIONS! Literally all
-              the laps you've ever recorded are going to get deleted and YOU
-              CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???
-            </AlertDialogDescription>
+            <AlertDialogDescription>WHOA!! You're about to delete ALL YOUR SESSSIONS! Literally all the laps you've ever recorded are going to get deleted and YOU CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={clearAllSessions}
-              className="bg-red-500 hover:bg-red-600"
-            >
+            <AlertDialogAction onClick={clearAllSessions} className="bg-red-500 hover:bg-red-600">
               Delete All
             </AlertDialogAction>
           </AlertDialogFooter>

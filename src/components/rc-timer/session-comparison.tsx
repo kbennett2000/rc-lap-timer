@@ -1,43 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Session } from "@/types/rc-timer";
 import { formatDateTime, formatTime } from "@/lib/utils";
-import {
-  addDays,
-  format,
-  isBefore,
-  isAfter,
-  startOfDay,
-  endOfDay,
-  parseISO,
-} from "date-fns";
+import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 
@@ -125,27 +98,15 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     const date = parseISO(sessionDate);
 
     if (dateRange.from && !dateRange.to) {
-      return (
-        isAfter(date, startOfDay(dateRange.from)) ||
-        format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
-      );
+      return isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd");
     }
 
     if (!dateRange.from && dateRange.to) {
-      return (
-        isBefore(date, endOfDay(dateRange.to)) ||
-        format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
-      );
+      return isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd");
     }
 
     if (dateRange.from && dateRange.to) {
-      return (
-        (isAfter(date, startOfDay(dateRange.from)) ||
-          format(date, "yyyy-MM-dd") ===
-            format(dateRange.from, "yyyy-MM-dd")) &&
-        (isBefore(date, endOfDay(dateRange.to)) ||
-          format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
-      );
+      return (isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) && (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"));
     }
 
     return true;
@@ -153,9 +114,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
   const prepareChartData = (): ComparisonData[] => {
     // Get selected session objects
-    const selectedSessionData = selectedSessions
-      .map((id) => sessions.find((s) => s.id.toString() === id))
-      .filter((s): s is Session => s !== undefined);
+    const selectedSessionData = selectedSessions.map((id) => sessions.find((s) => s.id.toString() === id)).filter((s): s is Session => s !== undefined);
 
     console.log("Selected sessions:", selectedSessionData);
 
@@ -181,8 +140,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
           minute: "2-digit",
         });
         const sessionKey = `${session.driverName} - ${session.carName} (${formattedDate})`;
-        dataPoint[sessionKey] =
-          i < session.laps.length ? session.laps[i] : null;
+        dataPoint[sessionKey] = i < session.laps.length ? session.laps[i] : null;
       });
 
       return dataPoint;
@@ -196,9 +154,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
   const handleSessionSelect = (sessionId: string) => {
     console.log("Session selected:", sessionId);
     setSelectedSessions((prev) => {
-      const newSelection = prev.includes(sessionId)
-        ? prev.filter((id) => id !== sessionId)
-        : [...prev, sessionId];
+      const newSelection = prev.includes(sessionId) ? prev.filter((id) => id !== sessionId) : [...prev, sessionId];
       console.log("New selection:", newSelection);
       return newSelection;
     });
@@ -212,9 +168,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
   // Get cars for selected driver
   const getDriverCars = (driverName: string) => {
-    const driverSessions = sessions.filter(
-      (session) => session.driverName === driverName
-    );
+    const driverSessions = sessions.filter((session) => session.driverName === driverName);
     const cars = new Set(driverSessions.map((session) => session.carName));
     return Array.from(cars);
   };
@@ -228,8 +182,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
   const getFilteredSessions = () => {
     return sessions
       .filter((session) => {
-        if (filterDriver !== "all" && session.driverName !== filterDriver)
-          return false;
+        if (filterDriver !== "all" && session.driverName !== filterDriver) return false;
         if (filterCar !== "all" && session.carName !== filterCar) return false;
         if (!isWithinDateRange(session.date)) return false;
         return true;
@@ -282,13 +235,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                 disabled={filterDriver === "all"}
               >
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      filterDriver === "all"
-                        ? "Select a driver first"
-                        : "All Cars"
-                    }
-                  />
+                  <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cars</SelectItem>
@@ -310,25 +257,14 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
               <div className="flex flex-wrap gap-2 mb-4">
                 {DATE_PRESETS.map((preset) => {
                   const presetDates = getPresetDates(preset);
-                  const isActive =
-                    dateRange.from &&
-                    dateRange.to &&
-                    format(dateRange.from, "yyyy-MM-dd") ===
-                      format(presetDates.from, "yyyy-MM-dd") &&
-                    format(dateRange.to, "yyyy-MM-dd") ===
-                      format(presetDates.to, "yyyy-MM-dd");
+                  const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
 
                   return (
                     <Button
                       key={preset.label}
                       variant="outline"
                       size="sm"
-                      className={cn(
-                        "hover:bg-muted",
-                        isActive
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : ""
-                      )}
+                      className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
                       onClick={() => {
                         const { from, to } = getPresetDates(preset);
                         setDateRange({ from, to });
@@ -345,17 +281,9 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !dateRange.from && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.from
-                        ? format(dateRange.from, "PPP")
-                        : "Select start date"}
+                      {dateRange.from ? format(dateRange.from, "PPP") : "Select start date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -373,17 +301,9 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !dateRange.to && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.to
-                        ? format(dateRange.to, "PPP")
-                        : "Select end date"}
+                      {dateRange.to ? format(dateRange.to, "PPP") : "Select end date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -394,9 +314,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                         setDateRange((prev) => ({ ...prev, to: date }));
                         setSelectedSessions([]); // Clear selections when changing date range
                       }}
-                      disabled={(date) =>
-                        dateRange.from ? isBefore(date, dateRange.from) : false
-                      }
+                      disabled={(date) => (dateRange.from ? isBefore(date, dateRange.from) : false)}
                       initialFocus
                     />
                   </PopoverContent>
@@ -417,41 +335,16 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
               {/* Date Range Summary */}
               {(dateRange.from || dateRange.to) && (
                 <div className="text-sm text-muted-foreground">
-                  {dateRange.from &&
-                  dateRange.to &&
-                  format(dateRange.from, "yyyy-MM-dd") ===
-                    format(startOfDay(new Date()), "yyyy-MM-dd") &&
-                  format(dateRange.to, "yyyy-MM-dd") ===
-                    format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                  {dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
                     "Showing sessions from today"
-                  ) : dateRange.from &&
-                    dateRange.to &&
-                    format(dateRange.from, "yyyy-MM-dd") ===
-                      format(
-                        getPresetDates(DATE_PRESETS[1]).from,
-                        "yyyy-MM-dd"
-                      ) &&
-                    format(dateRange.to, "yyyy-MM-dd") ===
-                      format(
-                        getPresetDates(DATE_PRESETS[1]).to,
-                        "yyyy-MM-dd"
-                      ) ? (
+                  ) : dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).to, "yyyy-MM-dd") ? (
                     "Showing sessions from the last 7 days"
                   ) : (
                     <>
                       Showing sessions
-                      {dateRange.from &&
-                        !dateRange.to &&
-                        ` from ${format(dateRange.from, "PPP")}`}
-                      {!dateRange.from &&
-                        dateRange.to &&
-                        ` until ${format(dateRange.to, "PPP")}`}
-                      {dateRange.from &&
-                        dateRange.to &&
-                        ` from ${format(dateRange.from, "PPP")} to ${format(
-                          dateRange.to,
-                          "PPP"
-                        )}`}
+                      {dateRange.from && !dateRange.to && ` from ${format(dateRange.from, "PPP")}`}
+                      {!dateRange.from && dateRange.to && ` until ${format(dateRange.to, "PPP")}`}
+                      {dateRange.from && dateRange.to && ` from ${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}`}
                     </>
                   )}
                 </div>
@@ -462,28 +355,18 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
         {/* Session Selection */}
         <div className="space-y-2">
-          <Label>
-            Select Sessions to Compare (Selected: {selectedSessions.length})
-          </Label>
+          <Label>Select Sessions to Compare (Selected: {selectedSessions.length})</Label>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {getFilteredSessions().map((session) => (
               <div
                 key={session.id}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors
-                  ${
-                    selectedSessions.includes(session.id.toString())
-                      ? "border-blue-500 bg-blue-50"
-                      : "hover:bg-gray-50"
-                  }`}
+                  ${selectedSessions.includes(session.id.toString()) ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}
                 onClick={() => handleSessionSelect(session.id.toString())}
               >
                 <div className="font-medium">{session.driverName}</div>
-                <div className="text-sm text-muted-foreground">
-                  {session.carName}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {formatDateTime(session.date)}
-                </div>
+                <div className="text-sm text-muted-foreground">{session.carName}</div>
+                <div className="text-sm text-muted-foreground">{formatDateTime(session.date)}</div>
               </div>
             ))}
           </div>
@@ -495,10 +378,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="lapNumber"
-                  label={{ value: "Lap Number", position: "bottom" }}
-                />
+                <XAxis dataKey="lapNumber" label={{ value: "Lap Number", position: "bottom" }} />
                 <YAxis
                   label={{
                     value: "Lap Time",
@@ -515,12 +395,8 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                           <p className="font-semibold mb-2">Lap {label}</p>
                           {payload.map((entry: any, index: number) => (
                             <div key={index} className="text-sm">
-                              <span style={{ color: entry.color }}>
-                                {entry.name}:
-                              </span>
-                              <span className="font-mono ml-2">
-                                {formatTime(entry.value)}
-                              </span>
+                              <span style={{ color: entry.color }}>{entry.name}:</span>
+                              <span className="font-mono ml-2">{formatTime(entry.value)}</span>
                             </div>
                           ))}
                         </div>
@@ -532,9 +408,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                 <Legend />
 
                 {selectedSessions.map((sessionId, index) => {
-                  const session = sessions.find(
-                    (s) => s.id.toString() === sessionId
-                  );
+                  const session = sessions.find((s) => s.id.toString() === sessionId);
                   if (!session) return null;
 
                   const sessionDate = new Date(session.date);
@@ -548,30 +422,14 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
                   console.log("Adding line for session:", sessionKey);
 
-                  return (
-                    <Line
-                      key={sessionId}
-                      type="monotone"
-                      dataKey={sessionKey}
-                      name={sessionKey}
-                      stroke={getLineColor(index)}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 8 }}
-                      connectNulls={false}
-                    />
-                  );
+                  return <Line key={sessionId} type="monotone" dataKey={sessionKey} name={sessionKey} stroke={getLineColor(index)} strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 8 }} connectNulls={false} />;
                 })}
               </LineChart>
             </ResponsiveContainer>
           </div>
         )}
 
-        {chartData.length === 0 && selectedSessions.length > 0 && (
-          <div className="text-center py-4 text-muted-foreground">
-            No lap data available for the selected sessions.
-          </div>
-        )}
+        {chartData.length === 0 && selectedSessions.length > 0 && <div className="text-center py-4 text-muted-foreground">No lap data available for the selected sessions.</div>}
       </CardContent>
     </Card>
   );

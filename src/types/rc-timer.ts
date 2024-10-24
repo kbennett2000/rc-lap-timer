@@ -25,9 +25,9 @@ export interface Session {
   stats: {
     average: number;
     mean: number;
-    totalTime: number;  // Add this field
+    totalTime: number; // Add this field
   };
-  totalLaps: 'unlimited' | number;
+  totalLaps: "unlimited" | number;
 }
 
 export interface StoredData {
@@ -37,14 +37,14 @@ export interface StoredData {
 
 export interface BestLapRecord {
   sessionId: number;
-  date: string;  // This will store the full timestamp
+  date: string; // This will store the full timestamp
   driverName: string;
   carName: string;
   lapTime: number;
   lapNumber: number;
 }
 
- export interface ComparisonData {
+export interface ComparisonData {
   lapNumber: number;
   [key: string]: number | string; // For dynamic session data
 }
