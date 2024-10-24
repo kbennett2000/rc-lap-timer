@@ -16,7 +16,7 @@ export interface LapStats {
 
 export interface Session {
   id: number;
-  date: string;  // ISO string format
+  date: string;
   driverId: string;
   driverName: string;
   carId: string;
@@ -25,7 +25,9 @@ export interface Session {
   stats: {
     average: number;
     mean: number;
+    totalTime: number;  // Add this field
   };
+  totalLaps: 'unlimited' | number;
 }
 
 export interface StoredData {
