@@ -1,4 +1,5 @@
 # Items to do:
+
 - Once the current session has completed, move the data to the previous sessions section
 - In the Session Comparison section where selections are made for comparison, let's add filters for Drivers and Cars. 
     - Selecting a Driver should populate the Cars filter with the cars they own.
@@ -9,6 +10,9 @@
 - Add a feature to add penalties for each lab. 
     - Penalties should be tracked with the rest of the other statistics. 
     - A penalty could include going outside your lane, having to be marshaled, or doing something against the rules. 
+- Add animation when user clicks "Start Lap Timer"
+- Add animation when user clicks "Record Lap"
+- Add animation when user clicks "Stop Lap Timer"
 
 # Other things to add:
 - Add more statistical information?

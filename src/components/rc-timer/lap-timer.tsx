@@ -266,15 +266,35 @@ export default function LapTimer() {
     setNewDriverName(newName);
   };
 
+  const handleCarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setNewCarName(newName);
+  };
+
   const handleAddCar = () => {
-    if (!selectedDriver || !newCarName.trim()) {
-      alert("Please select a driver and enter a car name");
+    const trimmedName = newCarName.trim();
+
+    if (!selectedDriver) {
+      alert("Please select a driver first");
+      return;
+    }
+
+    if (!trimmedName) {
+      alert("Please enter a car name");
+      return;
+    }
+
+    const currentDriver = drivers.find((d) => d.id === selectedDriver);
+    if (!isCarNameUniqueForDriver(trimmedName)) {
+      alert(
+        `${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`
+      );
       return;
     }
 
     const newCar: Car = {
       id: Date.now().toString(),
-      name: newCarName.trim(),
+      name: trimmedName,
     };
 
     setDrivers((prevDrivers) =>
@@ -289,10 +309,19 @@ export default function LapTimer() {
       })
     );
 
-    setSelectedCar(newCar.id); // Auto-select the new car
+    setSelectedCar(newCar.id);
     setNewCarName("");
     setShowNewCar(false);
     saveData();
+  };
+
+  const isCarNameUniqueForDriver = (name: string): boolean => {
+    const currentDriver = drivers.find((d) => d.id === selectedDriver);
+    if (!currentDriver) return true;
+
+    return !currentDriver.cars.some(
+      (car) => car.name.toLowerCase().trim() === name.toLowerCase().trim()
+    );
   };
 
   // 7. Timer Controls
@@ -655,19 +684,35 @@ export default function LapTimer() {
                   New Car
                 </Button>
               </div>
-              {showNewCar && (
-                <div className="flex space-x-2 mt-2">
-                  <Input
-                    placeholder="Enter car name"
-                    value={newCarName}
-                    onChange={(e) => setNewCarName(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        handleAddCar();
+
+              {selectedDriver && showNewCar && (
+                <div className="space-y-2">
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Enter car name"
+                      value={newCarName}
+                      onChange={handleCarNameChange}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddCar();
+                        }
+                      }}
+                      className={
+                        newCarName.trim() &&
+                        !isCarNameUniqueForDriver(newCarName)
+                          ? "border-red-500"
+                          : ""
                       }
-                    }}
-                  />
-                  <Button onClick={handleAddCar}>Add</Button>
+                    />
+                    <Button onClick={handleAddCar}>Add</Button>
+                  </div>
+                  {newCarName.trim() &&
+                    !isCarNameUniqueForDriver(newCarName) && (
+                      <div className="text-sm text-red-500">
+                        {drivers.find((d) => d.id === selectedDriver)?.name}{" "}
+                        already has a car with this name.
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -1002,7 +1047,8 @@ export default function LapTimer() {
             <AlertDialogTitle>Delete Session</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete the session from{" "}
-              {sessionToDelete?.date}? If you delete this session, it's gone for good. So make sure this what you really want to do!!
+              {sessionToDelete?.date}? If you delete this session, it's gone for
+              good. So make sure this what you really want to do!!
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1026,7 +1072,9 @@ export default function LapTimer() {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear All Sessions</AlertDialogTitle>
             <AlertDialogDescription>
-              WHOA!! You're about to delete ALL YOUR SESSSIONS! Literally all the laps you've ever recorded are going to get deleted and YOU CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???
+              WHOA!! You're about to delete ALL YOUR SESSSIONS! Literally all
+              the laps you've ever recorded are going to get deleted and YOU
+              CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
