@@ -172,6 +172,59 @@ export default function LapTimer() {
     { label: "This year", days: "year" },
   ];
 
+  const [previousSessionsDateRange, setPreviousSessionsDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>(() => ({
+    from: startOfDay(new Date()),
+    to: endOfDay(new Date()),
+  }));
+
+  // useEffect to initialize the date range
+  useEffect(() => {
+    setPreviousSessionsDateRange({
+      from: startOfDay(new Date()),
+      to: endOfDay(new Date()),
+    });
+  }, []);
+
+  // Add the date filter function
+  const isWithinDateRange = (sessionDate: string) => {
+    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to)
+      return true;
+
+    const date = parseISO(sessionDate);
+
+    if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
+      return (
+        isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
+        format(date, "yyyy-MM-dd") ===
+          format(previousSessionsDateRange.from, "yyyy-MM-dd")
+      );
+    }
+
+    if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
+      return (
+        isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
+        format(date, "yyyy-MM-dd") ===
+          format(previousSessionsDateRange.to, "yyyy-MM-dd")
+      );
+    }
+
+    if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
+      return (
+        (isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
+          format(date, "yyyy-MM-dd") ===
+            format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
+        (isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
+          format(date, "yyyy-MM-dd") ===
+            format(previousSessionsDateRange.to, "yyyy-MM-dd"))
+      );
+    }
+
+    return true;
+  };
+
   const getPresetDates = (preset: DatePreset) => {
     let from: Date;
     let to: Date; // Change to let instead of const
@@ -1169,28 +1222,186 @@ export default function LapTimer() {
       )}
 
       {/* Previous Sessions Display */}
+
       {savedSessions.length > 0 && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle>Previous Sessions</CardTitle>
-            <div className="flex space-x-2">
-              <Button
-                onClick={() => setShowClearAllDialog(true)}
-                variant="destructive"
-                size="sm"
-                className="bg-red-500 hover:bg-red-600"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear All
-              </Button>
-            </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
+          <CardContent className="space-y-4">
+            {/* Date Range Filter */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label>Filter by Date Range</Label>
+                <Button
+                  onClick={() => setShowClearAllDialog(true)}
+                  variant="destructive"
+                  size="sm"
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear All
+                </Button>
+              </div>
+
+              {/* Preset Buttons */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {DATE_PRESETS.map((preset) => {
+                  const presetDates = getPresetDates(preset);
+                  const isActive =
+                    previousSessionsDateRange.from &&
+                    previousSessionsDateRange.to &&
+                    format(previousSessionsDateRange.from, "yyyy-MM-dd") ===
+                      format(presetDates.from, "yyyy-MM-dd") &&
+                    format(previousSessionsDateRange.to, "yyyy-MM-dd") ===
+                      format(presetDates.to, "yyyy-MM-dd");
+
+                  return (
+                    <Button
+                      key={preset.label}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "hover:bg-muted",
+                        isActive
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : ""
+                      )}
+                      onClick={() => {
+                        const { from, to } = getPresetDates(preset);
+                        setPreviousSessionsDateRange({ from, to });
+                      }}
+                    >
+                      {preset.label}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Date Range Selectors */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !previousSessionsDateRange.from &&
+                          "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {previousSessionsDateRange.from
+                        ? format(previousSessionsDateRange.from, "PPP")
+                        : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={previousSessionsDateRange.from}
+                      onSelect={(date) =>
+                        setPreviousSessionsDateRange((prev) => ({
+                          ...prev,
+                          from: date,
+                        }))
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !previousSessionsDateRange.to && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {previousSessionsDateRange.to
+                        ? format(previousSessionsDateRange.to, "PPP")
+                        : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={previousSessionsDateRange.to}
+                      onSelect={(date) =>
+                        setPreviousSessionsDateRange((prev) => ({
+                          ...prev,
+                          to: date,
+                        }))
+                      }
+                      disabled={(date) =>
+                        previousSessionsDateRange.from
+                          ? isBefore(date, previousSessionsDateRange.from)
+                          : false
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setPreviousSessionsDateRange({
+                      from: undefined,
+                      to: undefined,
+                    })
+                  }
+                  className="w-full sm:w-auto"
+                >
+                  Reset Dates
+                </Button>
+              </div>
+
+              {/* Date Range Summary */}
+              {(previousSessionsDateRange.from ||
+                previousSessionsDateRange.to) && (
+                <div className="text-sm text-muted-foreground">
+                  {previousSessionsDateRange.from &&
+                  previousSessionsDateRange.to &&
+                  format(previousSessionsDateRange.from, "yyyy-MM-dd") ===
+                    format(startOfDay(new Date()), "yyyy-MM-dd") &&
+                  format(previousSessionsDateRange.to, "yyyy-MM-dd") ===
+                    format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                    "Showing sessions from today"
+                  ) : (
+                    <>
+                      Showing sessions
+                      {previousSessionsDateRange.from &&
+                        !previousSessionsDateRange.to &&
+                        ` from ${format(
+                          previousSessionsDateRange.from,
+                          "PPP"
+                        )}`}
+                      {!previousSessionsDateRange.from &&
+                        previousSessionsDateRange.to &&
+                        ` until ${format(previousSessionsDateRange.to, "PPP")}`}
+                      {previousSessionsDateRange.from &&
+                        previousSessionsDateRange.to &&
+                        ` from ${format(
+                          previousSessionsDateRange.from,
+                          "PPP"
+                        )} to ${format(previousSessionsDateRange.to, "PPP")}`}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Sessions List - Update to use filtered sessions */}
+            <div className="space-y-4">
               {savedSessions
                 .filter((session) =>
                   currentSession ? session.id !== currentSession.id : true
                 )
+                .filter((session) => isWithinDateRange(session.date))
                 .map((session) => (
                   <div
                     key={session.id}
@@ -1262,6 +1473,13 @@ export default function LapTimer() {
                   </div>
                 ))}
             </div>
+
+            {savedSessions.filter((session) => isWithinDateRange(session.date))
+              .length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No sessions found for the selected date range.
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
