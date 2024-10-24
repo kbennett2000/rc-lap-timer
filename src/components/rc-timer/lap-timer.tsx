@@ -1451,20 +1451,30 @@ export default function LapTimer() {
                         <h4 className="font-semibold mb-2">Lap Times:</h4>
                         {session.laps.map((lap, index) => {
                           const bestLap = Math.min(...session.laps);
+                          const worstLap = Math.max(...session.laps);
                           const isBestLap = lap === bestLap;
+                          const isWorstLap = lap === worstLap;
+
                           return (
                             <div
                               key={index}
-                              className={`font-mono ${
-                                isBestLap
-                                  ? "text-green-600 font-bold flex items-center"
-                                  : ""
-                              }`}
+                              className={cn(
+                                "font-mono flex items-center",
+                                isBestLap ? "text-green-600 font-bold" : "",
+                                isWorstLap ? "text-red-600 font-bold" : ""
+                              )}
                             >
-                              Lap {index + 1}: {formatTime(lap)}
+                              <span className="min-w-[100px]">
+                                Lap {index + 1}: {formatTime(lap)}
+                              </span>
                               {isBestLap && (
                                 <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                                   Best Lap
+                                </span>
+                              )}
+                              {isWorstLap && (
+                                <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                                  Slowest Lap
                                 </span>
                               )}
                             </div>
@@ -1479,8 +1489,13 @@ export default function LapTimer() {
                         <div className="font-mono">
                           Mean: {formatTime(session.stats.mean)}
                         </div>
-                        <div className="font-mono text-green-600 font-bold mt-2">
-                          Best Lap: {formatTime(Math.min(...session.laps))}
+                        <div className="space-y-1 mt-2">
+                          <div className="font-mono text-green-600 font-bold">
+                            Best Lap: {formatTime(Math.min(...session.laps))}
+                          </div>
+                          <div className="font-mono text-red-600 font-bold">
+                            Slowest Lap: {formatTime(Math.max(...session.laps))}
+                          </div>
                         </div>
                         <div className="font-mono mt-2">
                           Total Time: {formatTime(session.stats.totalTime)}
