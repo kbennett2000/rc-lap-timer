@@ -290,6 +290,12 @@ export default function LapTimer() {
     saveData();
   };
 
+  const sortSessionsByDate = (sessions: Session[]): Session[] => {
+    return [...sessions].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  };
+  
   // Load data function
   const loadSavedData = async () => {
     try {
@@ -1222,7 +1228,6 @@ export default function LapTimer() {
       )}
 
       {/* Previous Sessions Display */}
-
       {savedSessions.length > 0 && (
         <Card>
           <CardHeader>
@@ -1395,83 +1400,84 @@ export default function LapTimer() {
               )}
             </div>
 
-            {/* Sessions List - Update to use filtered sessions */}
+            {/* Sessions List */}
             <div className="space-y-4">
-              {savedSessions
-                .filter((session) =>
-                  currentSession ? session.id !== currentSession.id : true
-                )
-                .filter((session) => isWithinDateRange(session.date))
-                .map((session) => (
-                  <div
-                    key={session.id}
-                    className="border-t pt-4 first:border-t-0 first:pt-0"
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <div>
-                        <h3 className="font-semibold">
-                          {formatDateTime(session.date)}
-                        </h3>
-                        <div className="text-sm text-muted-foreground">
-                          Driver: {session.driverName} - Car: {session.carName}
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => setSessionToDelete(session)}
-                        variant="destructive"
-                        size="sm"
-                        className="bg-red-500 hover:bg-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <h4 className="font-semibold mb-2">Lap Times:</h4>
-                        {session.laps.map((lap, index) => {
-                          const bestLap = getBestLap(session.laps);
-                          const isBestLap =
-                            bestLap && index === bestLap.lapNumber - 1;
-                          return (
-                            <div
-                              key={index}
-                              className={`font-mono ${
-                                isBestLap
-                                  ? "text-green-600 font-bold flex items-center"
-                                  : ""
-                              }`}
-                            >
-                              Lap {index + 1}: {formatTime(lap)}
-                              {isBestLap && (
-                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                  Best Lap
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold mb-2">Statistics:</h4>
-                        <div className="font-mono">
-                          Average: {formatTime(session.stats.average)}
-                        </div>
-                        <div className="font-mono">
-                          Mean: {formatTime(session.stats.mean)}
-                        </div>
-                        <div className="font-mono text-green-600 font-bold mt-2">
-                          Best Lap: {formatTime(Math.min(...session.laps))}
-                        </div>
-                        <div className="font-mono">
-                          Total Laps: {session.laps.length}
-                        </div>
+              {sortSessionsByDate(
+                savedSessions
+                  .filter((session) =>
+                    currentSession ? session.id !== currentSession.id : true
+                  )
+                  .filter((session) => isWithinDateRange(session.date))
+              ).map((session) => (
+                <div
+                  key={session.id}
+                  className="border-t pt-4 first:border-t-0 first:pt-0"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <h3 className="font-semibold">
+                        {formatDateTime(session.date)}
+                      </h3>
+                      <div className="text-sm text-muted-foreground">
+                        Driver: {session.driverName} - Car: {session.carName}
                       </div>
                     </div>
-
-                    <div className="mt-4 border-b"></div>
+                    <Button
+                      onClick={() => setSessionToDelete(session)}
+                      variant="destructive"
+                      size="sm"
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                ))}
+
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <h4 className="font-semibold mb-2">Lap Times:</h4>
+                      {session.laps.map((lap, index) => {
+                        const bestLap = getBestLap(session.laps);
+                        const isBestLap =
+                          bestLap && index === bestLap.lapNumber - 1;
+                        return (
+                          <div
+                            key={index}
+                            className={`font-mono ${
+                              isBestLap
+                                ? "text-green-600 font-bold flex items-center"
+                                : ""
+                            }`}
+                          >
+                            Lap {index + 1}: {formatTime(lap)}
+                            {isBestLap && (
+                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                Best Lap
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Statistics:</h4>
+                      <div className="font-mono">
+                        Average: {formatTime(session.stats.average)}
+                      </div>
+                      <div className="font-mono">
+                        Mean: {formatTime(session.stats.mean)}
+                      </div>
+                      <div className="font-mono text-green-600 font-bold mt-2">
+                        Best Lap: {formatTime(Math.min(...session.laps))}
+                      </div>
+                      <div className="font-mono">
+                        Total Laps: {session.laps.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 border-b"></div>
+                </div>
+              ))}
             </div>
 
             {savedSessions.filter((session) => isWithinDateRange(session.date))
