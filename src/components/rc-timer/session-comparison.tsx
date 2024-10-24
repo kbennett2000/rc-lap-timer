@@ -22,6 +22,24 @@ import {
 } from "@/components/ui/select";
 import { Session } from "@/types/rc-timer";
 import { formatDateTime, formatTime } from "@/lib/utils";
+import {
+  addDays,
+  format,
+  isBefore,
+  isAfter,
+  startOfDay,
+  endOfDay,
+  parseISO,
+} from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
 
 interface ComparisonData {
   lap: number;
@@ -40,6 +58,47 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     console.log("Chart data prepared:", data);
     setChartData(data);
   }, [selectedSessions]);
+
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
+
+  // Helper function to check if a date is within range
+  const isWithinDateRange = (sessionDate: string) => {
+    if (!dateRange.from && !dateRange.to) return true;
+
+    const date = parseISO(sessionDate);
+
+    if (dateRange.from && !dateRange.to) {
+      return (
+        isAfter(date, startOfDay(dateRange.from)) ||
+        format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
+      );
+    }
+
+    if (!dateRange.from && dateRange.to) {
+      return (
+        isBefore(date, endOfDay(dateRange.to)) ||
+        format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
+      );
+    }
+
+    if (dateRange.from && dateRange.to) {
+      return (
+        (isAfter(date, startOfDay(dateRange.from)) ||
+          format(date, "yyyy-MM-dd") ===
+            format(dateRange.from, "yyyy-MM-dd")) &&
+        (isBefore(date, endOfDay(dateRange.to)) ||
+          format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
+      );
+    }
+
+    return true;
+  };
 
   const prepareChartData = (): ComparisonData[] => {
     // Get selected session objects
@@ -120,6 +179,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
       if (filterDriver !== "all" && session.driverName !== filterDriver)
         return false;
       if (filterCar !== "all" && session.carName !== filterCar) return false;
+      if (!isWithinDateRange(session.date)) return false;
       return true;
     });
   };
@@ -187,6 +247,98 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                     ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="space-y-2">
+              <Label>Filter by Date Range</Label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from
+                        ? format(dateRange.from, "PPP")
+                        : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.from}
+                      onSelect={(date) =>
+                        setDateRange((prev) => ({ ...prev, from: date }))
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.to && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.to
+                        ? format(dateRange.to, "PPP")
+                        : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.to}
+                      onSelect={(date) =>
+                        setDateRange((prev) => ({ ...prev, to: date }))
+                      }
+                      disabled={(date) =>
+                        dateRange.from ? isBefore(date, dateRange.from) : false
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setDateRange({ from: undefined, to: undefined })
+                  }
+                  className="w-full sm:w-auto"
+                >
+                  Reset Dates
+                </Button>
+              </div>
+
+              {/* Date Range Summary */}
+              {(dateRange.from || dateRange.to) && (
+                <div className="text-sm text-muted-foreground">
+                  Showing sessions
+                  {dateRange.from &&
+                    !dateRange.to &&
+                    ` from ${format(dateRange.from, "PPP")}`}
+                  {!dateRange.from &&
+                    dateRange.to &&
+                    ` until ${format(dateRange.to, "PPP")}`}
+                  {dateRange.from &&
+                    dateRange.to &&
+                    ` from ${format(dateRange.from, "PPP")} to ${format(
+                      dateRange.to,
+                      "PPP"
+                    )}`}
+                </div>
+              )}
             </div>
           </div>
         </div>
