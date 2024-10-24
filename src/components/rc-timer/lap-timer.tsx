@@ -1187,7 +1187,7 @@ export default function LapTimer() {
         <CardHeader>
           <CardTitle
             className={cn(
-              "text-center text-4xl font-mono transition-all",
+              "text-center text-5xl font-mono transition-all",
               isRunning && "animate-time-pulse"
             )}
           >
@@ -1198,7 +1198,7 @@ export default function LapTimer() {
           {/* Add lap counter */}
           <div
             className={cn(
-              "text-center text-lg font-mono mb-4 transition-all",
+              "text-center text-lg font-mono mb-4 transition-all text-5xl font-bold",
               lapAnimation && "animate-lap-record"
             )}
           >
