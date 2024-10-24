@@ -58,6 +58,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
   }
 
   const DATE_PRESETS: DatePreset[] = [
+    { label: "Today", days: 0 },
     { label: "Last 7 days", days: 7 },
     { label: "Last 30 days", days: 30 },
     { label: "Last 90 days", days: 90 },
@@ -66,14 +67,21 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
   ];
 
   const getPresetDates = (preset: DatePreset) => {
-    const to = new Date();
     let from: Date;
+    let to: Date; // Change to let instead of const
 
-    if (preset.days === "month") {
+    if (preset.days === 0) {
+      // Handle "Today" option
+      from = startOfDay(new Date());
+      to = endOfDay(new Date());
+    } else if (preset.days === "month") {
+      to = new Date();
       from = new Date(to.getFullYear(), to.getMonth(), 1);
     } else if (preset.days === "year") {
+      to = new Date();
       from = new Date(to.getFullYear(), 0, 1);
     } else {
+      to = new Date();
       from = addDays(to, -preset.days);
     }
 
@@ -92,22 +100,22 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     // Clear any existing selections
     setSelectedSessions([]);
 
-    // Set initial date range (Last 7 days)
-    const to = new Date();
-    const from = addDays(to, -7);
-    setDateRange({ from, to });
-
-    console.log("Initial date range set:", { from, to });
+    // Set initial date range (Today)
+    setDateRange({
+      from: startOfDay(new Date()),
+      to: endOfDay(new Date()),
+    });
   }, []); // Empty dependency array means this runs once on mount
 
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
   }>(() => {
-    // Initialize with "Last 7 days"
-    const to = new Date();
-    const from = addDays(to, -7);
-    return { from, to };
+    // Initialize with "Today"
+    return {
+      from: startOfDay(new Date()),
+      to: endOfDay(new Date()),
+    };
   });
 
   // Helper function to check if a date is within range
@@ -412,13 +420,10 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                   {dateRange.from &&
                   dateRange.to &&
                   format(dateRange.from, "yyyy-MM-dd") ===
-                    format(
-                      getPresetDates(DATE_PRESETS[0]).from,
-                      "yyyy-MM-dd"
-                    ) &&
+                    format(startOfDay(new Date()), "yyyy-MM-dd") &&
                   format(dateRange.to, "yyyy-MM-dd") ===
-                    format(getPresetDates(DATE_PRESETS[0]).to, "yyyy-MM-dd") ? (
-                    "Showing sessions from the last 7 days"
+                    format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                    "Showing sessions from today"
                   ) : dateRange.from &&
                     dateRange.to &&
                     format(dateRange.from, "yyyy-MM-dd") ===
@@ -431,7 +436,7 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                         getPresetDates(DATE_PRESETS[1]).to,
                         "yyyy-MM-dd"
                       ) ? (
-                    "Showing sessions from the last 30 days"
+                    "Showing sessions from the last 7 days"
                   ) : (
                     <>
                       Showing sessions

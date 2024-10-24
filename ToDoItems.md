@@ -13,7 +13,7 @@
     - TAB4
         - Session Comparison
 
-- Add "Today" to date range selections, make default value.
+
 - Add date range selection functionality to Previous Sessions tab
 
 - Add Total Session Time to statistics being tracked, stored, and displayed for each session
