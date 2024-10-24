@@ -52,6 +52,34 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
   const [filterCar, setFilterCar] = useState<string>("all");
   const [chartData, setChartData] = useState<ComparisonData[]>([]);
 
+  interface DatePreset {
+    label: string;
+    days: number | "month" | "year";
+  }
+
+  const DATE_PRESETS: DatePreset[] = [
+    { label: "Last 7 days", days: 7 },
+    { label: "Last 30 days", days: 30 },
+    { label: "Last 90 days", days: 90 },
+    { label: "This month", days: "month" },
+    { label: "This year", days: "year" },
+  ];
+
+  const getPresetDates = (preset: DatePreset) => {
+    const to = new Date();
+    let from: Date;
+
+    if (preset.days === "month") {
+      from = new Date(to.getFullYear(), to.getMonth(), 1);
+    } else if (preset.days === "year") {
+      from = new Date(to.getFullYear(), 0, 1);
+    } else {
+      from = addDays(to, -preset.days);
+    }
+
+    return { from, to };
+  };
+
   // Update chart data when selections change
   useEffect(() => {
     const data = prepareChartData();
@@ -59,12 +87,27 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     setChartData(data);
   }, [selectedSessions]);
 
+  // useEffect to initialize filters on mount
+  useEffect(() => {
+    // Clear any existing selections
+    setSelectedSessions([]);
+
+    // Set initial date range (Last 7 days)
+    const to = new Date();
+    const from = addDays(to, -7);
+    setDateRange({ from, to });
+
+    console.log("Initial date range set:", { from, to });
+  }, []); // Empty dependency array means this runs once on mount
+
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
-  }>({
-    from: undefined,
-    to: undefined,
+  }>(() => {
+    // Initialize with "Last 7 days"
+    const to = new Date();
+    const from = addDays(to, -7);
+    return { from, to };
   });
 
   // Helper function to check if a date is within range
@@ -252,6 +295,43 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
             {/* Date Range Filter */}
             <div className="space-y-2">
               <Label>Filter by Date Range</Label>
+
+              {/* Preset Buttons */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {DATE_PRESETS.map((preset) => {
+                  const presetDates = getPresetDates(preset);
+                  const isActive =
+                    dateRange.from &&
+                    dateRange.to &&
+                    format(dateRange.from, "yyyy-MM-dd") ===
+                      format(presetDates.from, "yyyy-MM-dd") &&
+                    format(dateRange.to, "yyyy-MM-dd") ===
+                      format(presetDates.to, "yyyy-MM-dd");
+
+                  return (
+                    <Button
+                      key={preset.label}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "hover:bg-muted",
+                        isActive
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : ""
+                      )}
+                      onClick={() => {
+                        const { from, to } = getPresetDates(preset);
+                        setDateRange({ from, to });
+                        setSelectedSessions([]);
+                      }}
+                    >
+                      {preset.label}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Date Range Selectors */}
               <div className="flex flex-col sm:flex-row gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -272,9 +352,10 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                     <Calendar
                       mode="single"
                       selected={dateRange.from}
-                      onSelect={(date) =>
-                        setDateRange((prev) => ({ ...prev, from: date }))
-                      }
+                      onSelect={(date) => {
+                        setDateRange((prev) => ({ ...prev, from: date }));
+                        setSelectedSessions([]); // Clear selections when changing date range
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -299,9 +380,10 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
                     <Calendar
                       mode="single"
                       selected={dateRange.to}
-                      onSelect={(date) =>
-                        setDateRange((prev) => ({ ...prev, to: date }))
-                      }
+                      onSelect={(date) => {
+                        setDateRange((prev) => ({ ...prev, to: date }));
+                        setSelectedSessions([]); // Clear selections when changing date range
+                      }}
                       disabled={(date) =>
                         dateRange.from ? isBefore(date, dateRange.from) : false
                       }
@@ -312,9 +394,10 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    setDateRange({ from: undefined, to: undefined })
-                  }
+                  onClick={() => {
+                    setDateRange({ from: undefined, to: undefined });
+                    setSelectedSessions([]); // Clear selections when resetting dates
+                  }}
                   className="w-full sm:w-auto"
                 >
                   Reset Dates
@@ -324,19 +407,46 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
               {/* Date Range Summary */}
               {(dateRange.from || dateRange.to) && (
                 <div className="text-sm text-muted-foreground">
-                  Showing sessions
                   {dateRange.from &&
-                    !dateRange.to &&
-                    ` from ${format(dateRange.from, "PPP")}`}
-                  {!dateRange.from &&
+                  dateRange.to &&
+                  format(dateRange.from, "yyyy-MM-dd") ===
+                    format(
+                      getPresetDates(DATE_PRESETS[0]).from,
+                      "yyyy-MM-dd"
+                    ) &&
+                  format(dateRange.to, "yyyy-MM-dd") ===
+                    format(getPresetDates(DATE_PRESETS[0]).to, "yyyy-MM-dd") ? (
+                    "Showing sessions from the last 7 days"
+                  ) : dateRange.from &&
                     dateRange.to &&
-                    ` until ${format(dateRange.to, "PPP")}`}
-                  {dateRange.from &&
-                    dateRange.to &&
-                    ` from ${format(dateRange.from, "PPP")} to ${format(
-                      dateRange.to,
-                      "PPP"
-                    )}`}
+                    format(dateRange.from, "yyyy-MM-dd") ===
+                      format(
+                        getPresetDates(DATE_PRESETS[1]).from,
+                        "yyyy-MM-dd"
+                      ) &&
+                    format(dateRange.to, "yyyy-MM-dd") ===
+                      format(
+                        getPresetDates(DATE_PRESETS[1]).to,
+                        "yyyy-MM-dd"
+                      ) ? (
+                    "Showing sessions from the last 30 days"
+                  ) : (
+                    <>
+                      Showing sessions
+                      {dateRange.from &&
+                        !dateRange.to &&
+                        ` from ${format(dateRange.from, "PPP")}`}
+                      {!dateRange.from &&
+                        dateRange.to &&
+                        ` until ${format(dateRange.to, "PPP")}`}
+                      {dateRange.from &&
+                        dateRange.to &&
+                        ` from ${format(dateRange.from, "PPP")} to ${format(
+                          dateRange.to,
+                          "PPP"
+                        )}`}
+                    </>
+                  )}
                 </div>
               )}
             </div>

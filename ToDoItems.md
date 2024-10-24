@@ -1,5 +1,5 @@
 # Items to do:
-- Let's add a filter in the Best Laps Comparison section for date ranges. Allow the user to select a start and end date to display sessions for.
+
 - Add Total Session Time to statistics being tracked, stored, and displayed for each session
 - Add a feature to add penalties for each lab. 
     - Penalties should be tracked with the rest of the other statistics. 
