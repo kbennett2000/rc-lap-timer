@@ -1,16 +1,4 @@
 # Items to do:
-- Tab UI:
-    - TAB1
-        - Session Configuration / Stopwatch
-        - Last Three Previous Sessions
-        - See all Sessions Link
-    - TAB2
-        - All Previous Sessions
-    - TAB3
-        - Best Laps Comparison
-    - TAB4
-        - Session Comparison
-
 - Add the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
 
 # Other things to add:
@@ -20,13 +8,11 @@
 
 # Statistics and Analysis:
 - Driver/car performance trends
-- Lap time graphs using recharts
 
 # Advanced Session Management:
 - Session categories/tags
 - Session notes/comments
 - Session search and filtering
-- Date range filtering
 
 # Export Enhancements:
 - Export to CSV format
