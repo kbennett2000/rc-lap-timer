@@ -149,23 +149,6 @@ export default function LapTimer() {
     const [filterDriver, setFilterDriver] = useState<string>("all");
     const [filterCar, setFilterCar] = useState<string>("all");
 
-    const bestLaps = findBestLaps(sessions);
-
-    // Get unique drivers
-    const uniqueDrivers = Array.from(new Set(bestLaps.map((lap) => lap.driverName))).filter((name) => name && name.trim() !== "");
-
-    // Get cars for selected driver
-    const getAvailableCars = (driverName: string) => {
-      return Array.from(new Set(bestLaps.filter((lap) => lap.driverName === driverName).map((lap) => lap.carName))).filter((name) => name && name.trim() !== "");
-    };
-
-    // Reset car filter when driver changes
-    useEffect(() => {
-      if (filterDriver === "all" || filterCar !== "all") {
-        setFilterCar("all");
-      }
-    }, [filterDriver]);
-
     const [dateRange, setDateRange] = useState<{
       from: Date | undefined;
       to: Date | undefined;
@@ -176,15 +159,6 @@ export default function LapTimer() {
         to: endOfDay(new Date()),
       };
     });
-
-    // useEffect to initialize filters on mount
-    useEffect(() => {
-      // Set initial date range (Today)
-      setDateRange({
-        from: startOfDay(new Date()),
-        to: endOfDay(new Date()),
-      });
-    }, []);
 
     // First isWithinDateRange function (for Best Laps Comparison)
     const isWithinDateRange = (sessionDate: string | null): boolean => {
@@ -216,6 +190,24 @@ export default function LapTimer() {
       }
     };
 
+    // useEffect to initialize filters on mount
+    useEffect(() => {
+      // Set initial date range (Today)
+      setDateRange({
+        from: startOfDay(new Date()),
+        to: endOfDay(new Date()),
+      });
+    }, []);
+
+    // Reset car filter when driver changes
+    useEffect(() => {
+      if (filterDriver === "all" || filterCar !== "all") {
+        setFilterCar("all");
+      }
+    }, [filterDriver]);
+
+    const bestLaps = findBestLaps(sessions);
+
     // Update your filteredBestLaps to include date filtering
     const filteredBestLaps = findBestLaps(sessions).filter((lap) => {
       if (filterDriver !== "all" && lap.driverName !== filterDriver) return false;
@@ -223,6 +215,14 @@ export default function LapTimer() {
       if (!isWithinDateRange(lap.date)) return false;
       return true;
     });
+
+    // Get cars for selected driver
+    const getAvailableCars = (driverName: string) => {
+      return Array.from(new Set(bestLaps.filter((lap) => lap.driverName === driverName).map((lap) => lap.carName))).filter((name) => name && name.trim() !== "");
+    };
+
+    // Get unique drivers
+    const uniqueDrivers = Array.from(new Set(bestLaps.map((lap) => lap.driverName))).filter((name) => name && name.trim() !== "");
 
     return (
       <Card>
@@ -361,6 +361,7 @@ export default function LapTimer() {
                   <th className="p-2 text-left">Car</th>
                   <th className="p-2 text-right">Lap Time</th>
                   <th className="p-2 text-right">Lap #</th>
+                  <th className="p-2 text-right">Penalties</th>
                   <th className="p-2 text-right">Session Time</th>
                 </tr>
               </thead>
@@ -369,7 +370,7 @@ export default function LapTimer() {
                   <tr
                     key={`${lap.sessionId}-${lap.lapNumber}`}
                     className={`border-b ${index === 0 ? "bg-green-50" : ""} 
-                      hover:bg-muted/50 transition-colors`}
+            hover:bg-muted/50 transition-colors`}
                   >
                     <td className="p-2">{index === 0 ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Best</span> : `#${index + 1}`}</td>
                     <td className="p-2">{lap.driverName}</td>
@@ -379,6 +380,10 @@ export default function LapTimer() {
                       {index === 0 && <span className="ml-2 text-xs text-green-600">⚡ Fastest</span>}
                     </td>
                     <td className="p-2 text-right">{lap.lapNumber}</td>
+                    <td className="p-2 text-right">
+                      {lap.penalties > 0 && <span className="text-yellow-600 font-medium">{lap.penalties}</span>}
+                      {!lap.penalties && "-"}
+                    </td>
                     <td className="p-2 text-right text-sm text-muted-foreground">{formatDateTime(lap.date)}</td>
                   </tr>
                 ))}
@@ -441,13 +446,17 @@ export default function LapTimer() {
       const bestLapTime = Math.min(...session.laps);
       const lapNumber = session.laps.indexOf(bestLapTime) + 1;
 
+      // Get penalties for this specific lap
+      const lapPenalties = session.penalties?.find((p) => p.lapNumber === lapNumber)?.count || 0;
+
       bestLaps.push({
         sessionId: session.id,
-        date: session.date, // Use the full session timestamp
+        date: session.date,
         driverName: session.driverName,
         carName: session.carName,
         lapTime: bestLapTime,
         lapNumber: lapNumber,
+        penalties: lapPenalties, // Add penalties to the record
       });
     });
 
