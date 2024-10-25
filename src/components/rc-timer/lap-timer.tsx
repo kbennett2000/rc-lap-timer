@@ -5,12 +5,12 @@ import { SessionComparison } from "./session-comparison";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon } from "lucide-react";
+import { AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Driver, Car, Session, BestLapRecord, PersistentData } from "@/types/rc-timer";
+import { BestLapRecord, Car, Driver, LapStats, PenaltyData, PersistentData, Session } from "@/types/rc-timer";
 import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -41,6 +41,8 @@ export default function LapTimer() {
   const [startAnimation, setStartAnimation] = useState(false);
   const [lapAnimation, setLapAnimation] = useState(false);
   const [stopAnimation, setStopAnimation] = useState(false);
+  const [penalties, setPenalties] = useState<PenaltyData[]>([]);
+  const [penaltyAnimation, setPenaltyAnimation] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -126,6 +128,22 @@ export default function LapTimer() {
     from: startOfDay(new Date()),
     to: endOfDay(new Date()),
   }));
+
+  const addPenalty = () => {
+    if (!isRunning) return;
+
+    setPenaltyAnimation(true);
+    setTimeout(() => setPenaltyAnimation(false), 300);
+
+    const currentLapNumber = laps.length + 1;
+    setPenalties((prev) => {
+      const existingPenalty = prev.find((p) => p.lapNumber === currentLapNumber);
+      if (existingPenalty) {
+        return prev.map((p) => (p.lapNumber === currentLapNumber ? { ...p, count: p.count + 1 } : p));
+      }
+      return [...prev, { lapNumber: currentLapNumber, count: 1 }];
+    });
+  };
 
   const BestLapsComparison = ({ sessions }: { sessions: Session[] }) => {
     const [filterDriver, setFilterDriver] = useState<string>("all");
@@ -374,18 +392,30 @@ export default function LapTimer() {
     );
   };
 
-  const calculateStats = (lapTimes: number[]) => {
-    if (lapTimes.length === 0) return { average: 0, mean: 0, totalTime: 0 };
+  const calculateStats = (lapTimes: number[]): LapStats => {
+    if (lapTimes.length === 0)
+      return {
+        average: 0,
+        mean: 0,
+        totalTime: 0,
+        maxPenaltyLap: null,
+        maxPenaltyCount: 0,
+      };
 
     const sum = lapTimes.reduce((a, b) => a + b, 0);
     const average = sum / lapTimes.length;
     const sortedLaps = [...lapTimes].sort((a, b) => a - b);
     const mean = sortedLaps[Math.floor(sortedLaps.length / 2)];
 
+    // Find max penalties
+    const maxPenalty = penalties.reduce((max, p) => (p.count > max.count ? p : max), { lapNumber: 0, count: 0 });
+
     return {
       average,
       mean,
-      totalTime: sum, // Add total time
+      totalTime: sum,
+      maxPenaltyLap: maxPenalty.count > 0 ? maxPenalty.lapNumber : null,
+      maxPenaltyCount: maxPenalty.count,
     };
   };
 
@@ -554,7 +584,7 @@ export default function LapTimer() {
 
     const newSession: Session = {
       id: Date.now(),
-      date: sessionStartTime ?? new Date().toISOString(), // Ensure we always have a valid date
+      date: sessionStartTime ?? new Date().toISOString(),
       driverId: selectedDriver,
       driverName: driver?.name ?? "",
       carId: selectedCar,
@@ -562,9 +592,12 @@ export default function LapTimer() {
       laps: completedLaps,
       stats: calculateStats(completedLaps),
       totalLaps: selectedLapCount,
+      penalties: penalties, // Add the penalties array
+      totalPenalties: penalties.reduce((sum, p) => sum + p.count, 0), // Add total penalties
     };
 
     setCurrentSession(null);
+    setPenalties([]); // Reset penalties for next session
     setSavedSessions((prev) => [newSession, ...prev]);
     saveData();
   };
@@ -906,7 +939,7 @@ export default function LapTimer() {
           {/* Current Lap Time */}
           <div className="text-center text-2xl font-mono text-gray-600">Current Lap: {formatTime(getCurrentLapTime())}</div>
 
-          {/* Lap counter */} 
+          {/* Lap counter */}
           <div className="text-xl font-mono text-center">
             {isRunning ? (selectedLapCount !== "unlimited" ? (laps.length >= selectedLapCount ? "Timing Session Finished" : `Lap: ${laps.length + 1} of ${selectedLapCount}`) : `Lap: ${laps.length + 1}`) : laps.length > 0 ? "Timing Session Finished" : "Ready"}
           </div>
@@ -924,6 +957,14 @@ export default function LapTimer() {
             <Button onClick={stopTimer} disabled={!isRunning} className={cn("bg-red-500 hover:bg-red-600 transition-all", stopAnimation && "animate-timer-stop")}>
               <StopCircle className="mr-2 h-4 w-4" />
               Stop Lap Timer
+            </Button>
+          </div>
+
+          {/* Penalty controls */}
+          <div className="flex justify-center space-x-4">
+            <Button onClick={addPenalty} disabled={!isRunning} className={cn("bg-yellow-500 hover:bg-yellow-600 transition-all", penaltyAnimation && "animate-penalty-add")}>
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Add Penalty
             </Button>
           </div>
         </CardContent>
@@ -944,17 +985,28 @@ export default function LapTimer() {
                   <div className="font-mono">Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}</div>
                   <div className="font-mono">Time: {sessionStartTime ? formatDateTime(sessionStartTime) : "Not started"}</div>
                   <h3 className="font-semibold mt-4">Lap Times:</h3>
+
+                  {/* Current Session lap times */}
                   {laps.map((lap, index) => {
+                    const lapNumber = index + 1;
+                    const lapPenalties = penalties.find((p) => p.lapNumber === lapNumber)?.count || 0;
                     const bestLap = getBestLap(laps);
                     const isBestLap = bestLap && index === bestLap.lapNumber - 1;
                     return (
                       <div key={index} className={`font-mono ${isBestLap ? "text-green-600 font-bold flex items-center" : ""}`}>
-                        Lap {index + 1}: {formatTime(lap)}
+                        Lap {lapNumber}: {formatTime(lap)}
                         {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
+                        {lapPenalties > 0 && (
+                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                            {lapPenalties} Penalty{lapPenalties > 1 ? "ies" : ""}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Current Session statistics */}
                 <div>
                   <h3 className="font-semibold">Statistics:</h3>
                   <div className="font-mono">Average: {formatTime(calculateStats(laps).average)}</div>
@@ -962,6 +1014,7 @@ export default function LapTimer() {
                   {laps.length > 0 && (
                     <>
                       <div className="font-mono text-green-600 font-bold mt-2">Best Lap: {formatTime(Math.min(...laps))}</div>
+                      <div className="font-mono">Total Penalties: {penalties.reduce((sum, p) => sum + p.count, 0)}</div>
                       <div className="font-mono mt-2">Total Time: {formatTime(calculateStats(laps).totalTime)}</div>
                     </>
                   )}
@@ -1105,27 +1158,38 @@ export default function LapTimer() {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4 mt-4">
+                    {/* Previous Sessions Lap Times */}
                     <div>
                       <h4 className="font-semibold mb-2">Lap Times:</h4>
                       {session.laps.map((lap, index) => {
+                        const lapNumber = index + 1;
+                        const lapPenalties = session.penalties.find((p) => p.lapNumber === lapNumber)?.count || 0;
                         const bestLap = Math.min(...session.laps);
                         const worstLap = Math.max(...session.laps);
                         const isBestLap = lap === bestLap;
                         const isWorstLap = lap === worstLap;
+                        const hasMaxPenalties = session.stats.maxPenaltyLap === lapNumber;
 
                         return (
-                          <div key={index} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
+                          <div key={index} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "", hasMaxPenalties ? "bg-yellow-50" : "")}>
                             <span className="min-w-[100px]">
-                              Lap {index + 1}: {formatTime(lap)}
+                              Lap {lapNumber}: {formatTime(lap)}
                             </span>
                             {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
                             {isWorstLap && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
+                            {lapPenalties > 0 && (
+                              <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                                {lapPenalties} Penalty{lapPenalties > 1 ? "ies" : ""}
+                              </span>
+                            )}
+                            {hasMaxPenalties && <span className="ml-2 text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">Most Penalties</span>}
                           </div>
                         );
                       })}
                     </div>
+
+                    {/* Previous Sessions Statistics */}
                     <div>
                       <h4 className="font-semibold mb-2">Statistics:</h4>
                       <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
@@ -1133,6 +1197,7 @@ export default function LapTimer() {
                       <div className="space-y-1 mt-2">
                         <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(Math.min(...session.laps))}</div>
                         <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(Math.max(...session.laps))}</div>
+                        <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
                       </div>
                       <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
                       <div className="font-mono">Total Laps: {session.laps.length}</div>

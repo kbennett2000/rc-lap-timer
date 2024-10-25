@@ -13,10 +13,6 @@
     - TAB4
         - Session Comparison
 
-- Add a feature to add penalties for each lab. 
-    - Penalties should be tracked with the rest of the other statistics. 
-    - A penalty could include going outside your lane, having to be marshaled, or doing something against the rules. 
-
 - Add the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
 
 # Other things to add:

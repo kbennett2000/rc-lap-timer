@@ -74,3 +74,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes penalty-add {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); background-color: #f59e0b; }
+  100% { transform: scale(1); }
+}
+
+.animate-penalty-add {
+  animation: penalty-add 0.3s ease-in-out;
+}
