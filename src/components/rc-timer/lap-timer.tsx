@@ -1,6 +1,5 @@
 "use client";
 
-// 1. Imports
 import { formatTime, formatDateTime } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
 import React, { useState, useEffect, useRef } from "react";
@@ -19,7 +18,6 @@ import { CalendarIcon } from "lucide-react";
 import cn from "classnames";
 
 export default function LapTimer() {
-  // 2. State definitions
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -40,15 +38,12 @@ export default function LapTimer() {
   const [selectedLapCount, setSelectedLapCount] = useState<"unlimited" | number>("unlimited");
   const [inputLapCount, setInputLapCount] = useState<string>("");
   const [showLapCountInput, setShowLapCountInput] = useState<boolean>(false);
-  // State for animation triggers
   const [startAnimation, setStartAnimation] = useState(false);
   const [lapAnimation, setLapAnimation] = useState(false);
   const [stopAnimation, setStopAnimation] = useState(false);
 
-  // 3. Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 4. Effects
   useEffect(() => {
     try {
       const storedSessions = localStorage.getItem("rc-lap-timer-sessions");
@@ -102,7 +97,13 @@ export default function LapTimer() {
     }
   }, [savedSessions, drivers]);
 
-  // 5. Utility Functions
+  // useEffect to initialize the date range
+  useEffect(() => {
+    setPreviousSessionsDateRange({
+      from: startOfDay(new Date()),
+      to: endOfDay(new Date()),
+    });
+  }, []);
 
   interface DatePreset {
     label: string;
@@ -126,359 +127,6 @@ export default function LapTimer() {
     to: endOfDay(new Date()),
   }));
 
-  // useEffect to initialize the date range
-  useEffect(() => {
-    setPreviousSessionsDateRange({
-      from: startOfDay(new Date()),
-      to: endOfDay(new Date()),
-    });
-  }, []);
-
-  // Add the date filter function
-  const isWithinDateRange = (sessionDate: string | null): boolean => {
-    // If no date range is selected, show all sessions
-    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to) return true;
-
-    // If session date is null or invalid, don't show the session
-    if (!sessionDate) return false;
-
-    try {
-      const date = parseISO(sessionDate);
-
-      if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
-        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
-      }
-
-      if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
-      }
-
-      if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return (
-          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
-        );
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error parsing date:", error);
-      return false;
-    }
-  };
-
-  const getPresetDates = (preset: DatePreset) => {
-    let from: Date;
-    let to: Date; // Change to let instead of const
-
-    if (preset.days === 0) {
-      // Handle "Today" option
-      from = startOfDay(new Date());
-      to = endOfDay(new Date());
-    } else if (preset.days === "month") {
-      to = new Date();
-      from = new Date(to.getFullYear(), to.getMonth(), 1);
-    } else if (preset.days === "year") {
-      to = new Date();
-      from = new Date(to.getFullYear(), 0, 1);
-    } else {
-      to = new Date();
-      from = addDays(to, -preset.days);
-    }
-
-    return { from, to };
-  };
-
-  const calculateStats = (lapTimes: number[]) => {
-    if (lapTimes.length === 0) return { average: 0, mean: 0, totalTime: 0 };
-
-    const sum = lapTimes.reduce((a, b) => a + b, 0);
-    const average = sum / lapTimes.length;
-    const sortedLaps = [...lapTimes].sort((a, b) => a - b);
-    const mean = sortedLaps[Math.floor(sortedLaps.length / 2)];
-
-    return {
-      average,
-      mean,
-      totalTime: sum, // Add total time
-    };
-  };
-
-  const getCurrentDriverCars = () => {
-    const driver = drivers.find((d) => d.id === selectedDriver);
-    return driver?.cars || [];
-  };
-
-  const validateLapCount = (value: string): boolean => {
-    const num = parseInt(value, 10);
-    return !isNaN(num) && num > 0 && num <= 999;
-  };
-
-  const handleSessionCompletion = (completedLaps: number[]): void => {
-    setIsRunning(false);
-
-    const driver = drivers.find((d) => d.id === selectedDriver);
-    const car = driver?.cars.find((c) => c.id === selectedCar);
-
-    const newSession: Session = {
-      id: Date.now(),
-      date: sessionStartTime ?? new Date().toISOString(), // Ensure we always have a valid date
-      driverId: selectedDriver,
-      driverName: driver?.name ?? "",
-      carId: selectedCar,
-      carName: car?.name ?? "",
-      laps: completedLaps,
-      stats: calculateStats(completedLaps),
-      totalLaps: selectedLapCount,
-    };
-
-    setCurrentSession(null);
-    setSavedSessions((prev) => [newSession, ...prev]);
-    saveData();
-  };
-
-  const sortSessionsByDate = (sessions: Session[]): Session[] => {
-    return [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
-
-  // Load data function
-  const loadSavedData = async () => {
-    try {
-      const response = await fetch("/api/data");
-      if (!response.ok) throw new Error("Failed to load data");
-
-      const data: PersistentData = await response.json();
-      setSavedSessions(data.sessions || []);
-      setDrivers(data.drivers || []);
-      console.log("Data loaded:", data.lastUpdated);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    }
-  };
-
-  // Save data function
-  const saveData = async () => {
-    try {
-      const data: PersistentData = {
-        sessions: savedSessions,
-        drivers: drivers,
-        lastUpdated: new Date().toISOString(),
-      };
-
-      const response = await fetch("/api/data", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) throw new Error("Failed to save data");
-      console.log("Data saved:", data.lastUpdated);
-    } catch (error) {
-      console.error("Error saving data:", error);
-    }
-  };
-
-  const isDriverNameUnique = (name: string): boolean => {
-    return !drivers.some((driver) => driver.name.toLowerCase().trim() === name.toLowerCase().trim());
-  };
-
-  // 6. Driver and Car Management
-  const handleAddDriver = () => {
-    const trimmedName = newDriverName.trim();
-
-    if (!trimmedName) {
-      alert("Please enter a driver name");
-      return;
-    }
-
-    if (!isDriverNameUnique(trimmedName)) {
-      alert(`A driver named "${trimmedName}" already exists. Please use a different name.`);
-      return;
-    }
-
-    const newDriver: Driver = {
-      id: Date.now().toString(),
-      name: trimmedName,
-      cars: [],
-    };
-
-    setDrivers((prevDrivers) => [...prevDrivers, newDriver]);
-    setSelectedDriver(newDriver.id);
-    setNewDriverName("");
-    setShowNewDriver(false);
-    setSelectedCar("");
-    saveData();
-  };
-
-  const handleDriverNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setNewDriverName(newName);
-  };
-
-  const handleCarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setNewCarName(newName);
-  };
-
-  const handleAddCar = () => {
-    const trimmedName = newCarName.trim();
-
-    if (!selectedDriver) {
-      alert("Please select a driver first");
-      return;
-    }
-
-    if (!trimmedName) {
-      alert("Please enter a car name");
-      return;
-    }
-
-    const currentDriver = drivers.find((d) => d.id === selectedDriver);
-    if (!isCarNameUniqueForDriver(trimmedName)) {
-      alert(`${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`);
-      return;
-    }
-
-    const newCar: Car = {
-      id: Date.now().toString(),
-      name: trimmedName,
-    };
-
-    setDrivers((prevDrivers) =>
-      prevDrivers.map((driver) => {
-        if (driver.id === selectedDriver) {
-          return {
-            ...driver,
-            cars: [...driver.cars, newCar],
-          };
-        }
-        return driver;
-      })
-    );
-
-    setSelectedCar(newCar.id);
-    setNewCarName("");
-    setShowNewCar(false);
-    saveData();
-  };
-
-  const isCarNameUniqueForDriver = (name: string): boolean => {
-    const currentDriver = drivers.find((d) => d.id === selectedDriver);
-    if (!currentDriver) return true;
-
-    return !currentDriver.cars.some((car) => car.name.toLowerCase().trim() === name.toLowerCase().trim());
-  };
-
-  // 7. Timer Controls
-  const startTimer = (): void => {
-    if (!selectedDriver || !selectedCar) {
-      alert("Please select a driver and car before starting the timer");
-      return;
-    }
-    setStartAnimation(true);
-    setTimeout(() => setStartAnimation(false), 500);
-    setStartTime(Date.now());
-    setIsRunning(true);
-    setLaps([]);
-  };
-
-  const recordLap = (): void => {
-    if (!isRunning) return;
-
-    setLapAnimation(true);
-    setTimeout(() => setLapAnimation(false), 300);
-
-    const lastLapEndTime = laps.reduce((sum, lap) => sum + lap, 0);
-    const currentLapTime = currentTime - lastLapEndTime;
-    const newLaps = [...laps, currentLapTime];
-    setLaps(newLaps);
-
-    // Check if we've reached the selected number of laps
-    if (selectedLapCount !== "unlimited" && newLaps.length >= selectedLapCount) {
-      // Automatically stop the timer and save the session
-      handleSessionCompletion(newLaps);
-    }
-  };
-
-  const stopTimer = (): void => {
-    if (!isRunning) return;
-    setStopAnimation(true);
-    setTimeout(() => setStopAnimation(false), 500);
-    const finalLapTime = currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
-    const finalLaps = [...laps, finalLapTime];
-    handleSessionCompletion(finalLaps);
-  };
-
-  // 8. Data Management
-  const deleteSession = (sessionId: number): void => {
-    setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
-    setSessionToDelete(null);
-  };
-
-  const clearAllSessions = (): void => {
-    // If there's a current session, keep only that one
-    if (currentSessionId) {
-      setSavedSessions(savedSessions.filter((session) => session.id === currentSessionId));
-    } else {
-      setSavedSessions([]);
-    }
-    setShowClearAllDialog(false);
-  };
-
-  const findBestLaps = (sessions: Session[]): BestLapRecord[] => {
-    const bestLaps: BestLapRecord[] = [];
-
-    sessions.forEach((session) => {
-      const bestLapTime = Math.min(...session.laps);
-      const lapNumber = session.laps.indexOf(bestLapTime) + 1;
-
-      bestLaps.push({
-        sessionId: session.id,
-        date: session.date, // Use the full session timestamp
-        driverName: session.driverName,
-        carName: session.carName,
-        lapTime: bestLapTime,
-        lapNumber: lapNumber,
-      });
-    });
-
-    // Sort by lap time (fastest first)
-    return bestLaps.sort((a, b) => a.lapTime - b.lapTime);
-  };
-
-  const isWithinPreviousSessionsDateRange = (sessionDate: string | null): boolean => {
-    // If no date range is selected, show all sessions
-    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to) return true;
-
-    // If session date is null or invalid, don't show the session
-    if (!sessionDate) return false;
-
-    try {
-      const date = parseISO(sessionDate);
-
-      if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
-        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
-      }
-
-      if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
-      }
-
-      if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return (
-          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
-        );
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error parsing date:", error);
-      return false;
-    }
-  };
 
   const BestLapsComparison = ({ sessions }: { sessions: Session[] }) => {
     const [filterDriver, setFilterDriver] = useState<string>("all");
@@ -727,6 +375,58 @@ export default function LapTimer() {
     );
   };
 
+  const calculateStats = (lapTimes: number[]) => {
+    if (lapTimes.length === 0) return { average: 0, mean: 0, totalTime: 0 };
+
+    const sum = lapTimes.reduce((a, b) => a + b, 0);
+    const average = sum / lapTimes.length;
+    const sortedLaps = [...lapTimes].sort((a, b) => a - b);
+    const mean = sortedLaps[Math.floor(sortedLaps.length / 2)];
+
+    return {
+      average,
+      mean,
+      totalTime: sum, // Add total time
+    };
+  };
+
+  const clearAllSessions = (): void => {
+    // If there's a current session, keep only that one
+    if (currentSessionId) {
+      setSavedSessions(savedSessions.filter((session) => session.id === currentSessionId));
+    } else {
+      setSavedSessions([]);
+    }
+    setShowClearAllDialog(false);
+  };
+
+
+  const deleteSession = (sessionId: number): void => {
+    setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
+    setSessionToDelete(null);
+  };
+
+  const findBestLaps = (sessions: Session[]): BestLapRecord[] => {
+    const bestLaps: BestLapRecord[] = [];
+
+    sessions.forEach((session) => {
+      const bestLapTime = Math.min(...session.laps);
+      const lapNumber = session.laps.indexOf(bestLapTime) + 1;
+
+      bestLaps.push({
+        sessionId: session.id,
+        date: session.date, // Use the full session timestamp
+        driverName: session.driverName,
+        carName: session.carName,
+        lapTime: bestLapTime,
+        lapNumber: lapNumber,
+      });
+    });
+
+    // Sort by lap time (fastest first)
+    return bestLaps.sort((a, b) => a.lapTime - b.lapTime);
+  };
+
   const getBestLap = (laps: number[]) => {
     if (laps.length === 0) return null;
     const bestTime = Math.min(...laps);
@@ -734,7 +434,299 @@ export default function LapTimer() {
     return { time: bestTime, lapNumber: bestLapIndex + 1 };
   };
 
-  // 9. Render Component
+  const getCurrentDriverCars = () => {
+    const driver = drivers.find((d) => d.id === selectedDriver);
+    return driver?.cars || [];
+  };
+
+  const getPresetDates = (preset: DatePreset) => {
+    let from: Date;
+    let to: Date;
+
+    if (preset.days === 0) {
+      // Handle "Today" option
+      from = startOfDay(new Date());
+      to = endOfDay(new Date());
+    } else if (preset.days === "month") {
+      to = new Date();
+      from = new Date(to.getFullYear(), to.getMonth(), 1);
+    } else if (preset.days === "year") {
+      to = new Date();
+      from = new Date(to.getFullYear(), 0, 1);
+    } else {
+      to = new Date();
+      from = addDays(to, -preset.days);
+    }
+
+    return { from, to };
+  };
+
+  const handleAddCar = () => {
+    const trimmedName = newCarName.trim();
+
+    if (!selectedDriver) {
+      alert("Please select a driver first");
+      return;
+    }
+
+    if (!trimmedName) {
+      alert("Please enter a car name");
+      return;
+    }
+
+    const currentDriver = drivers.find((d) => d.id === selectedDriver);
+    if (!isCarNameUniqueForDriver(trimmedName)) {
+      alert(`${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`);
+      return;
+    }
+
+    const newCar: Car = {
+      id: Date.now().toString(),
+      name: trimmedName,
+    };
+
+    setDrivers((prevDrivers) =>
+      prevDrivers.map((driver) => {
+        if (driver.id === selectedDriver) {
+          return {
+            ...driver,
+            cars: [...driver.cars, newCar],
+          };
+        }
+        return driver;
+      })
+    );
+
+    setSelectedCar(newCar.id);
+    setNewCarName("");
+    setShowNewCar(false);
+    saveData();
+  };
+
+  const handleAddDriver = () => {
+    const trimmedName = newDriverName.trim();
+
+    if (!trimmedName) {
+      alert("Please enter a driver name");
+      return;
+    }
+
+    if (!isDriverNameUnique(trimmedName)) {
+      alert(`A driver named "${trimmedName}" already exists. Please use a different name.`);
+      return;
+    }
+
+    const newDriver: Driver = {
+      id: Date.now().toString(),
+      name: trimmedName,
+      cars: [],
+    };
+
+    setDrivers((prevDrivers) => [...prevDrivers, newDriver]);
+    setSelectedDriver(newDriver.id);
+    setNewDriverName("");
+    setShowNewDriver(false);
+    setSelectedCar("");
+    saveData();
+  };
+
+  const handleCarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setNewCarName(newName);
+  };
+
+  const handleDriverNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setNewDriverName(newName);
+  };
+
+  const handleSessionCompletion = (completedLaps: number[]): void => {
+    setIsRunning(false);
+
+    const driver = drivers.find((d) => d.id === selectedDriver);
+    const car = driver?.cars.find((c) => c.id === selectedCar);
+
+    const newSession: Session = {
+      id: Date.now(),
+      date: sessionStartTime ?? new Date().toISOString(), // Ensure we always have a valid date
+      driverId: selectedDriver,
+      driverName: driver?.name ?? "",
+      carId: selectedCar,
+      carName: car?.name ?? "",
+      laps: completedLaps,
+      stats: calculateStats(completedLaps),
+      totalLaps: selectedLapCount,
+    };
+
+    setCurrentSession(null);
+    setSavedSessions((prev) => [newSession, ...prev]);
+    saveData();
+  };
+
+  const isCarNameUniqueForDriver = (name: string): boolean => {
+    const currentDriver = drivers.find((d) => d.id === selectedDriver);
+    if (!currentDriver) return true;
+
+    return !currentDriver.cars.some((car) => car.name.toLowerCase().trim() === name.toLowerCase().trim());
+  };
+
+  const isDriverNameUnique = (name: string): boolean => {
+    return !drivers.some((driver) => driver.name.toLowerCase().trim() === name.toLowerCase().trim());
+  };
+
+  // Add the date filter function
+  const isWithinDateRange = (sessionDate: string | null): boolean => {
+    // If no date range is selected, show all sessions
+    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to) return true;
+
+    // If session date is null or invalid, don't show the session
+    if (!sessionDate) return false;
+
+    try {
+      const date = parseISO(sessionDate);
+
+      if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
+        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
+      }
+
+      if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
+        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
+      }
+
+      if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
+        return (
+          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
+        );
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      return false;
+    }
+  };
+
+  const isWithinPreviousSessionsDateRange = (sessionDate: string | null): boolean => {
+    // If no date range is selected, show all sessions
+    if (!previousSessionsDateRange.from && !previousSessionsDateRange.to) return true;
+
+    // If session date is null or invalid, don't show the session
+    if (!sessionDate) return false;
+
+    try {
+      const date = parseISO(sessionDate);
+
+      if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
+        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
+      }
+
+      if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
+        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
+      }
+
+      if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
+        return (
+          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
+        );
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      return false;
+    }
+  };
+
+  // Load data function
+  const loadSavedData = async () => {
+    try {
+      const response = await fetch("/api/data");
+      if (!response.ok) throw new Error("Failed to load data");
+
+      const data: PersistentData = await response.json();
+      setSavedSessions(data.sessions || []);
+      setDrivers(data.drivers || []);
+      console.log("Data loaded:", data.lastUpdated);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
+  };
+
+  const recordLap = (): void => {
+    if (!isRunning) return;
+
+    setLapAnimation(true);
+    setTimeout(() => setLapAnimation(false), 300);
+
+    const lastLapEndTime = laps.reduce((sum, lap) => sum + lap, 0);
+    const currentLapTime = currentTime - lastLapEndTime;
+    const newLaps = [...laps, currentLapTime];
+    setLaps(newLaps);
+
+    // Check if we've reached the selected number of laps
+    if (selectedLapCount !== "unlimited" && newLaps.length >= selectedLapCount) {
+      // Automatically stop the timer and save the session
+      handleSessionCompletion(newLaps);
+    }
+  };
+
+  // Save data function
+  const saveData = async () => {
+    try {
+      const data: PersistentData = {
+        sessions: savedSessions,
+        drivers: drivers,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const response = await fetch("/api/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Failed to save data");
+      console.log("Data saved:", data.lastUpdated);
+    } catch (error) {
+      console.error("Error saving data:", error);
+    }
+  };
+
+  const sortSessionsByDate = (sessions: Session[]): Session[] => {
+    return [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
+  const startTimer = (): void => {
+    if (!selectedDriver || !selectedCar) {
+      alert("Please select a driver and car before starting the timer");
+      return;
+    }
+    setStartAnimation(true);
+    setTimeout(() => setStartAnimation(false), 500);
+    setStartTime(Date.now());
+    setIsRunning(true);
+    setLaps([]);
+  };
+
+  const stopTimer = (): void => {
+    if (!isRunning) return;
+    setStopAnimation(true);
+    setTimeout(() => setStopAnimation(false), 500);
+    const finalLapTime = currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
+    const finalLaps = [...laps, finalLapTime];
+    handleSessionCompletion(finalLaps);
+  };
+
+  const validateLapCount = (value: string): boolean => {
+    const num = parseInt(value, 10);
+    return !isNaN(num) && num > 0 && num <= 999;
+  };
+
+  // Render Component
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4">
       {/* Session Configuration Card */}

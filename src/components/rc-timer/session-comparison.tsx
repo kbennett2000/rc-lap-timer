@@ -80,6 +80,11 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     });
   }, []); // Empty dependency array means this runs once on mount
 
+  // Reset car filter when driver changes
+  useEffect(() => {
+    setFilterCar("all");
+  }, [filterDriver]);
+
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -90,6 +95,53 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
       to: endOfDay(new Date()),
     };
   });
+
+  // Get cars for selected driver
+  const getDriverCars = (driverName: string) => {
+    const driverSessions = sessions.filter((session) => session.driverName === driverName);
+    const cars = new Set(driverSessions.map((session) => session.carName));
+    return Array.from(cars);
+  };
+
+  // Filter sessions based on selected driver and car
+  const getFilteredSessions = () => {
+    return sessions
+      .filter((session) => {
+        if (filterDriver !== "all" && session.driverName !== filterDriver) return false;
+        if (filterCar !== "all" && session.carName !== filterCar) return false;
+        if (!isWithinDateRange(session.date)) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
+  const getLineColor = (index: number): string => {
+    const colors = [
+      "#2563eb", // blue
+      "#dc2626", // red
+      "#16a34a", // green
+      "#9333ea", // purple
+      "#ea580c", // orange
+      "#0891b2", // cyan
+    ];
+    return colors[index % colors.length];
+  };
+
+  // Get unique drivers from sessions
+  const getUniqueDrivers = () => {
+    const drivers = new Set(sessions.map((session) => session.driverName));
+    return Array.from(drivers);
+  };
+
+  // Handle session selection
+  const handleSessionSelect = (sessionId: string) => {
+    console.log("Session selected:", sessionId);
+    setSelectedSessions((prev) => {
+      const newSelection = prev.includes(sessionId) ? prev.filter((id) => id !== sessionId) : [...prev, sessionId];
+      console.log("New selection:", newSelection);
+      return newSelection;
+    });
+  };
 
   // Helper function to check if a date is within range
   const isWithinDateRange = (sessionDate: string) => {
@@ -148,46 +200,6 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
 
     console.log("Generated chart data:", data);
     return data;
-  };
-
-  // Handle session selection
-  const handleSessionSelect = (sessionId: string) => {
-    console.log("Session selected:", sessionId);
-    setSelectedSessions((prev) => {
-      const newSelection = prev.includes(sessionId) ? prev.filter((id) => id !== sessionId) : [...prev, sessionId];
-      console.log("New selection:", newSelection);
-      return newSelection;
-    });
-  };
-
-  // Get unique drivers from sessions
-  const getUniqueDrivers = () => {
-    const drivers = new Set(sessions.map((session) => session.driverName));
-    return Array.from(drivers);
-  };
-
-  // Get cars for selected driver
-  const getDriverCars = (driverName: string) => {
-    const driverSessions = sessions.filter((session) => session.driverName === driverName);
-    const cars = new Set(driverSessions.map((session) => session.carName));
-    return Array.from(cars);
-  };
-
-  // Reset car filter when driver changes
-  useEffect(() => {
-    setFilterCar("all");
-  }, [filterDriver]);
-
-  // Filter sessions based on selected driver and car
-  const getFilteredSessions = () => {
-    return sessions
-      .filter((session) => {
-        if (filterDriver !== "all" && session.driverName !== filterDriver) return false;
-        if (filterCar !== "all" && session.carName !== filterCar) return false;
-        if (!isWithinDateRange(session.date)) return false;
-        return true;
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   return (
@@ -434,15 +446,3 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     </Card>
   );
 }
-
-const getLineColor = (index: number): string => {
-  const colors = [
-    "#2563eb", // blue
-    "#dc2626", // red
-    "#16a34a", // green
-    "#9333ea", // purple
-    "#ea580c", // orange
-    "#0891b2", // cyan
-  ];
-  return colors[index % colors.length];
-};
