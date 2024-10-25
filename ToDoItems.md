@@ -1,6 +1,5 @@
 # Items to do:
 - Add the ability to remove penalties
-- Add any animations for the layout change
 - Add different types of penalties
 - Add the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
 
