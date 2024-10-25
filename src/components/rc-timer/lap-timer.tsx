@@ -127,7 +127,6 @@ export default function LapTimer() {
     to: endOfDay(new Date()),
   }));
 
-
   const BestLapsComparison = ({ sessions }: { sessions: Session[] }) => {
     const [filterDriver, setFilterDriver] = useState<string>("all");
     const [filterCar, setFilterCar] = useState<string>("all");
@@ -400,7 +399,6 @@ export default function LapTimer() {
     setShowClearAllDialog(false);
   };
 
-
   const deleteSession = (sessionId: number): void => {
     setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
     setSessionToDelete(null);
@@ -437,6 +435,14 @@ export default function LapTimer() {
   const getCurrentDriverCars = () => {
     const driver = drivers.find((d) => d.id === selectedDriver);
     return driver?.cars || [];
+  };
+
+  // Helper function to calculate current lap time
+  const getCurrentLapTime = (): number => {
+    if (!isRunning || !startTime) return 0;
+    const totalElapsedTime = currentTime;
+    const previousLapsTime = laps.reduce((sum, lap) => sum + lap, 0);
+    return totalElapsedTime - previousLapsTime;
   };
 
   const getPresetDates = (preset: DatePreset) => {
@@ -897,10 +903,12 @@ export default function LapTimer() {
           <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Add lap counter */}
-          <div className={cn("text-center font-mono mb-4 transition-all text-4xl font-bold", lapAnimation && "animate-lap-record")}>
-            Lap: {laps.length + 1}
-            {selectedLapCount !== "unlimited" && <span className="ml-2 text-muted-foreground">of {selectedLapCount}</span>}
+          {/* Current Lap Time */}
+          <div className="text-center text-2xl font-mono text-gray-600">Current Lap: {formatTime(getCurrentLapTime())}</div>
+
+          {/* Lap counter */} 
+          <div className="text-xl font-mono text-center">
+            {isRunning ? (selectedLapCount !== "unlimited" ? (laps.length >= selectedLapCount ? "Timing Session Finished" : `Lap: ${laps.length + 1} of ${selectedLapCount}`) : `Lap: ${laps.length + 1}`) : laps.length > 0 ? "Timing Session Finished" : "Ready"}
           </div>
 
           {/* Timer controls */}
