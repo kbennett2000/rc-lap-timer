@@ -1,6 +1,4 @@
 # Items to do:
-- Make Best Laps Comparison a component like Session Comparison
-
 - Tab UI:
     - TAB1
         - Session Configuration / Stopwatch
