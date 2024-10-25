@@ -1,6 +1,146 @@
 {
   "sessions": [
     {
+      "id": 1729890916000,
+      "date": "2024-10-25T21:15:16.000Z",
+      "driverId": "1729868970739",
+      "driverName": "Alice",
+      "carId": "1729868984396",
+      "carName": "SC10 Pro4",
+      "laps": [
+        5473,
+        5256,
+        5446,
+        5262,
+        8491
+      ],
+      "stats": {
+        "average": 5985.6,
+        "mean": 5446,
+        "totalTime": 29928,
+        "maxPenaltyLap": 5,
+        "maxPenaltyCount": 4
+      },
+      "totalLaps": 5,
+      "penalties": [
+        {
+          "lapNumber": 1,
+          "count": 1
+        },
+        {
+          "lapNumber": 4,
+          "count": 1
+        },
+        {
+          "lapNumber": 5,
+          "count": 4
+        }
+      ],
+      "totalPenalties": 6
+    },
+    {
+      "id": 1729889064128,
+      "date": "2024-10-25T20:44:24.128Z",
+      "driverId": "1729868989350",
+      "driverName": "Bob",
+      "carId": "1729868997706",
+      "carName": "Slash 2wd",
+      "laps": [
+        5784,
+        5164,
+        5459,
+        5687,
+        8512
+      ],
+      "stats": {
+        "average": 6121.2,
+        "mean": 5687,
+        "totalTime": 30606,
+        "maxPenaltyLap": 5,
+        "maxPenaltyCount": 2
+      },
+      "totalLaps": 5,
+      "penalties": [
+        {
+          "lapNumber": 1,
+          "count": 1
+        },
+        {
+          "lapNumber": 5,
+          "count": 2
+        }
+      ],
+      "totalPenalties": 3
+    },
+    {
+      "id": 1729887458656,
+      "date": "2024-10-25T20:17:38.656Z",
+      "driverId": "1729868970739",
+      "driverName": "Alice",
+      "carId": "1729868977987",
+      "carName": "SC10 Pro2",
+      "laps": [
+        4715,
+        6547,
+        4923,
+        5487,
+        4480
+      ],
+      "stats": {
+        "average": 4430.4,
+        "mean": 4715,
+        "totalTime": 22152,
+        "maxPenaltyLap": 1,
+        "maxPenaltyCount": 1
+      },
+      "totalLaps": 5,
+      "penalties": [
+        {
+          "lapNumber": 1,
+          "count": 1
+        }
+      ],
+      "totalPenalties": 1
+    },
+    {
+      "id": 1729884234833,
+      "date": "2024-10-25T19:23:54.833Z",
+      "driverId": "1729868970739",
+      "driverName": "Alice",
+      "carId": "1729868977987",
+      "carName": "SC10 Pro2",
+      "laps": [
+        5641,
+        5784,
+        5704,
+        5613,
+        6764
+      ],
+      "stats": {
+        "average": 5901.2,
+        "mean": 5704,
+        "totalTime": 29506,
+        "maxPenaltyLap": 3,
+        "maxPenaltyCount": 2
+      },
+      "totalLaps": 5,
+      "penalties": [
+        {
+          "lapNumber": 1,
+          "count": 1
+        },
+        {
+          "lapNumber": 3,
+          "count": 2
+        },
+        {
+          "lapNumber": 5,
+          "count": 1
+        }
+      ],
+      "totalPenalties": 4
+    },
+    {
       "id": 1729877202881,
       "date": "2024-10-25T17:26:42.881Z",
       "driverId": "1729868989350",
@@ -226,5 +366,5 @@
       ]
     }
   ],
-  "lastUpdated": "2024-10-25T17:26:42.899Z"
+  "lastUpdated": "2024-10-25T21:15:59.379Z"
 }

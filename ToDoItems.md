@@ -1,4 +1,6 @@
 # Items to do:
+- Add transitions between tabs
+- Add any animations for the layout change
 - Add the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
 
 # Other things to add:
