@@ -360,10 +360,6 @@ export default function LapTimer() {
     saveData();
   };
 
-  const handleTabSwitch = (index: number) => {
-    setActiveTab(index);
-  };
-
   const isCarNameUniqueForDriver = (name: string): boolean => {
     const currentDriver = drivers.find((d) => d.id === selectedDriver);
     if (!currentDriver) return true;
