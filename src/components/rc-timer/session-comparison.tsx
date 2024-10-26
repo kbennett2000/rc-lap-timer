@@ -96,13 +96,6 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     };
   });
 
-  // Get cars for selected driver
-  const getDriverCars = (driverName: string) => {
-    const driverSessions = sessions.filter((session) => session.driverName === driverName);
-    const cars = new Set(driverSessions.map((session) => session.carName));
-    return Array.from(cars);
-  };
-
   // Filter sessions based on selected driver and car
   const getFilteredSessions = () => {
     return sessions
@@ -127,10 +120,21 @@ export function SessionComparison({ sessions }: { sessions: Session[] }) {
     return colors[index % colors.length];
   };
 
-  // Get unique drivers from sessions
+  // Get unique drivers from sessions - sorted alphabetically
   const getUniqueDrivers = () => {
     const drivers = new Set(sessions.map((session) => session.driverName));
-    return Array.from(drivers);
+    return Array.from(drivers)
+      .filter((name) => name && name.trim() !== "")
+      .sort((a, b) => a.localeCompare(b));
+  };
+
+  // Get cars for selected driver - sorted alphabetically
+  const getDriverCars = (driverName: string) => {
+    const driverSessions = sessions.filter((session) => session.driverName === driverName);
+    const cars = new Set(driverSessions.map((session) => session.carName));
+    return Array.from(cars)
+      .filter((name) => name && name.trim() !== "")
+      .sort((a, b) => a.localeCompare(b));
   };
 
   // Handle session selection

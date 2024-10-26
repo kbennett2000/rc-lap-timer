@@ -47,17 +47,24 @@ export default function LapTimer() {
   const [penalties, setPenalties] = useState<PenaltyData[]>([]);
   const [penaltyAnimation, setPenaltyAnimation] = useState(false);
   const [activeTab, setActiveTab] = useState("current");
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // Initial mobile layout state
+  const [isMobile, setIsMobile] = useState(false); // Initial mobile layout state
+  const [filterDriver, setFilterDriver] = useState<string>("all");
+  const [filterCar, setFilterCar] = useState<string>("all");
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Listen for window resize events
   useEffect(() => {
-    const handleResize = () => {
+    if (typeof window !== 'undefined') {
       setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+  
+      const handleResize = () => {
+        setIsMobile(window.innerWidth <= 768);
+      };
+  
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
   }, []);
 
   useEffect(() => {
@@ -892,6 +899,57 @@ export default function LapTimer() {
                         </div>
                       </CardHeader>
                       <CardContent>
+                        {/* Driver and Car Filters */}
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="space-y-2">
+                            <Label>Filter by Driver</Label>
+                            <Select
+                              value={filterDriver}
+                              onValueChange={(value) => {
+                                setFilterDriver(value);
+                                setFilterCar("all"); // Reset car filter when driver changes
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Drivers" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Drivers</SelectItem>
+                                {/* Get unique drivers from sessions */}
+                                {Array.from(new Set(savedSessions.map((session) => session.driverName)))
+                                  .filter((name) => name && name.trim() !== "")
+                                  .sort((a, b) => a.localeCompare(b))
+                                  .map((driver) => (
+                                    <SelectItem key={driver} value={driver}>
+                                      {driver}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Filter by Car</Label>
+                            <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
+                              <SelectTrigger disabled={filterDriver === "all"}>
+                                <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Cars</SelectItem>
+                                {filterDriver !== "all" &&
+                                  Array.from(new Set(savedSessions.filter((session) => session.driverName === filterDriver).map((session) => session.carName)))
+                                    .filter((name) => name && name.trim() !== "")
+                                    .sort((a, b) => a.localeCompare(b))
+                                    .map((car) => (
+                                      <SelectItem key={car} value={car}>
+                                        {car}
+                                      </SelectItem>
+                                    ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
                         {/* Date Range Filter */}
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
@@ -1005,7 +1063,13 @@ export default function LapTimer() {
 
                         {/* Sessions List */}
                         <div className="space-y-6">
-                          {sortSessionsByDate(savedSessions.filter((session) => (currentSession ? session.id !== currentSession.id : true)).filter((session) => isWithinPreviousSessionsDateRange(session.date))).map((session) => (
+                          {sortSessionsByDate(
+                            savedSessions
+                              .filter((session) => (currentSession ? session.id !== currentSession.id : true))
+                              .filter((session) => isWithinPreviousSessionsDateRange(session.date))
+                              .filter((session) => filterDriver === "all" || session.driverName === filterDriver)
+                              .filter((session) => filterCar === "all" || session.carName === filterCar)
+                          ).map((session) => (
                             <div key={session.id} className="border-t pt-4 first:border-t-0 first:pt-0">
                               <div className="flex justify-between items-center mb-2">
                                 <div>

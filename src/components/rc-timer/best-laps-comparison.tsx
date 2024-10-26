@@ -120,12 +120,16 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
 
   const bestLaps = findBestLaps(sessions);
 
-  // Get unique drivers
-  const uniqueDrivers = Array.from(new Set(bestLaps.map((lap) => lap.driverName))).filter((name) => name && name.trim() !== "");
+  // Get unique drivers - sorted alphabetically
+  const uniqueDrivers = Array.from(new Set(bestLaps.map((lap) => lap.driverName)))
+    .filter((name) => name && name.trim() !== "")
+    .sort((a, b) => a.localeCompare(b));
 
-  // Get cars for selected driver
+  // Get cars for selected driver - sorted alphabetically
   const getAvailableCars = (driverName: string) => {
-    return Array.from(new Set(bestLaps.filter((lap) => lap.driverName === driverName).map((lap) => lap.carName))).filter((name) => name && name.trim() !== "");
+    return Array.from(new Set(bestLaps.filter((lap) => lap.driverName === driverName).map((lap) => lap.carName)))
+      .filter((name) => name && name.trim() !== "")
+      .sort((a, b) => a.localeCompare(b));
   };
 
   // Reset car filter when driver changes
@@ -151,7 +155,6 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
         {/* Filters */}
         <div className="space-x-4 mb-4">
           <div className="grid grid-cols-2 gap-4">
-
             {/* Filter By Driver */}
             <div className="space-y-2">
               <Label>Filter by Driver</Label>

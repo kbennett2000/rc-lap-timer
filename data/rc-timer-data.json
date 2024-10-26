@@ -1,201 +1,23 @@
 {
   "sessions": [
     {
-      "id": 1729890916000,
-      "date": "2024-10-25T21:15:16.000Z",
-      "driverId": "1729868970739",
-      "driverName": "Alice",
-      "carId": "1729868984396",
-      "carName": "SC10 Pro4",
-      "laps": [
-        5473,
-        5256,
-        5446,
-        5262,
-        8491
-      ],
-      "stats": {
-        "average": 5985.6,
-        "mean": 5446,
-        "totalTime": 29928,
-        "maxPenaltyLap": 5,
-        "maxPenaltyCount": 4
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 1,
-          "count": 1
-        },
-        {
-          "lapNumber": 4,
-          "count": 1
-        },
-        {
-          "lapNumber": 5,
-          "count": 4
-        }
-      ],
-      "totalPenalties": 6
-    },
-    {
-      "id": 1729889064128,
-      "date": "2024-10-25T20:44:24.128Z",
-      "driverId": "1729868989350",
+      "id": 1729901741579,
+      "date": "2024-10-26T00:15:41.579Z",
+      "driverId": "1729900848171",
       "driverName": "Bob",
-      "carId": "1729868997706",
+      "carId": "1729900874138",
       "carName": "Slash 2wd",
       "laps": [
-        5784,
-        5164,
-        5459,
-        5687,
-        8512
+        5470,
+        5469,
+        5564,
+        5445,
+        5424
       ],
       "stats": {
-        "average": 6121.2,
-        "mean": 5687,
-        "totalTime": 30606,
-        "maxPenaltyLap": 5,
-        "maxPenaltyCount": 2
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 1,
-          "count": 1
-        },
-        {
-          "lapNumber": 5,
-          "count": 2
-        }
-      ],
-      "totalPenalties": 3
-    },
-    {
-      "id": 1729887458656,
-      "date": "2024-10-25T20:17:38.656Z",
-      "driverId": "1729868970739",
-      "driverName": "Alice",
-      "carId": "1729868977987",
-      "carName": "SC10 Pro2",
-      "laps": [
-        4715,
-        6547,
-        4923,
-        5487,
-        4480
-      ],
-      "stats": {
-        "average": 4430.4,
-        "mean": 4715,
-        "totalTime": 22152,
-        "maxPenaltyLap": 1,
-        "maxPenaltyCount": 1
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 1,
-          "count": 1
-        }
-      ],
-      "totalPenalties": 1
-    },
-    {
-      "id": 1729884234833,
-      "date": "2024-10-25T19:23:54.833Z",
-      "driverId": "1729868970739",
-      "driverName": "Alice",
-      "carId": "1729868977987",
-      "carName": "SC10 Pro2",
-      "laps": [
-        5641,
-        5784,
-        5704,
-        5613,
-        6764
-      ],
-      "stats": {
-        "average": 5901.2,
-        "mean": 5704,
-        "totalTime": 29506,
-        "maxPenaltyLap": 3,
-        "maxPenaltyCount": 2
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 1,
-          "count": 1
-        },
-        {
-          "lapNumber": 3,
-          "count": 2
-        },
-        {
-          "lapNumber": 5,
-          "count": 1
-        }
-      ],
-      "totalPenalties": 4
-    },
-    {
-      "id": 1729877202881,
-      "date": "2024-10-25T17:26:42.881Z",
-      "driverId": "1729868989350",
-      "driverName": "Bob",
-      "carId": "1729869004242",
-      "carName": "Slash 4x4",
-      "laps": [
-        6438,
-        6455,
-        6419,
-        4834,
-        7418
-      ],
-      "stats": {
-        "average": 6312.8,
-        "mean": 6438,
-        "totalTime": 31564,
-        "maxPenaltyLap": 2,
-        "maxPenaltyCount": 2
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 2,
-          "count": 2
-        },
-        {
-          "lapNumber": 3,
-          "count": 1
-        },
-        {
-          "lapNumber": 5,
-          "count": 1
-        }
-      ],
-      "totalPenalties": 4
-    },
-    {
-      "id": 1729877152856,
-      "date": "2024-10-25T17:25:52.856Z",
-      "driverId": "1729868970739",
-      "driverName": "Alice",
-      "carId": "1729868984396",
-      "carName": "SC10 Pro4",
-      "laps": [
-        4499,
-        4484,
-        4447,
-        4611,
-        4468
-      ],
-      "stats": {
-        "average": 4501.8,
-        "mean": 4484,
-        "totalTime": 22509,
+        "average": 5474.4,
+        "mean": 5469,
+        "totalTime": 27372,
         "maxPenaltyLap": null,
         "maxPenaltyCount": 0
       },
@@ -204,167 +26,60 @@
       "totalPenalties": 0
     },
     {
-      "id": 1729877110223,
-      "date": "2024-10-25T17:25:10.223Z",
-      "driverId": "1729868970739",
+      "id": 1729900920235,
+      "date": "2024-10-26T00:02:00.235Z",
+      "driverId": "1729900840274",
       "driverName": "Alice",
-      "carId": "1729868977987",
+      "carId": "1729900859513",
       "carName": "SC10 Pro2",
       "laps": [
-        5450,
-        5378,
-        5395,
-        5680,
-        6617
+        5472,
+        5550,
+        5543,
+        5527,
+        5472
       ],
       "stats": {
-        "average": 5704,
-        "mean": 5450,
-        "totalTime": 28520,
-        "maxPenaltyLap": 2,
-        "maxPenaltyCount": 19
+        "average": 5512.8,
+        "mean": 5527,
+        "totalTime": 27564,
+        "maxPenaltyLap": null,
+        "maxPenaltyCount": 0
       },
       "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 1,
-          "count": 1
-        },
-        {
-          "lapNumber": 2,
-          "count": 19
-        },
-        {
-          "lapNumber": 4,
-          "count": 3
-        }
-      ],
-      "totalPenalties": 23
-    },
-    {
-      "id": 1729876372728,
-      "date": "2024-10-25T17:12:52.728Z",
-      "driverId": "1729868970739",
-      "driverName": "Alice",
-      "carId": "1729868977987",
-      "carName": "SC10 Pro2",
-      "laps": [
-        5334,
-        5490,
-        5378,
-        5563,
-        5767
-      ],
-      "stats": {
-        "average": 5506.4,
-        "mean": 5490,
-        "totalTime": 27532,
-        "maxPenaltyLap": 5,
-        "maxPenaltyCount": 1
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 5,
-          "count": 1
-        }
-      ],
-      "totalPenalties": 1
-    },
-    {
-      "id": 1729870161191,
-      "date": "2024-10-25T15:29:21.191Z",
-      "driverId": "1729868970739",
-      "driverName": "Alice",
-      "carId": "1729868977987",
-      "carName": "SC10 Pro2",
-      "laps": [
-        5410,
-        5496,
-        5736,
-        5215,
-        5885
-      ],
-      "stats": {
-        "average": 5548.4,
-        "mean": 5496,
-        "totalTime": 27742,
-        "maxPenaltyLap": 3,
-        "maxPenaltyCount": 2
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 3,
-          "count": 2
-        }
-      ],
-      "totalPenalties": 2
-    },
-    {
-      "id": 1729869056845,
-      "date": "2024-10-25T15:10:56.845Z",
-      "driverId": "1729868989350",
-      "driverName": "Bob",
-      "carId": "1729868997706",
-      "carName": "Slash 2wd",
-      "laps": [
-        5439,
-        5490,
-        5471,
-        5430,
-        5381
-      ],
-      "stats": {
-        "average": 5442.2,
-        "mean": 5439,
-        "totalTime": 27211,
-        "maxPenaltyLap": 3,
-        "maxPenaltyCount": 2
-      },
-      "totalLaps": 5,
-      "penalties": [
-        {
-          "lapNumber": 3,
-          "count": 2
-        },
-        {
-          "lapNumber": 5,
-          "count": 1
-        }
-      ],
-      "totalPenalties": 3
+      "penalties": [],
+      "totalPenalties": 0
     }
   ],
   "drivers": [
     {
-      "id": "1729868970739",
+      "id": "1729900840274",
       "name": "Alice",
       "cars": [
         {
-          "id": "1729868977987",
+          "id": "1729900859513",
           "name": "SC10 Pro2"
         },
         {
-          "id": "1729868984396",
+          "id": "1729900865923",
           "name": "SC10 Pro4"
         }
       ]
     },
     {
-      "id": "1729868989350",
+      "id": "1729900848171",
       "name": "Bob",
       "cars": [
         {
-          "id": "1729868997706",
+          "id": "1729900874138",
           "name": "Slash 2wd"
         },
         {
-          "id": "1729869004242",
+          "id": "1729900879993",
           "name": "Slash 4x4"
         }
       ]
     }
   ],
-  "lastUpdated": "2024-10-25T23:48:01.158Z"
+  "lastUpdated": "2024-10-26T00:25:52.925Z"
 }
