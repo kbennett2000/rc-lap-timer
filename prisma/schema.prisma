@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")  
+}
+
+model Driver {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  cars     Car[]
+  sessions Session[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Car {
+  id        String    @id @default(uuid())
+  name      String
+  driver    Driver    @relation(fields: [driverId], references: [id])
+  driverId  String
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([driverId, name])
+}
+
+model Session {
+  id            String   @id @default(uuid())
+  date          DateTime
+  driver        Driver   @relation(fields: [driverId], references: [id])
+  driverId      String
+  driverName    String   
+  car           Car      @relation(fields: [carId], references: [id])
+  carId         String
+  carName       String   
+  totalLaps     Int
+  laps          Lap[]
+  penalties     Penalty[]
+  totalTime     Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Lap {
+  id        String   @id @default(uuid())
+  session   Session  @relation(fields: [sessionId], references: [id])
+  sessionId String
+  lapNumber Int
+  lapTime   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+}
+
+model Penalty {
+  id        String   @id @default(uuid())
+  session   Session  @relation(fields: [sessionId], references: [id])
+  sessionId String
+  lapNumber Int
+  count     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

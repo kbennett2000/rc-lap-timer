@@ -10,7 +10,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Car, Driver, LapStats, PenaltyData, PersistentData, Session } from "@/types/rc-timer";
 import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,23 +18,19 @@ import cn from "classnames";
 import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion"; // Added Framer Motion import
+import { Driver, Car, Session, LapStats } from "@/types/rc-timer";
 
 export default function LapTimer() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [laps, setLaps] = useState<number[]>([]);
-  const [savedSessions, setSavedSessions] = useState<Session[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const [showClearAllDialog, setShowClearAllDialog] = useState<boolean>(false);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [selectedDriver, setSelectedDriver] = useState<string>("");
-  const [selectedCar, setSelectedCar] = useState<string>("");
   const [newDriverName, setNewDriverName] = useState<string>("");
   const [newCarName, setNewCarName] = useState<string>("");
   const [showNewDriver, setShowNewDriver] = useState<boolean>(false);
   const [showNewCar, setShowNewCar] = useState<boolean>(false);
-  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<string | null>(null);
   const [selectedLapCount, setSelectedLapCount] = useState<"unlimited" | number>("unlimited");
@@ -50,6 +45,12 @@ export default function LapTimer() {
   const [isMobile, setIsMobile] = useState(false); // Initial mobile layout state
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [selectedDriver, setSelectedDriver] = useState<string>("");
+  const [selectedCar, setSelectedCar] = useState<string>("");
+  const [savedSessions, setSavedSessions] = useState<Session[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -193,19 +194,56 @@ export default function LapTimer() {
     };
   };
 
-  const clearAllSessions = (): void => {
-    // If there's a current session, keep only that one
-    if (currentSessionId) {
-      setSavedSessions(savedSessions.filter((session) => session.id === currentSessionId));
-    } else {
+  const clearAllSessions = async (): Promise<void> => {
+    setIsClearingAll(true);
+    try {
+      const response = await fetch("/api/data", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ clearAll: true }),
+      });
+
+      if (!response.ok) throw new Error("Failed to clear sessions");
+
       setSavedSessions([]);
+      setShowClearAllDialog(false);
+    } catch (error) {
+      console.error("Error clearing sessions:", error);
+      alert("Failed to clear sessions. Please try again.");
+    } finally {
+      setIsClearingAll(false);
     }
-    setShowClearAllDialog(false);
   };
 
-  const deleteSession = (sessionId: number): void => {
-    setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
-    setSessionToDelete(null);
+  const deleteSession = async (sessionId: string): Promise<void> => {
+    try {
+      console.log("Attempting to delete session:", sessionId); // Debug log
+
+      const response = await fetch("/api/data", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: sessionId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Delete response error:", errorData); // Debug log
+        throw new Error(errorData.error || "Failed to delete session");
+      }
+
+      const data = await response.json();
+      console.log("Delete response:", data); // Debug log
+
+      setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
+      setSessionToDelete(null);
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      alert("Failed to delete session. Please try again.");
+    }
   };
 
   const getBestLap = (laps: number[]) => {
@@ -215,7 +253,7 @@ export default function LapTimer() {
     return { time: bestTime, lapNumber: bestLapIndex + 1 };
   };
 
-  const getCurrentDriverCars = () => {
+  const getCurrentDriverCars = (): Car[] => {
     const driver = drivers.find((d) => d.id === selectedDriver);
     return driver?.cars || [];
   };
@@ -223,14 +261,49 @@ export default function LapTimer() {
   // Helper function to calculate current lap time
   const getCurrentLapTime = (): number => {
     if (!isRunning || !startTime) return 0;
+
+    // Debug logs
+    console.log("Current Time:", currentTime);
+    console.log("Laps:", laps);
+    console.log("Start Time:", startTime);
+
+    // Get total elapsed time since start
     const totalElapsedTime = currentTime;
-    const previousLapsTime = laps.reduce((sum, lap) => sum + lap, 0);
-    return totalElapsedTime - previousLapsTime;
+
+    // Calculate completed laps time with validation
+    const completedLapsTime = laps.reduce((sum, lap) => {
+      const lapTime = typeof lap === "object" ? lap.lapTime : lap;
+      if (typeof lapTime !== "number" || isNaN(lapTime)) {
+        console.warn("Invalid lap time:", lap);
+        return sum;
+      }
+      return sum + lapTime;
+    }, 0);
+
+    console.log("Total Elapsed Time:", totalElapsedTime);
+    console.log("Completed Laps Time:", completedLapsTime);
+
+    const currentLapTime = totalElapsedTime - completedLapsTime;
+    console.log("Current Lap Time:", currentLapTime);
+
+    // Ensure we return a valid number
+    return isNaN(currentLapTime) ? 0 : currentLapTime;
   };
 
   // State for last three sessions
   const getLastThreeSessions = () => {
-    return savedSessions.filter((session) => (currentSession ? session.id !== currentSession.id : true)).slice(0, 3);
+    // First filter out current session
+    const filteredSessions = savedSessions.filter((session) => (currentSession ? session.id !== currentSession.id : true));
+
+    // Sort by date, newest first
+    const sortedSessions = filteredSessions.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA;
+    });
+
+    // Get only the first three
+    return sortedSessions.slice(0, 3);
   };
 
   const getPresetDates = (preset: DatePreset) => {
@@ -334,30 +407,72 @@ export default function LapTimer() {
     setNewDriverName(newName);
   };
 
-  const handleSessionCompletion = (completedLaps: number[]): void => {
+  const handleSessionCompletion = async (completedLaps: number[]): void => {
     setIsRunning(false);
+    setStartTime(null);
+    setCurrentTime(0);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
 
     const driver = drivers.find((d) => d.id === selectedDriver);
     const car = driver?.cars.find((c) => c.id === selectedCar);
+    if (!driver || !car) return;
 
-    const newSession: Session = {
-      id: Date.now(),
+    console.log("Completed laps:", completedLaps);
+
+    // Calculate total time
+    const totalTime = completedLaps.reduce((sum, lap) => sum + lap, 0);
+
+    // Calculate stats using the raw lap times
+    const stats = calculateStats(completedLaps);
+    stats.totalTime = totalTime;
+
+    const sessionId = Date.now().toString();
+
+    // Format laps with proper structure
+    const formattedLaps = completedLaps.map((lapTime, index) => ({
+      lapNumber: index + 1,
+      lapTime: Math.round(lapTime || 0), // Ensure we have valid numbers
+    }));
+
+    console.log("Formatted laps for saving:", formattedLaps);
+
+    const newSession: Partial<Session> = {
+      id: sessionId,
       date: sessionStartTime ?? new Date().toISOString(),
       driverId: selectedDriver,
-      driverName: driver?.name ?? "",
+      driverName: driver.name,
       carId: selectedCar,
-      carName: car?.name ?? "",
-      laps: completedLaps,
-      stats: calculateStats(completedLaps),
-      totalLaps: selectedLapCount,
-      penalties: penalties, // Add the penalties array
-      totalPenalties: penalties.reduce((sum, p) => sum + p.count, 0), // Add total penalties
+      carName: car.name,
+      laps: formattedLaps,
+      penalties,
+      totalLaps: selectedLapCount === "unlimited" ? completedLaps.length : selectedLapCount,
+      stats,
     };
 
-    setCurrentSession(null);
-    setPenalties([]); // Reset penalties for next session
-    setSavedSessions((prev) => [newSession, ...prev]);
-    saveData();
+    try {
+      const response = await fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drivers,
+          sessions: [...savedSessions, newSession],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save session");
+      }
+
+      setCurrentSession(null);
+      setPenalties([]);
+      await loadSavedData();
+    } catch (error) {
+      console.error("Error saving session:", error);
+      alert("Failed to save session. Please try again.");
+    }
   };
 
   const isCarNameUniqueForDriver = (name: string): boolean => {
@@ -442,10 +557,41 @@ export default function LapTimer() {
       const response = await fetch("/api/data");
       if (!response.ok) throw new Error("Failed to load data");
 
-      const data: PersistentData = await response.json();
-      setSavedSessions(data.sessions || []);
-      setDrivers(data.drivers || []);
-      console.log("Data loaded:", data.lastUpdated);
+      const data = await response.json();
+      console.log("Loaded data:", data);
+
+      // Transform the sessions data
+      const sessions = data.sessions.map((session: any) => {
+        // Sort laps by lap number
+        const sortedLaps = [...session.laps].sort((a: any, b: any) => a.lapNumber - b.lapNumber);
+
+        // Extract lap times for calculations
+        const lapTimes = sortedLaps.map((lap) => lap.lapTime);
+
+        // Calculate statistics
+        const totalTime = lapTimes.reduce((sum, time) => sum + time, 0);
+        const average = totalTime / lapTimes.length;
+        const bestLap = Math.min(...lapTimes);
+        const worstLap = Math.max(...lapTimes);
+
+        return {
+          ...session,
+          date: new Date(session.date).toISOString(),
+          laps: sortedLaps,
+          stats: {
+            average,
+            totalTime,
+            bestLap,
+            worstLap,
+          },
+          penalties: session.penalties || [],
+          totalPenalties: session.penalties?.reduce((sum: number, p: any) => sum + p.count, 0) || 0,
+        };
+      });
+
+      console.log("Transformed sessions:", sessions);
+      setSavedSessions(sessions);
+      setDrivers(data.drivers);
     } catch (error) {
       console.error("Error loading data:", error);
     }
@@ -457,15 +603,23 @@ export default function LapTimer() {
     setLapAnimation(true);
     setTimeout(() => setLapAnimation(false), 300);
 
+    // Calculate the current lap time
     const lastLapEndTime = laps.reduce((sum, lap) => sum + lap, 0);
     const currentLapTime = currentTime - lastLapEndTime;
-    const newLaps = [...laps, currentLapTime];
-    setLaps(newLaps);
+
+    console.log("Recording lap:", {
+      currentTime,
+      lastLapEndTime,
+      currentLapTime,
+      existingLaps: laps,
+    });
+
+    // Add the new lap time as a number
+    setLaps((prev) => [...prev, currentLapTime]);
 
     // Check if we've reached the selected number of laps
-    if (selectedLapCount !== "unlimited" && newLaps.length >= selectedLapCount) {
-      // Automatically stop the timer and save the session
-      handleSessionCompletion(newLaps);
+    if (selectedLapCount !== "unlimited" && laps.length + 1 >= selectedLapCount) {
+      handleSessionCompletion([...laps, currentLapTime]);
     }
   };
 
@@ -754,7 +908,6 @@ export default function LapTimer() {
                               <h3 className="font-semibold">Session Info:</h3>
                               <div className="font-mono">Driver: {drivers.find((d) => d.id === selectedDriver)?.name}</div>
                               <div className="font-mono">Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}</div>
-                              <div className="font-mono">Time: {sessionStartTime ? formatDateTime(sessionStartTime) : "Not started"}</div>
                               <h3 className="font-semibold mt-4">Lap Times:</h3>
 
                               {/* Current Session lap times */}
@@ -808,6 +961,7 @@ export default function LapTimer() {
                         {/* Display last three sessions using your existing session display code */}
                         {getLastThreeSessions().map((session) => (
                           <div key={session.id} className="border-t pt-4 first:border-t-0 first:pt-0">
+                            {/* ... session header ... */}
                             <div className="flex justify-between items-center mb-2">
                               <div>
                                 <h3 className="font-semibold">{formatDateTime(session.date)}</h3>
@@ -824,53 +978,49 @@ export default function LapTimer() {
                               {/* Lap Times Section */}
                               <div>
                                 <h4 className="font-semibold mb-2">Lap Times:</h4>
-                                {session.laps.map((lap, index) => {
-                                  const lapNumber = index + 1;
-                                  const lapPenalties = session.penalties.find((p) => p.lapNumber === lapNumber)?.count || 0;
-                                  const bestLap = Math.min(...session.laps);
-                                  const worstLap = Math.max(...session.laps);
-                                  const isBestLap = lap === bestLap;
-                                  const isWorstLap = lap === worstLap;
-                                  const hasMaxPenalties = session.stats.maxPenaltyLap === lapNumber;
+                                {/* Sort laps by lap number before displaying */}
+                                {[...session.laps]
+                                  .sort((a, b) => a.lapNumber - b.lapNumber)
+                                  .map((lap) => {
+                                    const bestLap = Math.min(...session.laps.map((l) => l.lapTime));
+                                    const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
+                                    const isBestLap = lap.lapTime === bestLap;
+                                    const isWorstLap = lap.lapTime === worstLap;
 
-                                  return (
-                                    <div key={index} className={cn("font-mono", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "", hasMaxPenalties ? "bg-yellow-50" : "")}>
-                                      {/* Base lap time info */}
-                                      <div className="flex items-center">
+                                    console.log("Displaying lap:", {
+                                      lapNumber: lap.lapNumber,
+                                      lapTime: lap.lapTime,
+                                      isBestLap,
+                                      isWorstLap,
+                                    });
+
+                                    return (
+                                      <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
                                         <span className="min-w-[100px]">
-                                          Lap {lapNumber}: {formatTime(lap)}
+                                          Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
                                         </span>
+                                        {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
+                                        {isWorstLap && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
                                       </div>
-
-                                      {/* Flags in a vertical stack on mobile */}
-                                      <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 mt-1 sm:mt-0 sm:ml-2">
-                                        {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full w-fit">Best Lap</span>}
-                                        {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full w-fit">Slowest Lap</span>}
-                                        {lapPenalties > 0 && (
-                                          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full w-fit">
-                                            {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
-                                          </span>
-                                        )}
-                                        {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full w-fit">Most Penalties</span>}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  })}
                               </div>
 
                               {/* Statistics Section */}
                               <div className="border-t md:border-t-0 pt-4 md:pt-0 mt-4 md:mt-0">
                                 <h4 className="font-semibold mb-2">Statistics:</h4>
                                 <div className="space-y-2">
-                                  <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
-                                  {/* <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div> */}
-                                  <div className="space-y-1 mt-2">
-                                    <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(Math.min(...session.laps))}</div>
-                                    <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(Math.max(...session.laps))}</div>
-                                    <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
-                                  </div>
-                                  <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
-                                  {/* <div className="font-mono">Total Laps: {session.laps.length}</div> */}
+                                  {session.stats && (
+                                    <>
+                                      <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
+                                      <div className="space-y-1 mt-2">
+                                        <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>
+                                        <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>
+                                        <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
+                                      </div>
+                                      <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1085,53 +1235,49 @@ export default function LapTimer() {
                                 {/* Lap Times Section */}
                                 <div>
                                   <h4 className="font-semibold mb-2">Lap Times:</h4>
-                                  {session.laps.map((lap, index) => {
-                                    const lapNumber = index + 1;
-                                    const lapPenalties = session.penalties.find((p) => p.lapNumber === lapNumber)?.count || 0;
-                                    const bestLap = Math.min(...session.laps);
-                                    const worstLap = Math.max(...session.laps);
-                                    const isBestLap = lap === bestLap;
-                                    const isWorstLap = lap === worstLap;
-                                    const hasMaxPenalties = session.stats.maxPenaltyLap === lapNumber;
+                                  {/* Sort laps by lap number before displaying */}
+                                  {[...session.laps]
+                                    .sort((a, b) => a.lapNumber - b.lapNumber)
+                                    .map((lap) => {
+                                      const bestLap = Math.min(...session.laps.map((l) => l.lapTime));
+                                      const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
+                                      const isBestLap = lap.lapTime === bestLap;
+                                      const isWorstLap = lap.lapTime === worstLap;
 
-                                    return (
-                                      <div key={index} className={cn("font-mono", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "", hasMaxPenalties ? "bg-yellow-50" : "")}>
-                                        {/* Base lap time info */}
-                                        <div className="flex items-center">
+                                      console.log("Displaying lap:", {
+                                        lapNumber: lap.lapNumber,
+                                        lapTime: lap.lapTime,
+                                        isBestLap,
+                                        isWorstLap,
+                                      });
+
+                                      return (
+                                        <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
                                           <span className="min-w-[100px]">
-                                            Lap {lapNumber}: {formatTime(lap)}
+                                            Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
                                           </span>
+                                          {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
+                                          {isWorstLap && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
                                         </div>
-
-                                        {/* Flags in a vertical stack on mobile */}
-                                        <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 mt-1 sm:mt-0 sm:ml-2">
-                                          {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full w-fit">Best Lap</span>}
-                                          {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full w-fit">Slowest Lap</span>}
-                                          {lapPenalties > 0 && (
-                                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full w-fit">
-                                              {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
-                                            </span>
-                                          )}
-                                          {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full w-fit">Most Penalties</span>}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                                      );
+                                    })}
                                 </div>
 
                                 {/* Statistics Section */}
                                 <div className="border-t md:border-t-0 pt-4 md:pt-0 mt-4 md:mt-0">
                                   <h4 className="font-semibold mb-2">Statistics:</h4>
                                   <div className="space-y-2">
-                                    <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
-                                    {/* <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div> */}
-                                    <div className="space-y-1 mt-2">
-                                      <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(Math.min(...session.laps))}</div>
-                                      <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(Math.max(...session.laps))}</div>
-                                      <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
-                                    </div>
-                                    <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
-                                    {/* <div className="font-mono">Total Laps: {session.laps.length}</div> */}
+                                    {session.stats && (
+                                      <>
+                                        <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
+                                        <div className="space-y-1 mt-2">
+                                          <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>
+                                          <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>
+                                          <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
+                                        </div>
+                                        <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -1155,6 +1301,7 @@ export default function LapTimer() {
 
               {/* Session Comparison Tab */}
               <TabsContent value="compare" className="px-4 space-y-4 h-full overflow-y-auto">
+              {console.log('Rendering Session Comparison with sessions:', savedSessions)}
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
                   {Array.isArray(savedSessions) && savedSessions.length > 1 && <SessionComparison sessions={savedSessions} />}
                 </motion.div>
@@ -1202,7 +1349,7 @@ export default function LapTimer() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deleteSession(sessionToDelete?.id!)} className="bg-red-500 hover:bg-red-600">
+              <AlertDialogAction onClick={() => sessionToDelete && deleteSession(sessionToDelete.id.toString())} className="bg-red-500 hover:bg-red-600">
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -1214,10 +1361,7 @@ export default function LapTimer() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Clear All Sessions</AlertDialogTitle>
-              <AlertDialogDescription>
-                WHOA!! ARE YOU SURE ABOUT THIS??? <br />
-                <br /> You're about to delete ALL THE SESSSIONS! Literally all the laps you've ever recorded are going to get deleted and YOU CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???
-              </AlertDialogDescription>
+              <AlertDialogDescription>WHOA!! You're about to delete ALL YOUR SESSSIONS! Literally all the laps you've ever recorded are going to get deleted and YOU CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>

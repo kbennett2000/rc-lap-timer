@@ -98,19 +98,21 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
     const bestLaps: BestLapRecord[] = [];
 
     sessions.forEach((session) => {
-      const bestLapTime = Math.min(...session.laps);
-      const lapNumber = session.laps.indexOf(bestLapTime) + 1;
+      const lapTimes = session.laps.map((lap) => lap.lapTime);
+      const bestLapTime = Math.min(...lapTimes);
+      const bestLap = session.laps.find((lap) => lap.lapTime === bestLapTime);
+      if (!bestLap) return;
 
-      // Get penalties for this specific lap
-      const lapPenalties = session.penalties?.find((p) => p.lapNumber === lapNumber)?.count || 0;
+      // Get penalties for this lap
+      const lapPenalties = session.penalties.find((p) => p.lapNumber === bestLap.lapNumber)?.count || 0;
 
       bestLaps.push({
         sessionId: session.id,
         date: session.date,
-        driverName: session.driverName,
-        carName: session.carName,
+        driverName: session.driver.name,
+        carName: session.car.name,
         lapTime: bestLapTime,
-        lapNumber: lapNumber,
+        lapNumber: bestLap.lapNumber,
         penalties: lapPenalties,
       });
     });

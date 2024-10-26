@@ -1,7 +1,7 @@
 # Items to do:
 - Add the ability to remove penalties
 - Add different types of penalties
-- Add the ability for multiple users to use this app at the same time. Each use will be timing a different driver.
+- Add the ability for multiple users to use this app at the same time. Each user will be timing a different driver.
 
 # Other things to add:
 - Add more statistical information?
