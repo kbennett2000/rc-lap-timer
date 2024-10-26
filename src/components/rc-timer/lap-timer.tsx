@@ -55,13 +55,13 @@ export default function LapTimer() {
 
   // Listen for window resize events
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       setIsMobile(window.innerWidth <= 768);
-  
+
       const handleResize = () => {
         setIsMobile(window.innerWidth <= 768);
       };
-  
+
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
     }
@@ -781,7 +781,9 @@ export default function LapTimer() {
                             <div>
                               <h3 className="font-semibold">Statistics:</h3>
                               <div className="font-mono">Average: {formatTime(calculateStats(laps).average)}</div>
-                              <div className="font-mono">Mean: {formatTime(calculateStats(laps).mean)}</div>
+
+                              {/* <div className="font-mono">Mean: {formatTime(calculateStats(laps).mean)}</div> */}
+
                               {laps.length > 0 && (
                                 <>
                                   <div className="font-mono text-green-600 font-bold mt-2">Best Lap: {formatTime(Math.min(...laps))}</div>
@@ -861,14 +863,14 @@ export default function LapTimer() {
                                 <h4 className="font-semibold mb-2">Statistics:</h4>
                                 <div className="space-y-2">
                                   <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
-                                  <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div>
+                                  {/* <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div> */}
                                   <div className="space-y-1 mt-2">
                                     <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(Math.min(...session.laps))}</div>
                                     <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(Math.max(...session.laps))}</div>
                                     <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
                                   </div>
                                   <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
-                                  <div className="font-mono">Total Laps: {session.laps.length}</div>
+                                  {/* <div className="font-mono">Total Laps: {session.laps.length}</div> */}
                                 </div>
                               </div>
                             </div>
@@ -1079,27 +1081,6 @@ export default function LapTimer() {
                                 </Button>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4 mt-4">
-                                {/* Previous Sessions Lap Times */}
-                                <div>
-                                  <h4 className="font-semibold mb-2">Lap Times:</h4>
-                                </div>
-
-                                {/* Previous Sessions Statistics */}
-                                <div>
-                                  <h4 className="font-semibold mb-2">Statistics:</h4>
-                                  <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
-                                  <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div>
-                                  <div className="space-y-1 mt-2">
-                                    <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(Math.min(...session.laps))}</div>
-                                    <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(Math.max(...session.laps))}</div>
-                                    <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
-                                  </div>
-                                  <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
-                                  <div className="font-mono">Total Laps: {session.laps.length}</div>
-                                </div>
-                              </div>
-
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Lap Times Section */}
                                 <div>
@@ -1143,14 +1124,14 @@ export default function LapTimer() {
                                   <h4 className="font-semibold mb-2">Statistics:</h4>
                                   <div className="space-y-2">
                                     <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
-                                    <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div>
+                                    {/* <div className="font-mono">Mean: {formatTime(session.stats.mean)}</div> */}
                                     <div className="space-y-1 mt-2">
                                       <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(Math.min(...session.laps))}</div>
                                       <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(Math.max(...session.laps))}</div>
                                       <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
                                     </div>
                                     <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
-                                    <div className="font-mono">Total Laps: {session.laps.length}</div>
+                                    {/* <div className="font-mono">Total Laps: {session.laps.length}</div> */}
                                   </div>
                                 </div>
                               </div>
