@@ -5,7 +5,7 @@ import { SessionComparison } from "./session-comparison";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon } from "lucide-react";
+import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -167,30 +167,42 @@ export default function LapTimer() {
     });
   };
 
-  const calculateStats = (lapTimes: number[]): LapStats => {
-    if (lapTimes.length === 0)
+  const calculateStats = (laps: number[]): LapStats => {
+    if (laps.length === 0) {
       return {
         average: 0,
-        mean: 0,
         totalTime: 0,
+        bestLap: 0,
+        worstLap: 0,
         maxPenaltyLap: null,
         maxPenaltyCount: 0,
       };
+    }
 
-    const sum = lapTimes.reduce((a, b) => a + b, 0);
-    const average = sum / lapTimes.length;
-    const sortedLaps = [...lapTimes].sort((a, b) => a - b);
-    const mean = sortedLaps[Math.floor(sortedLaps.length / 2)];
+    const sum = laps.reduce((a, b) => a + b, 0);
+    const average = sum / laps.length;
+    const sortedLaps = [...laps].sort((a, b) => a - b);
+    const bestLap = sortedLaps[0];
+    const worstLap = sortedLaps[sortedLaps.length - 1];
 
-    // Find max penalties
-    const maxPenalty = penalties.reduce((max, p) => (p.count > max.count ? p : max), { lapNumber: 0, count: 0 });
+    // Find the lap with most penalties
+    let maxPenaltyLap = null;
+    let maxPenaltyCount = 0;
+
+    penalties.forEach((penalty) => {
+      if (penalty.count > maxPenaltyCount) {
+        maxPenaltyCount = penalty.count;
+        maxPenaltyLap = penalty.lapNumber;
+      }
+    });
 
     return {
       average,
-      mean,
       totalTime: sum,
-      maxPenaltyLap: maxPenalty.count > 0 ? maxPenalty.lapNumber : null,
-      maxPenaltyCount: maxPenalty.count,
+      bestLap,
+      worstLap,
+      maxPenaltyLap,
+      maxPenaltyCount,
     };
   };
 
@@ -568,11 +580,28 @@ export default function LapTimer() {
         // Extract lap times for calculations
         const lapTimes = sortedLaps.map((lap) => lap.lapTime);
 
-        // Calculate statistics
+        // Calculate basic statistics
         const totalTime = lapTimes.reduce((sum, time) => sum + time, 0);
         const average = totalTime / lapTimes.length;
         const bestLap = Math.min(...lapTimes);
         const worstLap = Math.max(...lapTimes);
+
+        // Find the lap with most penalties
+        let maxPenaltyLap = null;
+        let maxPenaltyCount = 0;
+
+        session.penalties?.forEach((penalty: any) => {
+          if (penalty.count > maxPenaltyCount) {
+            maxPenaltyCount = penalty.count;
+            maxPenaltyLap = penalty.lapNumber;
+          }
+        });
+
+        console.log("Processing penalties:", {
+          penalties: session.penalties,
+          maxPenaltyLap,
+          maxPenaltyCount,
+        });
 
         return {
           ...session,
@@ -583,6 +612,8 @@ export default function LapTimer() {
             totalTime,
             bestLap,
             worstLap,
+            maxPenaltyLap,
+            maxPenaltyCount,
           },
           penalties: session.penalties || [],
           totalPenalties: session.penalties?.reduce((sum: number, p: any) => sum + p.count, 0) || 0,
@@ -986,6 +1017,8 @@ export default function LapTimer() {
                                     const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
                                     const isBestLap = lap.lapTime === bestLap;
                                     const isWorstLap = lap.lapTime === worstLap;
+                                    const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
+                                    const hasMaxPenalties = session.stats.maxPenaltyLap === lap.lapNumber;
 
                                     console.log("Displaying lap:", {
                                       lapNumber: lap.lapNumber,
@@ -995,12 +1028,27 @@ export default function LapTimer() {
                                     });
 
                                     return (
-                                      <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
+                                      <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "", hasMaxPenalties ? "bg-yellow-50" : "")}>
                                         <span className="min-w-[100px]">
                                           Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
                                         </span>
-                                        {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
-                                        {isWorstLap && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
+
+                                        {/* Flags row - will wrap on mobile */}
+                                        {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
+                                          <div className="flex flex-wrap gap-1 mt-1 ml-4">
+                                            {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
+                                            {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
+                                            {lapPenalties > 0 && (
+                                              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                                                {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
+                                              </span>
+                                            )}
+                                            {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">Most Penalties</span>}
+                                          </div>
+                                        )}
+
+                                        {/* Add divider between laps */}
+                                        <div className="my-2" />
                                       </div>
                                     );
                                   })}
@@ -1035,7 +1083,17 @@ export default function LapTimer() {
               {/* Previous Sessions Tab */}
               <TabsContent value="previous" className="px-4 space-y-4 h-full overflow-y-auto">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  {savedSessions.length > 0 && (
+                  {savedSessions.length === 0 ? (
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="text-center py-12">
+                          <ListX className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                          <h3 className="mt-4 text-lg font-semibold">No Sessions Recorded</h3>
+                          <p className="mt-2 text-sm text-muted-foreground">Record your first timing session to see it appear here.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
                     <Card>
                       <CardHeader>
                         <div className="flex justify-between items-center">
@@ -1243,6 +1301,8 @@ export default function LapTimer() {
                                       const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
                                       const isBestLap = lap.lapTime === bestLap;
                                       const isWorstLap = lap.lapTime === worstLap;
+                                      const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
+                                      const hasMaxPenalties = session.stats.maxPenaltyLap === lap.lapNumber;
 
                                       console.log("Displaying lap:", {
                                         lapNumber: lap.lapNumber,
@@ -1256,8 +1316,23 @@ export default function LapTimer() {
                                           <span className="min-w-[100px]">
                                             Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
                                           </span>
-                                          {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
-                                          {isWorstLap && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
+
+                                          {/* Flags row - will wrap on mobile */}
+                                          {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
+                                            <div className="flex flex-wrap gap-1 mt-1 ml-4">
+                                              {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
+                                              {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
+                                              {lapPenalties > 0 && (
+                                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                                                  {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
+                                                </span>
+                                              )}
+                                              {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">Most Penalties</span>}
+                                            </div>
+                                          )}
+
+                                          {/* Add divider between laps */}
+                                          <div className="my-2" />
                                         </div>
                                       );
                                     })}
@@ -1295,15 +1370,20 @@ export default function LapTimer() {
               {/* Best Laps Comparison Tab */}
               <TabsContent value="best" className="px-4 space-y-4 h-full overflow-y-auto">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  {Array.isArray(savedSessions) && savedSessions.length > 0 && <BestLapsComparison sessions={savedSessions} />}
+                  
+                  
+                  {Array.isArray(savedSessions)  && <BestLapsComparison sessions={savedSessions} />}
+                
+
+
                 </motion.div>
               </TabsContent>
 
               {/* Session Comparison Tab */}
               <TabsContent value="compare" className="px-4 space-y-4 h-full overflow-y-auto">
-              {console.log('Rendering Session Comparison with sessions:', savedSessions)}
+                {console.log("Rendering Session Comparison with sessions:", savedSessions)}
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  {Array.isArray(savedSessions) && savedSessions.length > 1 && <SessionComparison sessions={savedSessions} />}
+                  {Array.isArray(savedSessions) && <SessionComparison sessions={savedSessions} />}
                 </motion.div>
               </TabsContent>
 

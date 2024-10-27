@@ -30,23 +30,29 @@ export async function GET() {
   }
 }
 
+// In src/app/api/data/route.ts
 export async function POST(request: Request) {
   try {
     const data = await request.json();
 
+    // Track processed sessions to prevent duplicates
+    const processedIds = new Set<string>();
+
     // Update sessions
     for (const session of data.sessions) {
       const sessionId = session.id?.toString() || Date.now().toString();
-      console.log("Processing session:", sessionId);
 
-      // Skip duplicate sessions
-      if (session.processed) {
-        console.log("Skipping already processed session:", sessionId);
+      // Skip if we've already processed this session
+      if (processedIds.has(sessionId)) {
+        console.log("Skipping duplicate session:", sessionId);
         continue;
       }
+      processedIds.add(sessionId);
+
+      console.log("Processing session:", sessionId);
 
       // Calculate total time
-      const totalTime = Math.floor(session.stats.totalTime || 0);
+      const totalTime = Math.floor(typeof session.stats.totalTime === "string" ? parseInt(session.stats.totalTime) : session.stats.totalTime || 0);
 
       // First create/update the session
       await prisma.session.upsert({
@@ -80,33 +86,29 @@ export async function POST(request: Request) {
         },
       });
 
-      // Handle laps - only process if they have proper structure
+      // Handle laps
       if (session.laps?.length > 0) {
         console.log("Processing laps for session:", sessionId);
 
-        // Delete existing laps
+        // Delete existing laps first
         await prisma.lap.deleteMany({
           where: { sessionId },
         });
 
-        // Only process laps if they have proper structure
-        const lapsToSave = session.laps[0].hasOwnProperty("lapNumber")
-          ? session.laps.map((lap: any) => ({
-              sessionId,
-              lapNumber: lap.lapNumber,
-              lapTime: Math.round(lap.lapTime),
-            }))
-          : [];
+        // Create new laps
+        const lapsToCreate = session.laps.map((lap: any, index: number) => ({
+          sessionId,
+          lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
+          lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
+        }));
 
-        if (lapsToSave.length > 0) {
-          console.log("Saving laps:", lapsToSave);
-          await prisma.lap.createMany({
-            data: lapsToSave,
-          });
-        }
+        console.log("Creating laps:", lapsToCreate);
+        await prisma.lap.createMany({
+          data: lapsToCreate,
+        });
       }
 
-      // Handle penalties
+      // Handle penalties similarly
       if (session.penalties?.length > 0) {
         await prisma.penalty.deleteMany({
           where: { sessionId },
@@ -124,15 +126,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error saving data:", error, {
-      stack: error.stack,
-      message: error.message,
-    });
+    console.error("Error saving data:", error);
     return NextResponse.json(
       {
         error: "Error saving data",
         details: error.message,
-        stack: error.stack,
       },
       {
         status: 500,
