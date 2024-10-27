@@ -2,10 +2,11 @@
 
 import { formatTime, formatDateTime } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
+import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon,  Turtle, Zap } from "lucide-react";
+import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -1036,17 +1037,29 @@ export default function LapTimer() {
                                         {/* Flags row - will wrap on mobile */}
                                         {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
                                           <div className="flex flex-wrap gap-1 mt-1 ml-4">
-                                            { /* Best Lap */}
-                                            {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><Zap className="h-3 w-3 mr-1" /></span>}
-                                            { /* Slowest Lap */}
-                                            {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full"><Turtle className="h-3 w-3 mr-1" /></span>}
+                                            {/* Best Lap */}
+                                            {isBestLap && (
+                                              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                                <Zap className="h-3 w-3 mr-1" />
+                                              </span>
+                                            )}
+                                            {/* Slowest Lap */}
+                                            {isWorstLap && (
+                                              <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                                                <Turtle className="h-3 w-3 mr-1" />
+                                              </span>
+                                            )}
                                             {lapPenalties > 0 && (
                                               <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
                                                 {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
                                               </span>
                                             )}
-                                            { /* Most Penalties Lap */}
-                                            {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full"><AlertTriangle className="h-3 w-3 mr-1" /></span>}
+                                            {/* Most Penalties Lap */}
+                                            {hasMaxPenalties && (
+                                              <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
+                                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                              </span>
+                                            )}
                                           </div>
                                         )}
 
@@ -1323,17 +1336,29 @@ export default function LapTimer() {
                                           {/* Flags row - will wrap on mobile */}
                                           {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
                                             <div className="flex flex-wrap gap-1 mt-1 ml-4">
-                                              { /* Best Lap */}
-                                              {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><Zap className="h-3 w-3 mr-1" /></span>}
-                                              { /* Slowest Lap */}
-                                              {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full"><Turtle className="h-3 w-3 mr-1" /></span>}
+                                              {/* Best Lap */}
+                                              {isBestLap && (
+                                                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                                  <Zap className="h-3 w-3 mr-1" />
+                                                </span>
+                                              )}
+                                              {/* Slowest Lap */}
+                                              {isWorstLap && (
+                                                <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                                                  <Turtle className="h-3 w-3 mr-1" />
+                                                </span>
+                                              )}
                                               {lapPenalties > 0 && (
                                                 <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
                                                   {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
                                                 </span>
                                               )}
-                                              { /* Most Penalties Lap */}
-                                              {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full"><AlertTriangle className="h-3 w-3 mr-1" /></span>}
+                                              {/* Most Penalties Lap */}
+                                              {hasMaxPenalties && (
+                                                <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
+                                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                                </span>
+                                              )}
                                             </div>
                                           )}
 
@@ -1376,12 +1401,7 @@ export default function LapTimer() {
               {/* Best Laps Comparison Tab */}
               <TabsContent value="best" className="px-4 space-y-4 h-full overflow-y-auto">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  
-                  
-                  {Array.isArray(savedSessions)  && <BestLapsComparison sessions={savedSessions} />}
-                
-
-
+                  {Array.isArray(savedSessions) && <BestLapsComparison sessions={savedSessions} />}
                 </motion.div>
               </TabsContent>
 
@@ -1393,9 +1413,14 @@ export default function LapTimer() {
                 </motion.div>
               </TabsContent>
 
+              {/* Session Notes Tab */}
+              <TabsContent value="notes" className="space-y-4">
+                <SessionNotes sessions={savedSessions} />
+              </TabsContent>
+
               {/* Bottom Navigation */}
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 shadow-up">
-                <TabsList className="grid grid-cols-4 gap-0">
+                <TabsList className="grid grid-cols-5 gap-0">
                   <TabsTrigger value="current" className="py-3">
                     <div className="flex flex-col items-center">
                       <PlayCircle className="h-5 w-5" />
@@ -1418,6 +1443,12 @@ export default function LapTimer() {
                     <div className="flex flex-col items-center">
                       <BarChart2 className="h-5 w-5" />
                       <span className="text-xs mt-1">Compare</span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger value="notes" className="py-3">
+                    <div className="flex flex-col items-center">
+                      <ListPlus className="h-5 w-5" />
+                      <span className="text-xs mt-1">Best</span>
                     </div>
                   </TabsTrigger>
                 </TabsList>

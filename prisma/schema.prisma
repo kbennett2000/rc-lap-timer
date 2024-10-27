@@ -29,20 +29,24 @@ model Car {
 }
 
 model Session {
-  id            String   @id @default(uuid())
+  id            String   @id
   date          DateTime
   driver        Driver   @relation(fields: [driverId], references: [id])
   driverId      String
-  driverName    String   
   car           Car      @relation(fields: [carId], references: [id])
   carId         String
-  carName       String   
+  driverName    String
+  carName       String
+  totalTime     Int
   totalLaps     Int
+  notes         String?  @db.Text  // Add this line
   laps          Lap[]
   penalties     Penalty[]
-  totalTime     Int
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([driverId])
+  @@index([carId])
 }
 
 model Lap {

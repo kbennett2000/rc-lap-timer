@@ -17,6 +17,17 @@ export interface Session extends Omit<PrismaSession, 'date'> {
   penalties: Penalty[];
   date: string;
   stats: LapStats;
+
+
+
+  driverId: string;
+  driverName: string;
+  carId: string;
+  carName: string;
+  totalLaps: "unlimited" | number;
+  totalPenalties: number;
+  notes?: string;
+
 }
 
 export interface LapStats {

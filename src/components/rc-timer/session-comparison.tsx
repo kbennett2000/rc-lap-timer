@@ -137,6 +137,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
       return false;
     }
   };
+
   // Get unique drivers sorted alphabetically
   const getUniqueDrivers = () => {
     const drivers = new Set(sessions.map((session) => session.driverName));

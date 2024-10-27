@@ -181,3 +181,22 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const { sessionId, notes } = await request.json();
+
+    const updatedSession = await prisma.session.update({
+      where: { id: sessionId },
+      data: { notes },
+    });
+
+    return NextResponse.json({ success: true, session: updatedSession });
+  } catch (error) {
+    console.error('Error updating notes:', error);
+    return NextResponse.json(
+      { error: 'Error updating notes', details: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
