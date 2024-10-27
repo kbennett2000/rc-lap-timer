@@ -175,6 +175,10 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
     return true;
   });
 
+  const sortSessionsByDate = (sessions: Session[]): Session[] => {
+    return [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -309,7 +313,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
             <div className="space-y-2">
               <Label>Select Sessions to Compare</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredSessions.map((session) => (
+                {sortSessionsByDate(filteredSessions).map((session) => (
                   <div
                     key={session.id}
                     className={cn("p-3 rounded-lg border cursor-pointer transition-colors", selectedSessions.includes(session.id) ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50")}
