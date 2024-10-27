@@ -30,7 +30,6 @@ export async function GET() {
   }
 }
 
-// In src/app/api/data/route.ts
 export async function POST(request: Request) {
   try {
     const data = await request.json();
@@ -38,7 +37,7 @@ export async function POST(request: Request) {
     // Track processed sessions to prevent duplicates
     const processedIds = new Set<string>();
 
-    // Update sessions
+    // Update sessions using transactions for atomicity
     for (const session of data.sessions) {
       const sessionId = session.id?.toString() || Date.now().toString();
 
@@ -51,77 +50,70 @@ export async function POST(request: Request) {
 
       console.log("Processing session:", sessionId);
 
-      // Calculate total time
-      const totalTime = Math.floor(typeof session.stats.totalTime === "string" ? parseInt(session.stats.totalTime) : session.stats.totalTime || 0);
-
-      // First create/update the session
-      await prisma.session.upsert({
+      // Check if session already exists
+      const existingSession = await prisma.session.findUnique({
         where: { id: sessionId },
-        update: {
-          date: new Date(session.date),
-          driver: {
-            connect: { id: session.driverId },
-          },
-          car: {
-            connect: { id: session.carId },
-          },
-          driverName: session.driverName,
-          carName: session.carName,
-          totalTime,
-          totalLaps: session.laps.length,
-        },
-        create: {
-          id: sessionId,
-          date: new Date(session.date),
-          driver: {
-            connect: { id: session.driverId },
-          },
-          car: {
-            connect: { id: session.carId },
-          },
-          driverName: session.driverName,
-          carName: session.carName,
-          totalTime,
-          totalLaps: session.laps.length,
-        },
       });
 
-      // Handle laps
-      if (session.laps?.length > 0) {
-        console.log("Processing laps for session:", sessionId);
-
-        // Delete existing laps first
-        await prisma.lap.deleteMany({
-          where: { sessionId },
-        });
-
-        // Create new laps
-        const lapsToCreate = session.laps.map((lap: any, index: number) => ({
-          sessionId,
-          lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
-          lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
-        }));
-
-        console.log("Creating laps:", lapsToCreate);
-        await prisma.lap.createMany({
-          data: lapsToCreate,
-        });
+      if (existingSession) {
+        console.log("Session already exists, skipping:", sessionId);
+        continue;
       }
 
-      // Handle penalties similarly
-      if (session.penalties?.length > 0) {
-        await prisma.penalty.deleteMany({
-          where: { sessionId },
+      // Calculate total time
+      const totalTime = Math.floor(
+        typeof session.stats.totalTime === "string"
+          ? parseInt(session.stats.totalTime)
+          : session.stats.totalTime || 0
+      );
+
+      // Use transaction to ensure all related data is created atomically
+      await prisma.$transaction(async (tx) => {
+        // Create the session
+        await tx.session.create({
+          data: {
+            id: sessionId,
+            date: new Date(session.date),
+            driver: {
+              connect: { id: session.driverId },
+            },
+            car: {
+              connect: { id: session.carId },
+            },
+            driverName: session.driverName,
+            carName: session.carName,
+            totalTime,
+            totalLaps: session.laps.length,
+          },
         });
 
-        await prisma.penalty.createMany({
-          data: session.penalties.map((penalty: any) => ({
+        // Create laps if they exist
+        if (session.laps?.length > 0) {
+          console.log("Creating laps for session:", sessionId);
+          const lapsToCreate = session.laps.map((lap: any, index: number) => ({
             sessionId,
-            lapNumber: penalty.lapNumber,
-            count: penalty.count || 0,
-          })),
-        });
-      }
+            lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
+            lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
+          }));
+
+          await tx.lap.createMany({
+            data: lapsToCreate,
+          });
+        }
+
+        // Create penalties if they exist
+        if (session.penalties?.length > 0) {
+          await tx.penalty.createMany({
+            data: session.penalties.map((penalty: any) => ({
+              sessionId,
+              lapNumber: penalty.lapNumber,
+              count: penalty.count || 0,
+            })),
+          });
+        }
+      });
+
+      console.log("Successfully created session:", sessionId);
     }
 
     return NextResponse.json({ success: true });
@@ -130,7 +122,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "Error saving data",
-        details: error.message,
+        details: (error as Error).message,
       },
       {
         status: 500,
@@ -181,7 +173,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       {
         error: "Error deleting data",
-        details: error.message,
+        details: (error as Error).message,
       },
       {
         status: 500,

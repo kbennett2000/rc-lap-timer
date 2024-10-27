@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -43,6 +43,49 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
     { label: "This month", days: "month" },
     { label: "This year", days: "year" },
   ];
+
+  const prepareChartData = () => {
+    console.log("Preparing chart data for sessions:", selectedSessions);
+
+    const selectedSessionData = selectedSessions.map((id) => sessions.find((s) => s.id === id)).filter((s): s is Session => s !== undefined);
+
+    console.log("Selected session data:", selectedSessionData);
+
+    if (selectedSessionData.length === 0) return [];
+
+    const maxLaps = Math.max(...selectedSessionData.map((s) => s.laps.length));
+
+    return Array.from({ length: maxLaps }, (_, i) => {
+      const dataPoint: ComparisonData = {
+        lap: i + 1,
+      };
+
+      selectedSessionData.forEach((session) => {
+        const sessionDate = new Date(session.date);
+        const formattedDate = sessionDate.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const sessionKey = `${session.driverName} - ${session.carName} (${formattedDate})`;
+
+        const lap = session.laps.find((l) => l.lapNumber === i + 1);
+        dataPoint[sessionKey] = lap ? lap.lapTime : null;
+      });
+
+      return dataPoint;
+    });
+  };
+
+  // Calculate chart data whenever selected sessions change
+  const chartData = useMemo(() => prepareChartData(), [selectedSessions, sessions]);
+
+  // Add debugging
+  useEffect(() => {
+    console.log("Selected Sessions:", selectedSessions);
+    console.log("Chart Data:", chartData);
+  }, [selectedSessions, chartData]);
 
   // Function to get preset dates
   const getPresetDates = (preset: { label: string; days: number | "month" | "year" }) => {
@@ -205,18 +248,27 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
 
               {/* Date Range Filters */}
               <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {DATE_PRESETS.map((preset) => (
-                    <Button
-                      key={preset.label}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDateRange(getPresetDates(preset))}
-                      className={cn("text-sm", dateRange.from === getPresetDates(preset).from && dateRange.to === getPresetDates(preset).to ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
+                {/* Preset Buttons */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {DATE_PRESETS.map((preset) => {
+                    const presetDates = getPresetDates(preset);
+                    const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+
+                    return (
+                      <Button
+                        key={preset.label}
+                        variant="outline"
+                        size="sm"
+                        className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                        onClick={() => {
+                          const { from, to } = getPresetDates(preset);
+                          setDateRange({ from, to });
+                        }}
+                      >
+                        {preset.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -277,6 +329,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                 ))}
               </div>
             </div>
+
             {/* Comparison Chart */}
             {selectedSessions.length > 0 && chartData.length > 0 && (
               <div className="h-[400px] mt-8">
