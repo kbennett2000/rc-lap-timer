@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, BarChart2 } from "lucide-react";
+import { CalendarIcon, BarChart2, Search } from "lucide-react";
 
 interface SessionComparisonProps {
   sessions: Session[];

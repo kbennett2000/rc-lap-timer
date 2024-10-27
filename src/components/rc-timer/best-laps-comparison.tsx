@@ -9,7 +9,7 @@ import { Session, BestLapRecord } from "@/types/rc-timer";
 import { format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Trophy } from "lucide-react";
+import { CalendarIcon, Trophy, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime, formatDateTime } from "@/lib/utils";
 
@@ -293,7 +293,7 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
                   )}
 
 
-                  
+
                 </div>
               </div>
             </div>
