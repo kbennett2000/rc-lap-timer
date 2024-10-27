@@ -5,7 +5,7 @@ import { SessionComparison } from "./session-comparison";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon } from "lucide-react";
+import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon,  Turtle, Zap } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -1036,14 +1036,17 @@ export default function LapTimer() {
                                         {/* Flags row - will wrap on mobile */}
                                         {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
                                           <div className="flex flex-wrap gap-1 mt-1 ml-4">
-                                            {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
-                                            {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
+                                            { /* Best Lap */}
+                                            {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><Zap className="h-3 w-3 mr-1" /></span>}
+                                            { /* Slowest Lap */}
+                                            {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full"><Turtle className="h-3 w-3 mr-1" /></span>}
                                             {lapPenalties > 0 && (
                                               <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
                                                 {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
                                               </span>
                                             )}
-                                            {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">Most Penalties</span>}
+                                            { /* Most Penalties Lap */}
+                                            {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full"><AlertTriangle className="h-3 w-3 mr-1" /></span>}
                                           </div>
                                         )}
 
@@ -1320,14 +1323,17 @@ export default function LapTimer() {
                                           {/* Flags row - will wrap on mobile */}
                                           {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
                                             <div className="flex flex-wrap gap-1 mt-1 ml-4">
-                                              {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
-                                              {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Slowest Lap</span>}
+                                              { /* Best Lap */}
+                                              {isBestLap && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"><Zap className="h-3 w-3 mr-1" /></span>}
+                                              { /* Slowest Lap */}
+                                              {isWorstLap && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full"><Turtle className="h-3 w-3 mr-1" /></span>}
                                               {lapPenalties > 0 && (
                                                 <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
                                                   {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
                                                 </span>
                                               )}
-                                              {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">Most Penalties</span>}
+                                              { /* Most Penalties Lap */}
+                                              {hasMaxPenalties && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full"><AlertTriangle className="h-3 w-3 mr-1" /></span>}
                                             </div>
                                           )}
 
