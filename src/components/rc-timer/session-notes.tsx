@@ -24,6 +24,9 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [notes, setNotes] = useState("");
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -32,18 +35,17 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
     to: endOfDay(new Date()),
   }));
 
+  // Date range presets
+  const DATE_PRESETS = [
+    { label: "Today", days: 0 },
+    { label: "Last 7 days", days: 7 },
+    { label: "Last 30 days", days: 30 },
+    { label: "Last 90 days", days: 90 },
+    { label: "This month", days: "month" },
+    { label: "This year", days: "year" },
+  ];
 
-    // Date range presets
-    const DATE_PRESETS = [
-        { label: "Today", days: 0 },
-        { label: "Last 7 days", days: 7 },
-        { label: "Last 30 days", days: 30 },
-        { label: "Last 90 days", days: 90 },
-        { label: "This month", days: "month" },
-        { label: "This year", days: "year" },
-      ];
-
-      // Function to get preset dates
+  // Function to get preset dates
   const getPresetDates = (preset: { label: string; days: number | "month" | "year" }) => {
     let from: Date;
     let to = new Date();
@@ -63,7 +65,6 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
 
     return { from, to };
   };
-
 
   // Date range functions
   const isWithinDateRange = (sessionDate: string | null): boolean => {
@@ -92,24 +93,34 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
     }
   };
 
-    // Get unique drivers sorted alphabetically
-    const getUniqueDrivers = () => {
-        const drivers = new Set(sessions.map((session) => session.driverName));
-        return Array.from(drivers)
-          .filter((name) => name && name.trim() !== "")
-          .sort((a, b) => a.localeCompare(b));
-      };
-    
-      // Get cars for selected driver sorted alphabetically
-      const getDriverCars = (driverName: string) => {
-        const driverSessions = sessions.filter((session) => session.driverName === driverName);
-        const cars = new Set(driverSessions.map((session) => session.carName));
-        return Array.from(cars)
-          .filter((name) => name && name.trim() !== "")
-          .sort((a, b) => a.localeCompare(b));
-      };
-    
-  
+  // Get unique drivers sorted alphabetically
+  const getUniqueDrivers = () => {
+    const drivers = new Set(sessions.map((session) => session.driverName));
+    return Array.from(drivers)
+      .filter((name) => name && name.trim() !== "")
+      .sort((a, b) => a.localeCompare(b));
+  };
+
+  // Get cars for selected driver sorted alphabetically
+  const getDriverCars = (driverName: string) => {
+    const driverSessions = sessions.filter((session) => session.driverName === driverName);
+    const cars = new Set(driverSessions.map((session) => session.carName));
+    return Array.from(cars)
+      .filter((name) => name && name.trim() !== "")
+      .sort((a, b) => a.localeCompare(b));
+  };
+
+  // Update component when sessions prop changes
+  useEffect(() => {
+    // If currently selected session has been updated, refresh its data
+    if (selectedSession) {
+      const updatedSession = sessions.find((s) => s.id === selectedSession.id);
+      if (updatedSession && updatedSession.notes !== notes && !isEditing) {
+        setNotes(updatedSession.notes || "");
+      }
+    }
+  }, [sessions, selectedSession, isEditing]);
+
   // Reset car filter when driver changes
   useEffect(() => {
     if (filterDriver === "all") {
@@ -119,7 +130,7 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
 
   // Filter sessions
   const filteredSessions = sessions
-    .filter(session => {
+    .filter((session) => {
       if (filterDriver !== "all" && session.driverName !== filterDriver) return false;
       if (filterCar !== "all" && session.carName !== filterCar) return false;
       if (!isWithinDateRange(session.date)) return false;
@@ -137,19 +148,58 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: selectedSession.id,
-          notes: notes
+          notes: notes,
         }),
       });
 
       if (!response.ok) throw new Error("Failed to save notes");
-
       setIsEditing(false);
-      // Optionally refresh the data here
+      setIsRefreshing(false);
     } catch (error) {
       console.error("Error saving notes:", error);
       alert("Failed to save notes. Please try again.");
     }
   };
+
+  // Focus/blur handlers for textarea
+  useEffect(() => {
+    const handleFocus = (e: FocusEvent) => {
+      if (e.target instanceof HTMLTextAreaElement && refreshInterval) {
+        clearInterval(refreshInterval);
+        setRefreshInterval(null);
+      }
+    };
+
+    const handleBlur = (e: FocusEvent) => {
+      if (e.target instanceof HTMLTextAreaElement && !refreshInterval) {
+        const interval = setInterval(() => {
+          setIsRefreshing(true);
+        }, 5000);
+        setRefreshInterval(interval);
+      }
+    };
+
+    document.addEventListener("focus", handleFocus, true);
+    document.addEventListener("blur", handleBlur, true);
+
+    return () => {
+      document.removeEventListener("focus", handleFocus, true);
+      document.removeEventListener("blur", handleBlur, true);
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [refreshInterval]);
+
+  // Update notes when selected session changes or sessions update
+  useEffect(() => {
+    if (selectedSession) {
+      const updatedSession = sessions.find((s) => s.id === selectedSession.id);
+      if (updatedSession && updatedSession.notes !== notes && !isEditing) {
+        setNotes(updatedSession.notes || "");
+      }
+    }
+  }, [sessions, selectedSession, isEditing, notes]);
 
   return (
     <Card>
@@ -161,9 +211,7 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
           <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">No Sessions Available</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Record some sessions to add notes.
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Record some sessions to add notes.</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -174,7 +222,7 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
                 <Label>Filter by Driver</Label>
                 <Select
                   value={filterDriver}
-                  onValueChange={value => {
+                  onValueChange={(value) => {
                     setFilterDriver(value);
                     if (value === "all") setFilterCar("all");
                   }}
@@ -184,8 +232,10 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Drivers</SelectItem>
-                    {getUniqueDrivers().map(driver => (
-                      <SelectItem key={driver} value={driver}>{driver}</SelectItem>
+                    {getUniqueDrivers().map((driver) => (
+                      <SelectItem key={driver} value={driver}>
+                        {driver}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -194,26 +244,18 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
               {/* Car Filter */}
               <div className="space-y-2">
                 <Label>Filter by Car</Label>
-                <Select
-                  value={filterCar}
-                  onValueChange={setFilterCar}
-                  disabled={filterDriver === "all"}
-                >
+                <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
                   <SelectTrigger>
-                    <SelectValue 
-                      placeholder={filterDriver === "all" 
-                        ? "Select a driver first" 
-                        : "All Cars"
-                      } 
-                    />
+                    <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Cars</SelectItem>
-                    {filterDriver !== "all" && 
-                      getDriverCars(filterDriver).map(car => (
-                        <SelectItem key={car} value={car}>{car}</SelectItem>
-                      ))
-                    }
+                    {filterDriver !== "all" &&
+                      getDriverCars(filterDriver).map((car) => (
+                        <SelectItem key={car} value={car}>
+                          {car}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -283,15 +325,10 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
               <div className="space-y-4">
                 <h3 className="font-semibold">Select Session</h3>
                 <div className="space-y-2">
-                  {filteredSessions.map(session => (
+                  {filteredSessions.map((session) => (
                     <div
                       key={session.id}
-                      className={cn(
-                        "p-3 rounded-lg border cursor-pointer transition-colors",
-                        selectedSession?.id === session.id
-                          ? "border-blue-500 bg-blue-50"
-                          : "hover:bg-gray-50"
-                      )}
+                      className={cn("p-3 rounded-lg border cursor-pointer transition-colors", selectedSession?.id === session.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50")}
                       onClick={() => {
                         setSelectedSession(session);
                         setNotes(session.notes || "");
@@ -299,12 +336,8 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
                       }}
                     >
                       <div className="font-medium">{session.driverName}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {session.carName}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDateTime(session.date)}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{session.carName}</div>
+                      <div className="text-sm text-muted-foreground">{formatDateTime(session.date)}</div>
                     </div>
                   ))}
                 </div>
@@ -341,28 +374,21 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
                       </Button>
                     </div>
                     {isEditing ? (
-                      <Textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Add notes about track conditions, car setup, or anything else..."
-                        className="min-h-[200px]"
-                      />
+                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add notes about track conditions, car setup, or anything else..." className="min-h-[200px]" />
                     ) : (
-                      <div className="p-4 border rounded-lg min-h-[200px] whitespace-pre-wrap">
-                        {notes || "No notes added yet."}
-                      </div>
+                      <div className="p-4 border rounded-lg min-h-[200px] whitespace-pre-wrap">{notes || "No notes added yet."}</div>
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Select a session to view or edit notes
-                  </div>
+                  <div className="flex items-center justify-center h-full text-muted-foreground">Select a session to view or edit notes</div>
                 )}
               </div>
             </div>
           </div>
         )}
       </CardContent>
+      {/* Optional: Add refresh indicator */}
+      {isRefreshing && <div className="fixed bottom-20 right-4 text-xs text-muted-foreground">Syncing...</div>}
     </Card>
   );
 }

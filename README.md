@@ -30,6 +30,7 @@ NOTE - If you want super-accurate lap times, this isn't the app for you. If you 
 - **Languages**: TypeScript, JavaScript
 - **Styling**: Tailwind CSS
 - **UI Libraries**: Radix UI, Lucide React icons
+- **Data Mangement**: MySQL 
 - **Version Control**: Git
 
 ---

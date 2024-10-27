@@ -291,9 +291,6 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
                       )}
                     </div>
                   )}
-
-
-
                 </div>
               </div>
             </div>

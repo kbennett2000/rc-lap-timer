@@ -52,6 +52,7 @@ export default function LapTimer() {
   const [savedSessions, setSavedSessions] = useState<Session[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -128,6 +129,23 @@ export default function LapTimer() {
       from: startOfDay(new Date()),
       to: endOfDay(new Date()),
     });
+  }, []);
+
+  // Set up auto-refresh on mount
+  useEffect(() => {
+    // Initial load
+    loadSavedData();
+
+    // Set up polling interval (every 5 seconds)
+    const interval = setInterval(refreshData, 5000);
+    setRefreshInterval(interval);
+
+    // Cleanup on unmount
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, []);
 
   interface DatePreset {
@@ -207,6 +225,51 @@ export default function LapTimer() {
     };
   };
 
+  const calculateSessionStats = (session: any) => {
+    // Ensure laps is an array and each lap has a lapTime
+    const lapTimes = session.laps.filter((lap: any) => lap && typeof lap.lapTime === "number").map((lap: any) => lap.lapTime);
+
+    if (lapTimes.length === 0) {
+      return {
+        average: 0,
+        totalTime: 0,
+        bestLap: 0,
+        worstLap: 0,
+        maxPenaltyLap: null,
+        maxPenaltyCount: 0,
+        totalPenalties: 0,
+      };
+    }
+
+    const totalTime = lapTimes.reduce((sum: number, time: number) => sum + time, 0);
+    const bestLapTime = Math.min(...lapTimes);
+    const worstLapTime = Math.max(...lapTimes);
+
+    // Calculate total penalties
+    const totalPenalties = session.penalties?.reduce((sum: number, penalty: any) => sum + (penalty.count || 0), 0) || 0;
+
+    // Find the lap with most penalties
+    let maxPenaltyLap = null;
+    let maxPenaltyCount = 0;
+
+    session.penalties?.forEach((penalty: any) => {
+      if (penalty.count > maxPenaltyCount) {
+        maxPenaltyCount = penalty.count;
+        maxPenaltyLap = penalty.lapNumber;
+      }
+    });
+
+    return {
+      average: totalTime / lapTimes.length,
+      totalTime,
+      bestLap: bestLapTime,
+      worstLap: worstLapTime,
+      maxPenaltyLap,
+      maxPenaltyCount,
+      totalPenalties,
+    };
+  };
+
   const clearAllSessions = async (): Promise<void> => {
     setIsClearingAll(true);
     try {
@@ -232,8 +295,6 @@ export default function LapTimer() {
 
   const deleteSession = async (sessionId: string): Promise<void> => {
     try {
-      console.log("Attempting to delete session:", sessionId); // Debug log
-
       const response = await fetch("/api/data", {
         method: "DELETE",
         headers: {
@@ -249,7 +310,6 @@ export default function LapTimer() {
       }
 
       const data = await response.json();
-      console.log("Delete response:", data); // Debug log
 
       setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
       setSessionToDelete(null);
@@ -275,11 +335,6 @@ export default function LapTimer() {
   const getCurrentLapTime = (): number => {
     if (!isRunning || !startTime) return 0;
 
-    // Debug logs
-    console.log("Current Time:", currentTime);
-    console.log("Laps:", laps);
-    console.log("Start Time:", startTime);
-
     // Get total elapsed time since start
     const totalElapsedTime = currentTime;
 
@@ -293,11 +348,7 @@ export default function LapTimer() {
       return sum + lapTime;
     }, 0);
 
-    console.log("Total Elapsed Time:", totalElapsedTime);
-    console.log("Completed Laps Time:", completedLapsTime);
-
     const currentLapTime = totalElapsedTime - completedLapsTime;
-    console.log("Current Lap Time:", currentLapTime);
 
     // Ensure we return a valid number
     return isNaN(currentLapTime) ? 0 : currentLapTime;
@@ -432,8 +483,6 @@ export default function LapTimer() {
     const car = driver?.cars.find((c) => c.id === selectedCar);
     if (!driver || !car) return;
 
-    console.log("Completed laps:", completedLaps);
-
     // Calculate total time
     const totalTime = completedLaps.reduce((sum, lap) => sum + lap, 0);
 
@@ -448,8 +497,6 @@ export default function LapTimer() {
       lapNumber: index + 1,
       lapTime: Math.round(lapTime || 0), // Ensure we have valid numbers
     }));
-
-    console.log("Formatted laps for saving:", formattedLaps);
 
     const newSession: Partial<Session> = {
       id: sessionId,
@@ -571,64 +618,19 @@ export default function LapTimer() {
       if (!response.ok) throw new Error("Failed to load data");
 
       const data = await response.json();
-      console.log("Loaded data:", data);
 
-      // Transform the sessions data
-      const sessions = data.sessions.map((session: any) => {
-        // Sort laps by lap number
-        const sortedLaps = [...session.laps].sort((a: any, b: any) => a.lapNumber - b.lapNumber);
+      // Transform sessions to include stats
+      const sessionsWithStats = data.sessions.map((session: any) => ({
+        ...session,
+        stats: calculateSessionStats(session),
+      }));
 
-        // Extract lap times for calculations
-        const lapTimes = sortedLaps.map((lap) => lap.lapTime);
-
-        // Calculate basic statistics
-        const totalTime = lapTimes.reduce((sum, time) => sum + time, 0);
-        const average = totalTime / lapTimes.length;
-        const bestLap = Math.min(...lapTimes);
-        const worstLap = Math.max(...lapTimes);
-
-        // Find the lap with most penalties
-        let maxPenaltyLap = null;
-        let maxPenaltyCount = 0;
-
-        session.penalties?.forEach((penalty: any) => {
-          if (penalty.count > maxPenaltyCount) {
-            maxPenaltyCount = penalty.count;
-            maxPenaltyLap = penalty.lapNumber;
-          }
-        });
-
-        console.log("Processing penalties:", {
-          penalties: session.penalties,
-          maxPenaltyLap,
-          maxPenaltyCount,
-        });
-
-        return {
-          ...session,
-          date: new Date(session.date).toISOString(),
-          laps: sortedLaps,
-          stats: {
-            average,
-            totalTime,
-            bestLap,
-            worstLap,
-            maxPenaltyLap,
-            maxPenaltyCount,
-          },
-          penalties: session.penalties || [],
-          totalPenalties: session.penalties?.reduce((sum: number, p: any) => sum + p.count, 0) || 0,
-        };
-      });
-
-      console.log("Transformed sessions:", sessions);
-      setSavedSessions(sessions);
+      setSavedSessions(sessionsWithStats);
       setDrivers(data.drivers);
     } catch (error) {
       console.error("Error loading data:", error);
     }
   };
-
   const recordLap = (): void => {
     if (!isRunning) return;
 
@@ -639,19 +641,38 @@ export default function LapTimer() {
     const lastLapEndTime = laps.reduce((sum, lap) => sum + lap, 0);
     const currentLapTime = currentTime - lastLapEndTime;
 
-    console.log("Recording lap:", {
-      currentTime,
-      lastLapEndTime,
-      currentLapTime,
-      existingLaps: laps,
-    });
-
     // Add the new lap time as a number
     setLaps((prev) => [...prev, currentLapTime]);
 
     // Check if we've reached the selected number of laps
     if (selectedLapCount !== "unlimited" && laps.length + 1 >= selectedLapCount) {
       handleSessionCompletion([...laps, currentLapTime]);
+    }
+  };
+
+  // Auto-refresh function
+  const refreshData = async () => {
+    try {
+      const response = await fetch("/api/data");
+      if (!response.ok) throw new Error("Failed to load data");
+
+      const data = await response.json();
+
+      // Transform sessions to include stats
+      const sessionsWithStats = data.sessions.map((session: any) => ({
+        ...session,
+        stats: calculateSessionStats(session),
+      }));
+
+      // Only update if data has changed
+      if (JSON.stringify(sessionsWithStats) !== JSON.stringify(savedSessions)) {
+        setSavedSessions(sessionsWithStats);
+      }
+      if (JSON.stringify(data.drivers) !== JSON.stringify(drivers)) {
+        setDrivers(data.drivers);
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
     }
   };
 
@@ -673,7 +694,6 @@ export default function LapTimer() {
       });
 
       if (!response.ok) throw new Error("Failed to save data");
-      console.log("Data saved:", data.lastUpdated);
     } catch (error) {
       console.error("Error saving data:", error);
     }
@@ -1021,13 +1041,6 @@ export default function LapTimer() {
                                     const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
                                     const hasMaxPenalties = session.stats.maxPenaltyLap === lap.lapNumber;
 
-                                    console.log("Displaying lap:", {
-                                      lapNumber: lap.lapNumber,
-                                      lapTime: lap.lapTime,
-                                      isBestLap,
-                                      isWorstLap,
-                                    });
-
                                     return (
                                       <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "", hasMaxPenalties ? "bg-yellow-50" : "")}>
                                         <span className="min-w-[100px]">
@@ -1078,9 +1091,9 @@ export default function LapTimer() {
                                     <>
                                       <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
                                       <div className="space-y-1 mt-2">
-                                        <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>
-                                        <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>
-                                        <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
+                                        {typeof session.stats.bestLap === "number" && <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>}
+                                        {typeof session.stats.worstLap === "number" && <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>}
+                                        <div className="font-mono mt-2">Total Penalties: {session.stats.totalPenalties || 0}</div>
                                       </div>
                                       <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
                                     </>
@@ -1320,13 +1333,6 @@ export default function LapTimer() {
                                       const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
                                       const hasMaxPenalties = session.stats.maxPenaltyLap === lap.lapNumber;
 
-                                      console.log("Displaying lap:", {
-                                        lapNumber: lap.lapNumber,
-                                        lapTime: lap.lapTime,
-                                        isBestLap,
-                                        isWorstLap,
-                                      });
-
                                       return (
                                         <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
                                           <span className="min-w-[100px]">
@@ -1377,9 +1383,9 @@ export default function LapTimer() {
                                       <>
                                         <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
                                         <div className="space-y-1 mt-2">
-                                          <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>
-                                          <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>
-                                          <div className="font-mono mt-2">Total Penalties: {session.totalPenalties}</div>
+                                          {typeof session.stats.bestLap === "number" && <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>}
+                                          {typeof session.stats.worstLap === "number" && <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>}
+                                          <div className="font-mono mt-2">Total Penalties: {session.stats.totalPenalties || 0}</div>
                                         </div>
                                         <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
                                       </>
@@ -1407,7 +1413,6 @@ export default function LapTimer() {
 
               {/* Session Comparison Tab */}
               <TabsContent value="compare" className="px-4 space-y-4 h-full overflow-y-auto">
-                {console.log("Rendering Session Comparison with sessions:", savedSessions)}
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
                   {Array.isArray(savedSessions) && <SessionComparison sessions={savedSessions} />}
                 </motion.div>

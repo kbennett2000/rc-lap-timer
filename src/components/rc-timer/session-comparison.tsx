@@ -45,11 +45,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
   ];
 
   const prepareChartData = () => {
-    console.log("Preparing chart data for sessions:", selectedSessions);
-
     const selectedSessionData = selectedSessions.map((id) => sessions.find((s) => s.id === id)).filter((s): s is Session => s !== undefined);
-
-    console.log("Selected session data:", selectedSessionData);
 
     if (selectedSessionData.length === 0) return [];
 
@@ -82,10 +78,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
   const chartData = useMemo(() => prepareChartData(), [selectedSessions, sessions]);
 
   // Add debugging
-  useEffect(() => {
-    console.log("Selected Sessions:", selectedSessions);
-    console.log("Chart Data:", chartData);
-  }, [selectedSessions, chartData]);
+  useEffect(() => {}, [selectedSessions, chartData]);
 
   // Function to get preset dates
   const getPresetDates = (preset: { label: string; days: number | "month" | "year" }) => {

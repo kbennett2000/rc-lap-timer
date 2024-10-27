@@ -1,4 +1,4 @@
-import { Driver as PrismaDriver, Car as PrismaCar, Session as PrismaSession, Lap, Penalty } from '@prisma/client';
+import { Driver as PrismaDriver, Car as PrismaCar, Session as PrismaSession, Lap, Penalty } from "@prisma/client";
 
 // Extend Prisma types with any additional properties we need
 export interface Driver extends PrismaDriver {
@@ -9,16 +9,14 @@ export interface Car extends PrismaCar {
   driver?: Driver;
 }
 
-export interface Session extends Omit<PrismaSession, 'date'> {
-  id: string;  // Make sure id is required
+export interface Session extends Omit<PrismaSession, "date"> {
+  id: string; // Make sure id is required
   driver: Driver;
-  car: Car;  
+  car: Car;
   laps: Lap[];
   penalties: Penalty[];
   date: string;
   stats: LapStats;
-
-
 
   driverId: string;
   driverName: string;
@@ -27,7 +25,6 @@ export interface Session extends Omit<PrismaSession, 'date'> {
   totalLaps: "unlimited" | number;
   totalPenalties: number;
   notes?: string;
-
 }
 
 export interface LapStats {
