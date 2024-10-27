@@ -1,18 +1,11 @@
-# Items to do:
-- Add the ability to remove penalties
-- Add different types of penalties
-
 # Other things to add:
-- Add more statistical information?
 - Add more statistical analysis?
-- Add charts or graphs for visualization?
 
 # Statistics and Analysis:
 - Driver/car performance trends
 
 # Advanced Session Management:
 - Session categories/tags
-- Session notes/comments
 - Session search and filtering
 
 # Export Enhancements:
