@@ -55,16 +55,22 @@ Follow these steps to run the project locally:
    npm install
    ```
 
-3. **Run the development server**:
+3. **Setup the MySQL database**:
+Check out the [database setup instructions](databaseCreate.md)
+
+4. **Run the development server**:
    ```bash
    npm run dev
    ```
    Navigate to [http://localhost:3000](http://localhost:3000) in your browser to view the app.
 
-4. **Build for production**:
+5. **Build for production**:
    ```bash
    npm run build
    ```
+
+6. **Run it on a Raspberry Pi Zero (work in progress!!)**:
+See the [Raspberry Pi Zero setup instructions](raspbeeryPiSetup.md)
 
 ---
 
