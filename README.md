@@ -1,126 +1,185 @@
-
 # 🏁 RC Lap Timer 🏎️
 
-Traditional transponder-based RC lap timing systems are incredibly expensive and not conducive to backyard or ad-hoc racing. I created **RC Lap Timer** to be a lightweight, free alternative that's almost as good as an expensive system.
+Traditional transponder-based RC lap timing systems are incredibly expensive and not conducive to backyard or ad-hoc racing. **RC Lap Timer** is a lightweight, free alternative that enables casual RC racing without expensive equipment.
 
-In it's current form, **RC Lap Timer** requires two people, a driver and a timer. The driver drives, the timer records a lap time each time the driver's car crosses the start/finish line. The app supports multiple drivers, with multiple cars, so the driver and timer can switch places back and forth.
+**RC Lap Timer** works with two people: a driver and a timer. While one person drives, the other records lap times as the car crosses the start/finish line. The app supports multiple drivers with multiple cars, making it easy to switch roles and compare performances.
 
-**RC Lap Timer** contains tools highlighting your best lap time each session, comparing sessions between drivers, and the ability to automatically store and load your driver, car, and lap session data automatically! Designed with modern web technologies, it offers a sleek, intuitive interface for both desktop and mobile users.
+With features like session notes, best lap tracking, session comparisons, and comprehensive statistics, **RC Lap Timer** offers a robust solution for casual RC racing. Built with modern web technologies and a responsive design, it works seamlessly on both desktop and mobile devices.
 
-NOTE - If you want super-accurate lap times, this isn't the app for you. If you want a fun lap timing system for free for racing around your backyard, park, house, or anywhere else with a few of your RC pals, this is the app for you!
+> **NOTE**: This app is designed for casual racing and fun competition. While it's great for backyard racing and practice sessions, it's not intended to replace professional transponder-based timing systems.
 
 ![RC Car](https://img.icons8.com/color/48/000000/car.png)
 
----
+## 📋 Key Features
 
-## 📋 Features
+- **Interactive Lap Timing** ⏱️
+  - Manual lap recording with millisecond precision
+  - Configurable lap count or unlimited laps
+  - Penalty tracking system
+  - Real-time current lap display
 
-- **Highish-Precision Lap Timing** ⏱️: Accurate lap time tracking down to however accurate your clicking is!
-- **Multi-Driver Support** 👥: Seamlessly switch between multiple drivers and vehicles.
-- **Session History** 📝: Track and review past sessions with detailed statistics.
-- **Local Data Persistence** 💾: Store session data locally, and export/import data when needed.
-- **Modern UI/UX** 🎨: Built with **Radix UI** and **Lucide React** icons, providing a clean and dynamic interface.
-- **Responsive Design** 📱: Optimized for both desktop and mobile devices.
+- **Multi-Driver Support** 👥
+  - Multiple drivers and cars management
+  - Individual driver/car combinations
+  - Alphabetically sorted driver and car lists
 
----
+- **Comprehensive Session Management** 📝
+  - Detailed session statistics
+  - Best and worst lap highlighting
+  - Penalty tracking and statistics
+  - Session notes for tracking conditions and setup
+  - Date range filtering for session history
+
+- **Advanced Analysis** 📊
+  - Best laps comparison across sessions
+  - Session-to-session comparison with visual graphs
+  - Filterable results by driver, car, and date
+  - Historical performance tracking
+
+- **Modern UI/UX** 🎨
+  - Responsive design for mobile and desktop
+  - Tabbed interface for easy navigation
+  - Real-time updates across multiple users
+  - Clean, intuitive controls
+
+- **Data Management** 💾
+  - MySQL database for robust data storage
+  - Automatic data persistence
+  - Multi-user support
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Next.js](https://nextjs.org/)
-- **Languages**: TypeScript, JavaScript
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **Database**: MySQL
 - **Styling**: Tailwind CSS
-- **UI Libraries**: Radix UI, Lucide React icons
-- **Data Mangement**: MySQL 
+- **UI Components**: 
+  - shadcn/ui components
+  - Lucide React icons
+  - Recharts for data visualization
+- **ORM**: Prisma
 - **Version Control**: Git
-
----
 
 ## 🚀 Installation
 
-Follow these steps to run the project locally:
-
 ### Prerequisites
 - Node.js (v16 or higher)
+- MySQL Server
 - npm or yarn
 
 ### Setup Instructions
+
 1. **Clone the repository**:
-   ```bash
+```bash
    git clone https://github.com/kbennett2000/rc-lap-timer.git
    cd rc-lap-timer
-   ```
+```
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+2. **Install dependencies:**
+```bash
+npm install
+```
 
-3. **Setup the MySQL database**:
-Check out the [database setup instructions](databaseCreate.md)
+3. **Set up MySQL database:**
+- Follow the (database setup instructions in database-setup.md)[database-setup.md]
+- Create a .env file in the project root with your database configuration:
+```env
+DATABASE_URL="mysql://rc_timer_user:your_secure_password_here@localhost:3306/rc_lap_timer"
+```
 
-4. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
-   Navigate to [http://localhost:3000](http://localhost:3000) in your browser to view the app.
+4. **Initialize Prisma:**
+```bash
+npx prisma generate
+npx prisma db push
+```
 
-5. **Build for production**:
-   ```bash
-   npm run build
-   ```
+6. **Run the development server:**
+```bash
+npm run dev
+```
 
-6. **Run it on a Raspberry Pi Zero (work in progress!!)**:
-See the [Raspberry Pi Zero setup instructions](raspberryPiSetup.md)
+7. **Use the application:**
+- Access the app at http://localhost:3000
 
----
 
-## 📊 Usage
+## 📊 Usage Guide
+1. **Session Configuration 🏁**
+- Add drivers and their cars
+- Select driver and car for the session
+- Choose number of laps or unlimited mode
+- Configure any session-specific settings
 
-### 1. **Start a New Session** 🏁
-   - Add drivers and cars in the Session Configuration section.
-   - Select the driver and car that will by driving this session.
-   - Select the number of laps for this session, or choose Unlimited to run as many laps as you like.
-   - Press "Start Lap Timer" to begin the session and automatically log lap times.
-   - If you want to end a session early (example - car breaks down and can't finish), or if you're running an Unlimited session and want to record your final lap time, simply click the "Stop Lap Timer" button.
+2. **Recording Laps ⏲️**
+- Start timer to begin session
+- Record each lap as car crosses line
+- Add penalties when needed
+- Stop timer to end session
 
-### 2. **Track Laps and Times** ⏲️
-   - As the RC car completes laps, lap times are recorded and displayed in real-time.
-   - Use the session dashboard to view laps for each driver.
+3. **Session Analysis 📈**
+- View real-time lap statistics
+- Compare lap times across sessions
+- Track penalties and best laps
+- Add notes about track conditions or setup
 
-### 3. **Review Session History** 🕒
-   - View past session results with detailed timing for each lap and driver.
-   - Sessions are stored locally, and you can export the data for backup.
+4. **Data Management 💾**
+- Filter sessions by date range
+- View driver/car specific statistics
+- Compare performance across sessions
+- Manage session notes and data
 
----
+**📱 Mobile Support**
+The application is fully responsive and optimized for mobile devices, featuring:
+- Touch-friendly controls
+- Responsive layouts
+- Mobile-optimized navigation
+- Simplified mobile views
 
-## 🛠️ Development & Contributing
+**🛠️ Development & Contributing**
+Contributions are welcome! Please follow these steps:
+- Fork the repository
+- Create a feature branch: git checkout -b feature/feature-name
+- Commit your changes: git commit -m 'Add some feature'
+- Push to the branch: git push origin feature/feature-name
+- Submit a pull request
 
-Contributions are welcome! To contribute:
+**🔧 Troubleshooting**
+**Common Issues**
+**1. Database Connection**
+```bash
+# Check MySQL service status
+sudo systemctl status mysql
 
-1. Fork the repository.
-2. Create a feature branch: `git checkout -b feature/feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature/feature-name`
-5. Submit a pull request.
+# Verify database exists
+mysql -u root -p
+SHOW DATABASES;
+```
 
----
+**2. Prisma Issues**
+```bash
+# Reset Prisma
+npx prisma generate --force
 
-## 📜 License
+# Verify schema
+npx prisma db push
+```
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+**3. Next.js Build Issues**
+```bash
+# Clear Next.js cache
+rm -rf .next
 
----
+# Rebuild
+npm run build
+```
 
-## 💡 Future Improvements
+**📜 License**
+This project is licensed under the MIT License. See the LICENSE file for details.
+🙌 Acknowledgments
+Special thanks to:
+- The RC car enthusiast community for feedback and testing
+- Icons by Icons8
+- shadcn/ui for component templates
+- Lucide React for icons
+- Recharts for visualization components
 
-See the [To Do List](ToDoItems.md) file.
-
----
-
-## 🙌 Acknowledgments
-
-Special thanks to the RC car enthusiast community for inspiration and feedback during development. Icons by [Icons8](https://icons8.com).
-
----
-
-### Happy Racing! 🏎️
+**Happy Racing! 🏎️**
