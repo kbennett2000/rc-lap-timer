@@ -19,7 +19,7 @@ import cn from "classnames";
 import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion"; // Added Framer Motion import
-import { Driver, Car, Session, LapStats } from "@/types/rc-timer";
+import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 
 export default function LapTimer() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -471,7 +471,7 @@ export default function LapTimer() {
     setNewDriverName(newName);
   };
 
-  const handleSessionCompletion = async (completedLaps: number[]): void => {
+  const handleSessionCompletion = async (completedLaps: number[]): Promise<void> => {
     setIsRunning(false);
     setStartTime(null);
     setCurrentTime(0);
