@@ -70,7 +70,7 @@ Check out the [database setup instructions](databaseCreate.md)
    ```
 
 6. **Run it on a Raspberry Pi Zero (work in progress!!)**:
-See the [Raspberry Pi Zero setup instructions](raspbeeryPiSetup.md)
+See the [Raspberry Pi Zero setup instructions](raspberryPiSetup.md)
 
 ---
 
