@@ -47,8 +47,8 @@ With features like session notes, best lap tracking, session comparisons, and co
   - Automatic data persistence
   - Multi-user support
 
-## 🛠️ Tech Stack
 
+## 🛠️ Tech Stack
 - **Framework**: Next.js 14
 - **Language**: TypeScript
 - **Database**: MySQL
@@ -59,6 +59,7 @@ With features like session notes, best lap tracking, session comparisons, and co
   - Recharts for data visualization
 - **ORM**: Prisma
 - **Version Control**: Git
+
 
 ## 🚀 Installation
 
@@ -103,6 +104,7 @@ npm run dev
 
 
 ## 📊 Usage Guide
+
 1. **Session Configuration 🏁**
 - Add drivers and their cars
 - Select driver and car for the session
@@ -134,7 +136,9 @@ The application is fully responsive and optimized for mobile devices, featuring:
 - Mobile-optimized navigation
 - Simplified mobile views
 
-**🛠️ Development & Contributing**
+
+## 🛠️ Development & Contributing
+
 Contributions are welcome! Please follow these steps:
 - Fork the repository
 - Create a feature branch: git checkout -b feature/feature-name
@@ -142,7 +146,9 @@ Contributions are welcome! Please follow these steps:
 - Push to the branch: git push origin feature/feature-name
 - Submit a pull request
 
-**🔧 Troubleshooting**
+
+## 🔧 Troubleshooting
+
 **Common Issues**
 **1. Database Connection**
 ```bash
@@ -172,7 +178,8 @@ rm -rf .next
 npm run build
 ```
 
-**📜 License**
+## 📜 License
+
 This project is licensed under the MIT License. See the LICENSE file for details.
 🙌 Acknowledgments
 Special thanks to:
@@ -182,4 +189,4 @@ Special thanks to:
 - Lucide React for icons
 - Recharts for visualization components
 
-**Happy Racing! 🏎️**
+# Happy Racing! 🏎️
