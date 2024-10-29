@@ -51,6 +51,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [isLoading, setIsLoading] = useState(false);
 
   const isActiveRef = useRef(true);
+  const isPreviewingRef  = useRef(isPreviewing);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    isPreviewingRef.current = isPreviewing;
+  }, [isPreviewing]);
 
   // Add this helper function near the top of the component
   const cleanup = useCallback(() => {
@@ -196,7 +201,9 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           console.log("Motion detected!");
           playBeep();
           setMotionEvents((prev) => prev + 1);
+          if (!isPreviewingRef.current) {
           onMotionDetected?.(changePercent);
+          }
           lastMotionTimeRef.current = now;
         }
       }
@@ -263,14 +270,17 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   }, [setupCamera, initAudio, detectMotion, handleStop]);
 
   const handlePreviewToggle = useCallback(async () => {
-    if (isPreviewing) {
+    if (isPreviewingRef.current) {
       handleStop();
     } else {
       try {
+
+
+
         setError("");
         setIsLoading(true);
-        await setupCamera();
         setIsPreviewing(true);
+        await handleStart();        
       } catch (err) {
         setError("Failed to start preview: " + (err instanceof Error ? err.message : String(err)));
       } finally {

@@ -58,8 +58,9 @@ export default function LapTimer() {
   const [timingMode, setTimingMode] = useState<TimingMode>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
-  const lastMotionTimeRef = useRef<number>(0);
 
+  const lastMotionTimeRef = useRef<number>(0);
+const motionControlRef = useRef<{ stop: () => void }>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Listen for window resize events
@@ -562,6 +563,12 @@ export default function LapTimer() {
     }
   };
 
+  // Function to stop the camera
+const handleStopCamera = () => {
+  // Call the stop method through the ref
+  motionControlRef.current?.stop();
+};
+
   const isCarNameUniqueForDriver = (name: string): boolean => {
     const currentDriver = drivers.find((d) => d.id === selectedDriver);
     if (!currentDriver) return true;
@@ -714,6 +721,7 @@ export default function LapTimer() {
 
     // Check if we've reached the selected number of laps
     if (selectedLapCountRef.current !== "unlimited" && lapsRef.current.length + 1 >= selectedLapCountRef.current) {
+      handleStopCamera();
       handleSessionCompletion([...lapsRef.current, currentLapTime]);
     }
   };
@@ -868,13 +876,13 @@ export default function LapTimer() {
     selectedLapCountRef.current = selectedLapCount;
   }, [selectedLapCount]);
 
-  const selectedDriverRef  = useRef(selectedDriver);
+  const selectedDriverRef = useRef(selectedDriver);
   // Sync with the ref whenever it changes
   useEffect(() => {
     selectedDriverRef.current = selectedDriver;
   }, [selectedDriver]);
 
-  const selectedCarRef  = useRef(selectedCar);
+  const selectedCarRef = useRef(selectedCar);
   // Sync with the ref whenever it changes
   useEffect(() => {
     selectedCarRef.current = selectedCar;
@@ -1163,6 +1171,7 @@ export default function LapTimer() {
                       {timingMode === "motion" && (
                         <div className="flex flex-col gap-2">
                           <MotionDetector
+                          controlRef={motionControlRef}
                             onMotionDetected={(changePercent) => {
                               handleMotionDetected(changePercent);
                             }}
