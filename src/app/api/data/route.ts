@@ -32,12 +32,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-     // Clone the request before reading
-     const clonedRequest = request.clone();
-     const data = await clonedRequest.json();
- 
+    // Clone the request before reading
+    const clonedRequest = request.clone();
+    const data = await clonedRequest.json();
+
     // Track processed sessions to prevent duplicates
-     const processedIds = new Set<string>();
+    const processedIds = new Set<string>();
 
     // Update sessions using transactions for atomicity
     for (const session of data.sessions) {
@@ -48,7 +48,6 @@ export async function POST(request: Request) {
         continue;
       }
       processedIds.add(sessionId);
-
 
       // Check if session already exists
       const existingSession = await prisma.session.findUnique({
@@ -106,7 +105,6 @@ export async function POST(request: Request) {
           });
         }
       });
-
     }
 
     return NextResponse.json({ success: true });
@@ -140,7 +138,6 @@ export async function DELETE(request: Request) {
       await prisma.session.deleteMany({});
       return NextResponse.json({ success: true, message: "All sessions cleared" });
     } else if (id) {
-
       // Delete specific session and its related data
       await prisma.$transaction([
         prisma.penalty.deleteMany({
@@ -177,11 +174,11 @@ export async function DELETE(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-     // Clone the request before reading
-     const clonedRequest = request.clone();
-     const { sessionId, notes } = await clonedRequest.json();
- 
-     const updatedSession = await prisma.session.update({
+    // Clone the request before reading
+    const clonedRequest = request.clone();
+    const { sessionId, notes } = await clonedRequest.json();
+
+    const updatedSession = await prisma.session.update({
       where: { id: sessionId },
       data: { notes },
     });

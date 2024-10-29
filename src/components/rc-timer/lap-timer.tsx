@@ -6,7 +6,7 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, Camera } from "lucide-react";
+import { Video, ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, Camera } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion"; // Added Framer Motion import
 import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import { MotionDetector } from "./motion-detector";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function LapTimer() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -54,6 +55,10 @@ export default function LapTimer() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
+  const [timingMode, setTimingMode] = useState<TimingMode>("ui");
+  const [showMotionDetector, setShowMotionDetector] = useState(false);
+  const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
+  const lastMotionTimeRef = useRef<number>(0);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -632,6 +637,7 @@ export default function LapTimer() {
       console.error("Error loading data:", error);
     }
   };
+
   const recordLap = (): void => {
     if (!isRunning) return;
 
@@ -731,8 +737,14 @@ export default function LapTimer() {
   };
 
   const handleMotionDetected = (changePercent: number) => {
-    console.log(`Motion detected! ${changePercent.toFixed(1)}% of frame changed`);
-    // Add your custom handling here
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "lap-timer.handleMotionDetected",
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(console.error);
   };
 
   return (
@@ -911,47 +923,113 @@ export default function LapTimer() {
                           </div>
                         </div>
                       )}
+
+                      {/* Add Timing Mode Selection */}
+                      {selectedDriver && selectedCar && selectedLapCount && (
+                        <div className="space-y-2">
+                          <Label>Timing Mode</Label>
+                          <RadioGroup
+                            value={timingMode}
+                            onValueChange={(value) => {
+                              const newMode = value as "ui" | "motion";
+                              setTimingMode(newMode);
+                              if (newMode === "motion") {
+                                setShowMotionDetector(true);
+                                // Reset timer state when switching to motion mode
+                                if (isRunning) {
+                                  stopTimer();
+                                }
+                              } else {
+                                setShowMotionDetector(false);
+                                setIsMotionTimingActive(false);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="ui" id="timing-ui" />
+                              <Label htmlFor="timing-ui" className="flex items-center">
+                                <PlayCircle className="mr-2 h-4 w-4" />
+                                Time Using UI
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="motion" id="timing-motion" />
+                              <Label htmlFor="timing-motion" className="flex items-center">
+                                <Video className="mr-2 h-4 w-4" />
+                                Time Using Motion Detection
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
                   {/* Timer Display */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Current Lap Time */}
-                      <div className="text-center text-2xl font-mono text-gray-600">Current Lap: {formatTime(getCurrentLapTime())}</div>
+                  {timingMode === "ui" && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Current Lap Time */}
+                        <div className="text-center text-2xl font-mono text-gray-600">Current Lap: {formatTime(getCurrentLapTime())}</div>
 
-                      {/* Lap counter */}
-                      <div className="text-xl font-mono text-center">
-                        {isRunning ? (selectedLapCount !== "unlimited" ? (laps.length >= selectedLapCount ? "Timing Session Finished" : `Lap: ${laps.length + 1} of ${selectedLapCount}`) : `Lap: ${laps.length + 1}`) : laps.length > 0 ? "Timing Session Finished" : "Ready"}
-                      </div>
+                        {/* Lap counter */}
+                        <div className="text-xl font-mono text-center">
+                          {isRunning ? (selectedLapCount !== "unlimited" ? (laps.length >= selectedLapCount ? "Timing Session Finished" : `Lap: ${laps.length + 1} of ${selectedLapCount}`) : `Lap: ${laps.length + 1}`) : laps.length > 0 ? "Timing Session Finished" : "Ready"}
+                        </div>
 
-                      {/* Timer controls */}
-                      <div className="flex flex-col gap-2">
-                        <Button onClick={startTimer} disabled={isRunning || !selectedDriver || !selectedCar} className={cn("bg-green-500 hover:bg-green-600 transition-all", startAnimation && "animate-timer-start")}>
-                          <PlayCircle className="mr-2 h-6 w-6" />
-                          Start Lap Timer
-                        </Button>
+                        {/* Timer controls */}
+                        <div className="flex flex-col gap-2">
+                          <Button onClick={startTimer} disabled={isRunning || !selectedDriver || !selectedCar} className={cn("bg-green-500 hover:bg-green-600 transition-all", startAnimation && "animate-timer-start")}>
+                            <PlayCircle className="mr-2 h-6 w-6" />
+                            Start Lap Timer
+                          </Button>
 
-                        <Button onClick={recordLap} disabled={!isRunning} className={cn("bg-blue-500 hover:bg-blue-600 transition-all", lapAnimation && "animate-lap-record")}>
-                          <ListPlus className="mr-2 h-6 w-6" />
-                          Record Lap
-                        </Button>
+                          <Button onClick={recordLap} disabled={!isRunning} className={cn("bg-blue-500 hover:bg-blue-600 transition-all", lapAnimation && "animate-lap-record")}>
+                            <ListPlus className="mr-2 h-6 w-6" />
+                            Record Lap
+                          </Button>
 
-                        <Button onClick={stopTimer} disabled={!isRunning} className={cn("bg-red-500 hover:bg-red-600 transition-all", stopAnimation && "animate-timer-stop")}>
-                          <StopCircle className="mr-2 h-6 w-6" />
-                          Stop Lap Timer
-                        </Button>
+                          <Button onClick={stopTimer} disabled={!isRunning} className={cn("bg-red-500 hover:bg-red-600 transition-all", stopAnimation && "animate-timer-stop")}>
+                            <StopCircle className="mr-2 h-6 w-6" />
+                            Stop Lap Timer
+                          </Button>
 
-                        <Button onClick={addPenalty} disabled={!isRunning} className={cn("bg-yellow-500 hover:bg-yellow-600 transition-all", penaltyAnimation && "animate-penalty-add")}>
-                          <AlertTriangle className="mr-2 h-6 w-6" />
-                          Add Penalty
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                          <Button onClick={addPenalty} disabled={!isRunning} className={cn("bg-yellow-500 hover:bg-yellow-600 transition-all", penaltyAnimation && "animate-penalty-add")}>
+                            <AlertTriangle className="mr-2 h-6 w-6" />
+                            Add Penalty
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Motion Detector Card */}
+                  {timingMode === "motion" && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Motion Detection</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <MotionDetector
+                          onMotionDetected={(changePercent) => {
+                            console.log("Lap Timer received motion:", changePercent);
+                            handleMotionDetected(changePercent);
+                          }}
+                          className="w-full"
+                        />
+
+                        {selectedLapCount === "unlimited" && isMotionTimingActive && (
+                          <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
+                            <StopCircle className="mr-2 h-6 w-6" />
+                            Stop Lap Timer
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Current Session - Only show if there's an active session */}
                   {isRunning && laps.length > 0 && (
@@ -1431,16 +1509,9 @@ export default function LapTimer() {
                 </motion.div>
               </TabsContent>
 
-              {/* Detector Tab */}
-              <TabsContent value="detector" className="space-y-4">
-                <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  <MotionDetector onMotionDetected={handleMotionDetected} className="max-w-2xl mx-auto" />
-                </motion.div>
-              </TabsContent>
-
               {/* Bottom Navigation */}
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 shadow-up">
-                <TabsList className="grid grid-cols-6 gap-0">
+                <TabsList className="grid grid-cols-5 gap-0">
                   <TabsTrigger value="current" className="py-3">
                     <div className="flex flex-col items-center">
                       <PlayCircle className="h-5 w-5" />
@@ -1469,12 +1540,6 @@ export default function LapTimer() {
                     <div className="flex flex-col items-center">
                       <ListPlus className="h-5 w-5" />
                       <span className="text-xs mt-1">Best</span>
-                    </div>
-                  </TabsTrigger>
-                  <TabsTrigger value="detector" className="py-3">
-                    <div className="flex flex-col items-center">
-                      <Camera className="h-5 w-5" />
-                      <span className="text-xs mt-1">Detector</span>
                     </div>
                   </TabsTrigger>
                 </TabsList>

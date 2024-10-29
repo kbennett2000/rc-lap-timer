@@ -1,0 +1,44 @@
+{"timestamp":"2024-10-29T19:47:30.056Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T19:47:35.176Z","event":"*** MOTION DETECTED ***","changePercent":"6.7","threshold":5,"cooldown":5000,"timeSinceLastMotion":0,"settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true},"detectionState":{"isActive":true,"timestamp":"2024-10-29T19:47:35.779Z"}}
+{"timestamp":"2024-10-29T19:47:41.041Z","event":"*** MOTION DETECTED ***","changePercent":"8.9","threshold":5,"cooldown":5000,"timeSinceLastMotion":0,"settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true},"detectionState":{"isActive":true,"timestamp":"2024-10-29T19:47:41.641Z"}}
+{"timestamp":"2024-10-29T19:47:47.033Z","event":"*** MOTION DETECTED ***","changePercent":"7.2","threshold":5,"cooldown":5000,"timeSinceLastMotion":0,"settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true},"detectionState":{"isActive":true,"timestamp":"2024-10-29T19:47:47.637Z"}}
+{"timestamp":"2024-10-29T19:47:51.081Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T19:50:19.223Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T19:50:42.676Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T19:50:42.785Z","event":"handleMotionDetected IS FUCKING WORKING MAN!!!!"}
+{"timestamp":"2024-10-29T19:50:42.183Z","event":"*** MOTION DETECTED ***","changePercent":"10.4","threshold":5,"cooldown":5000,"timeSinceLastMotion":0,"settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true},"detectionState":{"isActive":true,"timestamp":"2024-10-29T19:50:42.786Z"}}
+{"timestamp":"2024-10-29T19:50:48.921Z","event":"handleMotionDetected IS FUCKING WORKING MAN!!!!"}
+{"timestamp":"2024-10-29T19:50:48.325Z","event":"*** MOTION DETECTED ***","changePercent":"15.4","threshold":5,"cooldown":5000,"timeSinceLastMotion":0,"settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true},"detectionState":{"isActive":true,"timestamp":"2024-10-29T19:50:48.924Z"}}
+{"timestamp":"2024-10-29T19:50:54.233Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T19:51:05.378Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T19:51:10.044Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T19:55:28.410Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:55:28.406Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:55:31.115Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:55:31.116Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T19:55:31.195Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:55:43.891Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T19:56:07.214Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:56:07.215Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:56:32.286Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:56:32.288Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:56:34.641Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:56:34.642Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T19:56:34.705Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:56:43.239Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T19:58:51.163Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:59:07.823Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:59:07.825Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:59:09.026Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:59:09.062Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T19:59:09.150Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T19:59:16.951Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T20:01:48.693Z","event":"motion_detector_started","settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true}}
+{"timestamp":"2024-10-29T20:01:48.692Z","event":"camera_setup_success"}
+{"timestamp":"2024-10-29T20:01:54.142Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T20:05:49.389Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T20:06:08.646Z","event":"motion_detector_stopped"}
+{"timestamp":"2024-10-29T20:06:18.182Z","event":"handleMotionDetected IS FUCKING WORKING MAN!!!!"}
+{"timestamp":"2024-10-29T20:06:17.589Z","event":"*** MOTION DETECTED ***","changePercent":"6.7","threshold":5,"cooldown":5000,"timeSinceLastMotion":0,"settings":{"sensitivity":100,"threshold":5,"cooldown":5000,"enableAudio":true,"enableDebugView":true},"detectionState":{"isActive":true,"timestamp":"2024-10-29T20:06:18.183Z"}}
+{"timestamp":"2024-10-29T20:06:23.204Z","event":"handleMotionDetected IS FUCKING WORKING MAN!!!!"}
+{"timestamp":"2024-10-29T20:06:25.964Z","event":"motion_detector_stopped"}
