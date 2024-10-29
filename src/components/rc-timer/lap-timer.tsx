@@ -20,6 +20,7 @@ import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion"; // Added Framer Motion import
 import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
+import { MotionDetector } from "./motion-detector";
 
 export default function LapTimer() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -729,6 +730,13 @@ export default function LapTimer() {
     return !isNaN(num) && num > 0 && num <= 999;
   };
 
+
+  const handleMotionDetected = (changePercent: number) => {
+    console.log(`Motion detected! ${changePercent.toFixed(1)}% of frame changed`);
+    // Add your custom handling here
+  };
+  
+
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content Area - with padding for header and bottom nav */}
@@ -1420,12 +1428,31 @@ export default function LapTimer() {
 
               {/* Session Notes Tab */}
               <TabsContent value="notes" className="space-y-4">
-                <SessionNotes sessions={savedSessions} />
+                <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+                  <SessionNotes sessions={savedSessions} />
+                </motion.div>
+              </TabsContent>
+
+              {/* Detector Tab */}
+              <TabsContent value="detector" className="space-y-4">
+                <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+                  <MotionDetector
+                    onMotionDetected={handleMotionDetected}
+                    initialSettings={{
+                      sensitivity: 25,
+                      threshold: 1.0,
+                      cooldown: 500,
+                      enableAudio: true,
+                      enableDebugView: true,
+                    }}
+                    className="max-w-2xl mx-auto"
+                  />
+                </motion.div>
               </TabsContent>
 
               {/* Bottom Navigation */}
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 shadow-up">
-                <TabsList className="grid grid-cols-5 gap-0">
+                <TabsList className="grid grid-cols-6 gap-0">
                   <TabsTrigger value="current" className="py-3">
                     <div className="flex flex-col items-center">
                       <PlayCircle className="h-5 w-5" />
@@ -1454,6 +1481,12 @@ export default function LapTimer() {
                     <div className="flex flex-col items-center">
                       <ListPlus className="h-5 w-5" />
                       <span className="text-xs mt-1">Best</span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger value="detector" className="py-3">
+                    <div className="flex flex-col items-center">
+                      <ListPlus className="h-5 w-5" />
+                      <span className="text-xs mt-1">Detector</span>
                     </div>
                   </TabsTrigger>
                 </TabsList>
