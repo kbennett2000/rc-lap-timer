@@ -3,6 +3,10 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 interface MotionDetectorProps {
   onMotionDetected?: (changePercent: number) => void;
   className?: string;
+  // Add ref for external control
+  controlRef?: React.RefObject<{
+    stop: () => void;
+  }>;
 }
 
 interface DetectorSettings {
@@ -21,7 +25,7 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   enableDebugView: true,
 };
 
-export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "" }) => {
+export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,22 +36,27 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number>();
 
+  // Add ref for initial frames skip
+  const frameCountRef = useRef<number>(0);
+  const FRAMES_TO_SKIP = 10; // Skip first 10 frames to avoid false positives
+
   // State
   const [settings, setSettings] = useState<DetectorSettings>(DEFAULT_SETTINGS);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
   const [error, setError] = useState<string>("");
   const [motionEvents, setMotionEvents] = useState(0);
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
-  const [isStoppingRef] = useState({ current: false }); // Use ref-like state for immediate access in rAF
+  const [isStoppingRef] = useState({ current: false });
   const [isLoading, setIsLoading] = useState(false);
 
-  const isActiveRef = useRef(true); // Use a ref for immediate access in rAF loop
+  const isActiveRef = useRef(true);
 
   // Add this helper function near the top of the component
   const cleanup = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = undefined; // Clear the ref
+      animationFrameRef.current = undefined;
     }
   }, []);
 
@@ -111,18 +120,20 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Camera access error");
-      throw err; // Re-throw to handle in handleStart
+      throw err;
     }
   }, []);
 
   // Motion detection
+  // Modified motion detection to handle frame skipping
   const detectMotion = useCallback(() => {
-    // Immediate check of ref before doing anything
     if (!isActiveRef.current) {
+      console.log("Not active, stopping detection");
       return;
     }
 
     if (!videoRef.current || !canvasRef.current || !debugCanvasRef.current) {
+      console.log("Missing refs, stopping detection");
       return;
     }
 
@@ -132,13 +143,12 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     const ctx = canvas.getContext("2d");
     const debugCtx = debugCanvas.getContext("2d");
 
-    if (!ctx || !debugCtx) return;
-
-    // Check again before heavy computation
-    if (!isActiveRef.current) {
+    if (!ctx || !debugCtx) {
+      console.log("Missing context, stopping detection");
       return;
     }
 
+    // Make sure we're drawing the current video frame
     ctx.drawImage(video, 0, 0);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
@@ -146,144 +156,139 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
     }
 
-    if (previousFrameRef.current && isActiveRef.current) {
-      // Add ref check here
+    // Increment frame counter
+    frameCountRef.current++;
+    console.log("Processing frame:", frameCountRef.current);
+
+    // Only process motion detection after skipping initial frames
+    if (previousFrameRef.current && frameCountRef.current > FRAMES_TO_SKIP) {
       let changedPixels = 0;
       const debugFrame = settings.enableDebugView ? debugCtx.createImageData(canvas.width, canvas.height) : null;
 
-      // Only process frame if still active
-      if (isActiveRef.current) {
-        for (let i = 0; i < currentFrame.data.length; i += 4) {
-          const rDiff = Math.abs(currentFrame.data[i] - previousFrameRef.current.data[i]);
-          const gDiff = Math.abs(currentFrame.data[i + 1] - previousFrameRef.current.data[i + 1]);
-          const bDiff = Math.abs(currentFrame.data[i + 2] - previousFrameRef.current.data[i + 2]);
+      for (let i = 0; i < currentFrame.data.length; i += 4) {
+        const rDiff = Math.abs(currentFrame.data[i] - previousFrameRef.current.data[i]);
+        const gDiff = Math.abs(currentFrame.data[i + 1] - previousFrameRef.current.data[i + 1]);
+        const bDiff = Math.abs(currentFrame.data[i + 2] - previousFrameRef.current.data[i + 2]);
 
-          if (rDiff > settings.sensitivity || gDiff > settings.sensitivity || bDiff > settings.sensitivity) {
-            changedPixels++;
-            if (debugFrame) {
-              debugFrame.data[i] = 255;
-              debugFrame.data[i + 1] = 0;
-              debugFrame.data[i + 2] = 0;
-              debugFrame.data[i + 3] = 128;
-            }
+        if (rDiff > settings.sensitivity || gDiff > settings.sensitivity || bDiff > settings.sensitivity) {
+          changedPixels++;
+          if (debugFrame) {
+            debugFrame.data[i] = 255;
+            debugFrame.data[i + 1] = 0;
+            debugFrame.data[i + 2] = 0;
+            debugFrame.data[i + 3] = 128;
           }
         }
+      }
 
-        if (settings.enableDebugView && debugFrame) {
-          debugCtx.putImageData(debugFrame, 0, 0);
-        }
+      if (settings.enableDebugView && debugFrame) {
+        debugCtx.putImageData(debugFrame, 0, 0);
+      }
 
-        const frameSize = currentFrame.width * currentFrame.height;
-        const changePercent = (changedPixels / frameSize) * 100;
-        setLastChangePercent(changePercent);
+      const frameSize = currentFrame.width * currentFrame.height;
+      const changePercent = (changedPixels / frameSize) * 100;
+      setLastChangePercent(changePercent);
+      console.log("Change percent:", changePercent.toFixed(2) + "%");
 
-        // Only trigger motion detection if still active
-        if (isActiveRef.current) {
-          const now = Date.now();
-          if (changePercent > settings.threshold && now - lastMotionTimeRef.current > settings.cooldown) {
-            if (isActiveRef.current) {
-              // Final check before triggering
-              playBeep();
-              setMotionEvents((prev) => prev + 1);
-              onMotionDetected?.(changePercent);
-              lastMotionTimeRef.current = now;
-
-              // Only log if still active
-              if (isActiveRef.current) {
-                // TODO: uncomment for logging
-                /*
-                fetch("/api/log", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event: "*** MOTION DETECTED ***",
-                    changePercent: changePercent.toFixed(1),
-                    threshold: settings.threshold,
-                    cooldown: settings.cooldown,
-                    timeSinceLastMotion: now - lastMotionTimeRef.current,
-                    settings: settings,
-                    detectionState: {
-                      isActive: isActiveRef.current,
-                      timestamp: new Date().toISOString(),
-                    },
-                  }),                  
-                }).catch(console.error);
-*/
-              }
-            }
-          }
+      if (changePercent > settings.threshold) {
+        const now = Date.now();
+        if (now - lastMotionTimeRef.current > settings.cooldown) {
+          console.log("Motion detected!");
+          playBeep();
+          setMotionEvents((prev) => prev + 1);
+          onMotionDetected?.(changePercent);
+          lastMotionTimeRef.current = now;
         }
       }
     }
 
     previousFrameRef.current = currentFrame;
 
-    // Only schedule next frame if still active
     if (isActiveRef.current) {
       animationFrameRef.current = requestAnimationFrame(detectMotion);
     }
   }, [settings, playBeep, onMotionDetected]);
 
-  // Modify the start/stop handlers
   const handleStop = useCallback(() => {
-    // Immediately set active to false
     isActiveRef.current = false;
 
-    // Cancel any pending animation frame immediately
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = undefined;
     }
 
-    // Stop all tracks immediately
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
     }
 
-    // Clear other refs
     previousFrameRef.current = null;
     lastMotionTimeRef.current = 0;
+    frameCountRef.current = 0; // Reset frame counter
 
-    // Update state
     setIsRunning(false);
-
-    // Log after cleanup
-    // TODO: uncomment for logging
-    /*
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "motion_detector_stopped",
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(console.error);
-    */
+    setIsPreviewing(false);
   }, []);
 
   const handleStart = useCallback(async () => {
     try {
       setError("");
       isActiveRef.current = true;
+      frameCountRef.current = 0; // Reset frame counter
 
-      // First get camera working
       await setupCamera();
 
-      // Then initialize audio
+      // Wait for video to be ready
+      if (videoRef.current) {
+        await new Promise<void>((resolve) => {
+          if (videoRef.current!.readyState === 4) {
+            resolve();
+          } else {
+            videoRef.current!.addEventListener("loadeddata", () => resolve(), { once: true });
+          }
+        });
+      }
+
       await initAudio();
 
-      // Then start motion detection
+      console.log("Starting motion detection");
       setIsRunning(true);
       detectMotion();
     } catch (err) {
+      console.error("Start error:", err);
       setError("Failed to start: " + (err instanceof Error ? err.message : String(err)));
       isActiveRef.current = false;
-      handleStop(); // Clean up if start fails
+      handleStop();
     }
-  }, [setupCamera, initAudio, detectMotion]);
+  }, [setupCamera, initAudio, detectMotion, handleStop]);
 
-  // Single useEffect for video setup
+  const handlePreviewToggle = useCallback(async () => {
+    if (isPreviewing) {
+      handleStop();
+    } else {
+      try {
+        setError("");
+        setIsLoading(true);
+        await setupCamera();
+        setIsPreviewing(true);
+      } catch (err) {
+        setError("Failed to start preview: " + (err instanceof Error ? err.message : String(err)));
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [isPreviewing, setupCamera, handleStop]);
+
+  // Expose control methods via ref
+  useEffect(() => {
+    if (controlRef) {
+      controlRef.current = {
+        stop: handleStop,
+      };
+    }
+  }, [controlRef, handleStop]);
+
+  // ... (previous useEffect hooks remain the same)
   useEffect(() => {
     if (!videoRef.current) return;
 
@@ -305,28 +310,46 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     };
   }, []);
 
-  // Cleanup effect
   useEffect(() => {
+    if (!videoRef.current) return;
+
+    const video = videoRef.current;
+
+    const handleVideoMetadata = () => {
+      if (!videoRef.current || !canvasRef.current || !debugCanvasRef.current) return;
+
+      console.log("Video metadata loaded");
+      const { videoWidth, videoHeight } = videoRef.current;
+      console.log("Video dimensions:", videoWidth, "x", videoHeight);
+
+      canvasRef.current.width = videoWidth;
+      canvasRef.current.height = videoHeight;
+      debugCanvasRef.current.width = videoWidth;
+      debugCanvasRef.current.height = videoHeight;
+    };
+
+    video.addEventListener("loadedmetadata", handleVideoMetadata);
+
     return () => {
-      handleStop();
+      video.removeEventListener("loadedmetadata", handleVideoMetadata);
     };
   }, []);
+
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Video container */}
       <div className="relative bg-black rounded-lg overflow-hidden">
         <video ref={videoRef} autoPlay playsInline className="w-full" />
-        <canvas ref={debugCanvasRef} className={`absolute top-0 left-0 w-full h-full ${settings.enableDebugView ? "opacity-50" : "hidden"}`} />
+        <canvas ref={debugCanvasRef} className={`absolute top-0 left-0 w-full h-full ${settings.enableDebugView && isRunning ? "opacity-50" : "hidden"}`} />
         <canvas ref={canvasRef} className="hidden" />
       </div>
 
-      {/* Error message */}
       {error && <div className="text-red-500 bg-red-50 p-2 rounded">{error}</div>}
 
-      {/* Controls */}
       <div className="space-y-4">
-        {/* Basic controls */}
         <div className="flex gap-2">
+          <button onClick={handlePreviewToggle} disabled={isRunning || isLoading} className="px-4 py-2 bg-gray-500 text-white rounded disabled:bg-gray-300">
+            {isPreviewing ? "Stop Preview" : "Preview"}
+          </button>
           <button
             onClick={async () => {
               setIsLoading(true);
@@ -336,17 +359,16 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
                 setIsLoading(false);
               }
             }}
-            disabled={isRunning || isLoading}
+            disabled={isRunning || isLoading || isPreviewing}
             className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
           >
             {isLoading ? "Starting..." : "Start"}
           </button>
-          <button onClick={handleStop} disabled={!isRunning || isLoading} className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300">
+          <button onClick={handleStop} disabled={(!isRunning && !isPreviewing) || isLoading} className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300">
             {isLoading ? "Stopping..." : "Stop"}
           </button>
         </div>
 
-        {/* Settings */}
         <div className="space-y-3 p-4 bg-gray-50 rounded">
           <div>
             <label className="block text-sm mb-1">Sensitivity ({settings.sensitivity})</label>
