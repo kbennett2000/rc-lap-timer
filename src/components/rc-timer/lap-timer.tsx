@@ -3,7 +3,7 @@
 import { formatTime, formatDateTime } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
 import { SessionNotes } from "./session-notes";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Video, ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, Camera } from "lucide-react";
@@ -478,6 +478,16 @@ export default function LapTimer() {
   };
 
   const handleSessionCompletion = async (completedLaps: number[]): Promise<void> => {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "handleSessionCompletion",
+        timestamp: new Date().toISOString(),
+        isRunningVar: isRunningRef.current,
+      }),
+    }).catch(console.error);
+
     setIsRunning(false);
     setStartTime(null);
     setCurrentTime(0);
@@ -485,9 +495,20 @@ export default function LapTimer() {
       clearInterval(timerRef.current);
     }
 
-    const driver = drivers.find((d) => d.id === selectedDriver);
-    const car = driver?.cars.find((c) => c.id === selectedCar);
-    if (!driver || !car) return;
+    const driver = drivers.find((d) => d.id === selectedDriverRef.current);
+    const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
+    if (!driver || !car) {
+      fetch("/api/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "handleSessionCompletion - NO DRIVER OR CAR FOUND!!!",
+          timestamp: new Date().toISOString(),
+          isRunningVar: isRunningRef.current,
+        }),
+      }).catch(console.error);
+      return;
+    }
 
     // Calculate total time
     const totalTime = completedLaps.reduce((sum, lap) => sum + lap, 0);
@@ -639,6 +660,16 @@ export default function LapTimer() {
   };
 
   const recordLap = (): void => {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "lap-timer - recording lap",
+        timestamp: new Date().toISOString(),
+        isRunningVar: isRunning,
+      }),
+    }).catch(console.error);
+
     if (!isRunning) return;
 
     setLapAnimation(true);
@@ -654,6 +685,36 @@ export default function LapTimer() {
     // Check if we've reached the selected number of laps
     if (selectedLapCount !== "unlimited" && laps.length + 1 >= selectedLapCount) {
       handleSessionCompletion([...laps, currentLapTime]);
+    }
+  };
+
+  const recordLap_MD = (): void => {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "lap-timer - recording lap",
+        timestamp: new Date().toISOString(),
+        isRunningRefVar: isRunningRef.current,
+        selectedLapCountRefVar: selectedLapCountRef.current,
+      }),
+    }).catch(console.error);
+
+    if (!isRunningRef.current) return;
+
+    setLapAnimation(true);
+    setTimeout(() => setLapAnimation(false), 300);
+
+    // Calculate the current lap time
+    const lastLapEndTime = lapsRef.current.reduce((sum, lap) => sum + lap, 0);
+    const currentLapTime = currentTimeRef.current - lastLapEndTime;
+
+    // Add the new lap time as a number
+    setLaps((prev) => [...prev, currentLapTime]);
+
+    // Check if we've reached the selected number of laps
+    if (selectedLapCountRef.current !== "unlimited" && lapsRef.current.length + 1 >= selectedLapCountRef.current) {
+      handleSessionCompletion([...lapsRef.current, currentLapTime]);
     }
   };
 
@@ -711,6 +772,38 @@ export default function LapTimer() {
   };
 
   const startTimer = (): void => {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "lap-timer - starting Timer",
+        timestamp: new Date().toISOString(),
+        isRunningVar: isRunning,
+      }),
+    }).catch(console.error);
+
+    if (!selectedDriver || !selectedCar) {
+      alert("Please select a driver and car before starting the timer");
+      return;
+    }
+    setStartAnimation(true);
+    setTimeout(() => setStartAnimation(false), 500);
+    setStartTime(Date.now());
+    setIsRunning(true);
+    setLaps([]);
+  };
+
+  const startTimer_MD = (): void => {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "lap-timer - starting Timer",
+        timestamp: new Date().toISOString(),
+        isRunningVar: isRunningRef.current,
+      }),
+    }).catch(console.error);
+
     if (!selectedDriver || !selectedCar) {
       alert("Please select a driver and car before starting the timer");
       return;
@@ -723,6 +816,15 @@ export default function LapTimer() {
   };
 
   const stopTimer = (): void => {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "lap-timer - stopping Timer",
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(console.error);
+
     if (!isRunning) return;
     setStopAnimation(true);
     setTimeout(() => setStopAnimation(false), 500);
@@ -736,16 +838,68 @@ export default function LapTimer() {
     return !isNaN(num) && num > 0 && num <= 999;
   };
 
-  const handleMotionDetected = (changePercent: number) => {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "lap-timer.handleMotionDetected",
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(console.error);
-  };
+  const isRunningRef = useRef(isRunning);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
+
+  const lapsRef = useRef(laps);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    lapsRef.current = laps;
+  }, [laps]);
+
+  const currentTimeRef = useRef(currentTime);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  const startTimeRef = useRef(startTime);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    startTimeRef.current = startTime;
+  }, [startTime]);
+
+  const selectedLapCountRef = useRef(selectedLapCount);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    selectedLapCountRef.current = selectedLapCount;
+  }, [selectedLapCount]);
+
+  const selectedDriverRef  = useRef(selectedDriver);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    selectedDriverRef.current = selectedDriver;
+  }, [selectedDriver]);
+
+  const selectedCarRef  = useRef(selectedCar);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    selectedCarRef.current = selectedCar;
+  }, [selectedCar]);
+
+  const handleMotionDetected = useCallback(
+    (changePercent: number) => {
+      fetch("/api/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "lap-timer.handleMotionDetected",
+          isRunningVar: isRunningRef.current,
+          timestamp: new Date().toISOString(),
+        }),
+      }).catch(console.error);
+
+      if (!isRunningRef.current) {
+        startTimer_MD();
+      } else if (isRunningRef.current) {
+        recordLap_MD();
+      }
+    },
+    [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, sessionStartTime, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
+  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -966,21 +1120,22 @@ export default function LapTimer() {
                   </Card>
 
                   {/* Timer Display */}
-                  {timingMode === "ui" && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {/* Current Lap Time */}
-                        <div className="text-center text-2xl font-mono text-gray-600">Current Lap: {formatTime(getCurrentLapTime())}</div>
 
-                        {/* Lap counter */}
-                        <div className="text-xl font-mono text-center">
-                          {isRunning ? (selectedLapCount !== "unlimited" ? (laps.length >= selectedLapCount ? "Timing Session Finished" : `Lap: ${laps.length + 1} of ${selectedLapCount}`) : `Lap: ${laps.length + 1}`) : laps.length > 0 ? "Timing Session Finished" : "Ready"}
-                        </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Current Lap Time */}
+                      <div className="text-center text-2xl font-mono text-gray-600">Current Lap: {formatTime(getCurrentLapTime())}</div>
 
-                        {/* Timer controls */}
+                      {/* Lap counter */}
+                      <div className="text-xl font-mono text-center">
+                        {isRunning ? (selectedLapCount !== "unlimited" ? (laps.length >= selectedLapCount ? "Timing Session Finished" : `Lap: ${laps.length + 1} of ${selectedLapCount}`) : `Lap: ${laps.length + 1}`) : laps.length > 0 ? "Timing Session Finished" : "Ready"}
+                      </div>
+
+                      {/* Timer controls */}
+                      {timingMode === "ui" && (
                         <div className="flex flex-col gap-2">
                           <Button onClick={startTimer} disabled={isRunning || !selectedDriver || !selectedCar} className={cn("bg-green-500 hover:bg-green-600 transition-all", startAnimation && "animate-timer-start")}>
                             <PlayCircle className="mr-2 h-6 w-6" />
@@ -1002,34 +1157,28 @@ export default function LapTimer() {
                             Add Penalty
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                      )}
 
-                  {/* Motion Detector Card */}
-                  {timingMode === "motion" && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Motion Detection</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <MotionDetector
-                          onMotionDetected={(changePercent) => {
-                            console.log("Lap Timer received motion:", changePercent);
-                            handleMotionDetected(changePercent);
-                          }}
-                          className="w-full"
-                        />
+                      {/* Motion Detector */}
+                      {timingMode === "motion" && (
+                        <div className="flex flex-col gap-2">
+                          <MotionDetector
+                            onMotionDetected={(changePercent) => {
+                              handleMotionDetected(changePercent);
+                            }}
+                            className="w-full"
+                          />
 
-                        {selectedLapCount === "unlimited" && isMotionTimingActive && (
-                          <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
-                            <StopCircle className="mr-2 h-6 w-6" />
-                            Stop Lap Timer
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
+                          {selectedLapCount === "unlimited" && isMotionTimingActive && (
+                            <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
+                              <StopCircle className="mr-2 h-6 w-6" />
+                              Stop Lap Timer
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
 
                   {/* Current Session - Only show if there's an active session */}
                   {isRunning && laps.length > 0 && (
