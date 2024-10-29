@@ -6,7 +6,7 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap } from "lucide-react";
+import { ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, Camera } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -730,12 +730,10 @@ export default function LapTimer() {
     return !isNaN(num) && num > 0 && num <= 999;
   };
 
-
   const handleMotionDetected = (changePercent: number) => {
     console.log(`Motion detected! ${changePercent.toFixed(1)}% of frame changed`);
     // Add your custom handling here
   };
-  
 
   return (
     <div className="min-h-screen bg-white">
@@ -1436,17 +1434,7 @@ export default function LapTimer() {
               {/* Detector Tab */}
               <TabsContent value="detector" className="space-y-4">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  <MotionDetector
-                    onMotionDetected={handleMotionDetected}
-                    initialSettings={{
-                      sensitivity: 25,
-                      threshold: 1.0,
-                      cooldown: 500,
-                      enableAudio: true,
-                      enableDebugView: true,
-                    }}
-                    className="max-w-2xl mx-auto"
-                  />
+                  <MotionDetector onMotionDetected={handleMotionDetected} className="max-w-2xl mx-auto" />
                 </motion.div>
               </TabsContent>
 
@@ -1485,7 +1473,7 @@ export default function LapTimer() {
                   </TabsTrigger>
                   <TabsTrigger value="detector" className="py-3">
                     <div className="flex flex-col items-center">
-                      <ListPlus className="h-5 w-5" />
+                      <Camera className="h-5 w-5" />
                       <span className="text-xs mt-1">Detector</span>
                     </div>
                   </TabsTrigger>

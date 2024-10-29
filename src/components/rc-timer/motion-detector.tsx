@@ -14,9 +14,9 @@ interface DetectorSettings {
 }
 
 const DEFAULT_SETTINGS: DetectorSettings = {
-  sensitivity: 30,
-  threshold: 1.0,
-  cooldown: 500,
+  sensitivity: 100,
+  threshold: 5.0,
+  cooldown: 5000,
   enableAudio: true,
   enableDebugView: true,
 };
@@ -219,17 +219,17 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         <div className="space-y-3 p-4 bg-gray-50 rounded">
           <div>
             <label className="block text-sm mb-1">Sensitivity ({settings.sensitivity})</label>
-            <input type="range" min="5" max="50" value={settings.sensitivity} onChange={(e) => setSettings((prev) => ({ ...prev, sensitivity: Number(e.target.value) }))} className="w-full" />
+            <input type="range" min="5" max="200" value={settings.sensitivity} onChange={(e) => setSettings((prev) => ({ ...prev, sensitivity: Number(e.target.value) }))} className="w-full" />
           </div>
 
           <div>
             <label className="block text-sm mb-1">Threshold ({settings.threshold}%)</label>
-            <input type="range" min="0.1" max="5.0" step="0.1" value={settings.threshold} onChange={(e) => setSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))} className="w-full" />
+            <input type="range" min="0.1" max="10.0" step="0.1" value={settings.threshold} onChange={(e) => setSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))} className="w-full" />
           </div>
 
           <div>
             <label className="block text-sm mb-1">Cooldown ({settings.cooldown}ms)</label>
-            <input type="range" min="100" max="2000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
+            <input type="range" min="100" max="10000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
           </div>
 
           <div className="flex items-center gap-2">
