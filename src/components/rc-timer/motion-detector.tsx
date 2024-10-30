@@ -204,12 +204,10 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   // Modified motion detection to handle frame skipping
   const detectMotion = useCallback(() => {
     if (!isActiveRef.current) {
-      console.log("Not active, stopping detection");
       return;
     }
 
     if (!videoRef.current || !canvasRef.current || !debugCanvasRef.current) {
-      console.log("Missing refs, stopping detection");
       return;
     }
 
@@ -220,7 +218,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     const debugCtx = debugCanvas.getContext("2d");
 
     if (!ctx || !debugCtx) {
-      console.log("Missing context, stopping detection");
       return;
     }
 
@@ -329,7 +326,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
       await initAudio();
 
-      console.log("Starting motion detection");
       setIsRunning(true);
       detectMotion();
     } catch (err) {
@@ -396,9 +392,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     const handleVideoMetadata = () => {
       if (!videoRef.current || !canvasRef.current || !debugCanvasRef.current) return;
 
-      console.log("Video metadata loaded");
       const { videoWidth, videoHeight } = videoRef.current;
-      console.log("Video dimensions:", videoWidth, "x", videoHeight);
 
       canvasRef.current.width = videoWidth;
       canvasRef.current.height = videoHeight;
