@@ -18,8 +18,8 @@ interface DetectorSettings {
 }
 
 const DEFAULT_SETTINGS: DetectorSettings = {
-  sensitivity: 100,
-  threshold: 5.0,
+  sensitivity: 50,
+  threshold: 2.0,
   cooldown: 5000,
   enableAudio: true,
   enableDebugView: true,
@@ -51,7 +51,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [isLoading, setIsLoading] = useState(false);
 
   const isActiveRef = useRef(true);
-  const isPreviewingRef  = useRef(isPreviewing);
+  const isPreviewingRef = useRef(isPreviewing);
   // Sync with the ref whenever it changes
   useEffect(() => {
     isPreviewingRef.current = isPreviewing;
@@ -202,7 +202,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           playBeep();
           setMotionEvents((prev) => prev + 1);
           if (!isPreviewingRef.current) {
-          onMotionDetected?.(changePercent);
+            onMotionDetected?.(changePercent);
           }
           lastMotionTimeRef.current = now;
         }
@@ -274,13 +274,10 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       handleStop();
     } else {
       try {
-
-
-
         setError("");
         setIsLoading(true);
         setIsPreviewing(true);
-        await handleStart();        
+        await handleStart();
       } catch (err) {
         setError("Failed to start preview: " + (err instanceof Error ? err.message : String(err)));
       } finally {

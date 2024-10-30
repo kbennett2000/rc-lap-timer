@@ -23,6 +23,25 @@ import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import { MotionDetector } from "./motion-detector";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
+interface BeepOptions {
+  frequency?: number; // Frequency in Hz
+  duration?: number; // Duration in milliseconds
+  volume?: number; // Volume between 0 and 1
+  type?: OscillatorType; // Type of wave
+}
+
+class AudioContextManager {
+  private static instance: AudioContext | null = null;
+
+  static getInstance(): AudioContext {
+    if (!this.instance) {
+      this.instance = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return this.instance;
+  }
+}
+
+
 export default function LapTimer() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -58,7 +77,7 @@ export default function LapTimer() {
   const [timingMode, setTimingMode] = useState<TimingMode>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
-  
+
   const lastMotionTimeRef = useRef<number>(0);
   const motionControlRef = useRef<{ stop: () => void }>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -714,6 +733,82 @@ export default function LapTimer() {
     }
   };
 
+
+
+
+  const playBeep = ({
+    frequency = 440,
+    duration = 200,
+    volume = 0.5,
+    type = 'sine'
+  }: BeepOptions = {}): Promise<void> => {
+    return new Promise((resolve) => {
+      const audioContext = AudioContextManager.getInstance();
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      gainNode.gain.value = volume;
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.start();
+      
+      setTimeout(() => {
+        oscillator.stop();
+        resolve();
+      }, duration);
+    });
+  };
+  
+
+
+
+
+  const playRaceFinish = async (): Promise<void> => {
+    // Quick ascending beeps followed by victory tone
+    const ascendingBeeps = [
+      { frequency: 440, duration: 100 },
+      { frequency: 554, duration: 100 },
+      { frequency: 659, duration: 100 },
+      { frequency: 880, duration: 100 },
+    ];
+  
+    // Play ascending beeps
+    for (const beep of ascendingBeeps) {
+      await playBeep({
+        frequency: beep.frequency,
+        duration: beep.duration,
+        volume: 0.5,
+        type: 'square'
+      });
+      // Small gap between beeps
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  
+    // Victory fanfare
+    await playBeep({
+      frequency: 880,
+      duration: 150,
+      volume: 0.6,
+      type: 'triangle'
+    });
+    
+    // Final sustained victory note
+    await playBeep({
+      frequency: 1320,
+      duration: 400,
+      volume: 0.7,
+      type: 'square'
+    });
+  };
+  
+
+
+
   const recordLap = (): void => {
     fetch("/api/log", {
       method: "POST",
@@ -739,6 +834,8 @@ export default function LapTimer() {
 
     // Check if we've reached the selected number of laps
     if (selectedLapCount !== "unlimited" && laps.length + 1 >= selectedLapCount) {
+      playRaceFinish();
+      
       handleSessionCompletion([...laps, currentLapTime]);
     }
   };
@@ -769,6 +866,8 @@ export default function LapTimer() {
 
     // Check if we've reached the selected number of laps
     if (selectedLapCountRef.current !== "unlimited" && lapsRef.current.length + 1 >= selectedLapCountRef.current) {
+      playRaceFinish();
+      
       handleStopCamera();
       handleSessionCompletion([...lapsRef.current, currentLapTime]);
     }
@@ -1756,33 +1855,26 @@ export default function LapTimer() {
 
         {/* Delete Session Dialog */}
         <AlertDialog open={!!sessionToDelete} onOpenChange={() => setSessionToDelete(null)}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Delete Session</AlertDialogTitle>
-      <AlertDialogDescription>
-        Are you sure you want to delete the session from {sessionToDelete?.date}? 
-        If you delete this session, it's gone for good. So make sure this is what you really want to do!!
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-      <AlertDialogAction
-        disabled={isDeleting}
-        onClick={() => sessionToDelete && deleteSession(sessionToDelete.id)}
-        className="bg-red-500 hover:bg-red-600"
-      >
-        {isDeleting ? (
-          <div className="flex items-center">
-            <span className="animate-spin mr-2">⏳</span>
-            Deleting...
-          </div>
-        ) : (
-          "Delete"
-        )}
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Session</AlertDialogTitle>
+              <AlertDialogDescription>Are you sure you want to delete the session from {sessionToDelete?.date}? If you delete this session, it's gone for good. So make sure this is what you really want to do!!</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction disabled={isDeleting} onClick={() => sessionToDelete && deleteSession(sessionToDelete.id)} className="bg-red-500 hover:bg-red-600">
+                {isDeleting ? (
+                  <div className="flex items-center">
+                    <span className="animate-spin mr-2">⏳</span>
+                    Deleting...
+                  </div>
+                ) : (
+                  "Delete"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Clear All Dialog */}
         <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>

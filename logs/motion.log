@@ -138,3 +138,75 @@
 {"timestamp":"2024-10-30T00:13:00.061Z","event":"lap-timer - recording lap","isRunningRefVar":true,"selectedLapCountRefVar":5}
 {"timestamp":"2024-10-30T00:13:08.932Z","event":"handleSessionCompletion","isRunningVar":true}
 {"timestamp":"2024-10-30T00:13:08.930Z","event":"lap-timer - recording lap","isRunningRefVar":true,"selectedLapCountRefVar":5}
+{"timestamp":"2024-10-30T01:19:27.106Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:19:28.021Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:19:28.779Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:19:29.534Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:19:29.602Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:00.524Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:20:01.208Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:01.796Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:02.400Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:02.409Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:15.049Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:20:15.820Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:16.356Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:16.969Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:20:16.975Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:21:46.203Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:21:47.118Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:21:47.698Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:21:48.303Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:21:48.317Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:46.961Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:24:47.707Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:48.364Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:48.932Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:48.944Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:53.292Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:24:54.460Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:54.973Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:55.548Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:24:55.555Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:26:16.799Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:26:17.549Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:26:18.360Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:26:18.368Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:26:51.844Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:26:52.582Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:26:53.191Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:26:53.196Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:27:12.399Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:27:13.123Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:27:13.918Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:27:14.797Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:27:14.805Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:27:59.486Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:28:00.298Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:00.871Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:01.440Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:01.449Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:30.591Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:28:31.363Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:31.930Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:32.644Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:32.650Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:34.215Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:28:34.860Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:35.391Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:35.926Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:28:35.930Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:32:27.576Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:32:28.287Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:32:28.886Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:32:29.561Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:32:29.587Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:34:05.936Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:34:05.935Z","event":"lap-timer.handleMotionDetected","isRunningVar":false}
+{"timestamp":"2024-10-30T01:34:11.225Z","event":"lap-timer.handleMotionDetected","isRunningVar":true}
+{"timestamp":"2024-10-30T01:34:11.227Z","event":"lap-timer - recording lap","isRunningRefVar":true,"selectedLapCountRefVar":3}
+{"timestamp":"2024-10-30T01:34:17.253Z","event":"lap-timer.handleMotionDetected","isRunningVar":true}
+{"timestamp":"2024-10-30T01:34:17.254Z","event":"lap-timer - recording lap","isRunningRefVar":true,"selectedLapCountRefVar":3}
+{"timestamp":"2024-10-30T01:34:23.102Z","event":"lap-timer.handleMotionDetected","isRunningVar":true}
+{"timestamp":"2024-10-30T01:34:23.103Z","event":"lap-timer - recording lap","isRunningRefVar":true,"selectedLapCountRefVar":3}
+{"timestamp":"2024-10-30T01:34:23.108Z","event":"handleSessionCompletion","isRunningVar":true}
