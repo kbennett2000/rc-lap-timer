@@ -355,7 +355,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
   // Expose control methods via ref
   useEffect(() => {
-    if (controlRef) {      
+    if (controlRef) {
       controlRef.current = {
         stop: handleStop,
       };
@@ -467,7 +467,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
           {/* Save / Load Settings */}
           <div>Camera Settings:</div>
-          <div className="flex gap-2 pt-4">            
+          <div className="flex gap-2 pt-4">
             <button onClick={() => setShowSaveDialog(true)} className="px-4 py-2 bg-green-500 text-white rounded">
               Save
             </button>

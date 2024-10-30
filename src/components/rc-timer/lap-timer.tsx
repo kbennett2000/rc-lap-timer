@@ -79,6 +79,47 @@ export default function LapTimer() {
 
   const motionControlRef = useRef<{ stop: () => void }>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isRunningRef = useRef(isRunning);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
+
+  const lapsRef = useRef(laps);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    lapsRef.current = laps;
+  }, [laps]);
+
+  const currentTimeRef = useRef(currentTime);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  const startTimeRef = useRef(startTime);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    startTimeRef.current = startTime;
+  }, [startTime]);
+
+  const selectedLapCountRef = useRef(selectedLapCount);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    selectedLapCountRef.current = selectedLapCount;
+  }, [selectedLapCount]);
+
+  const selectedDriverRef = useRef(selectedDriver);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    selectedDriverRef.current = selectedDriver;
+  }, [selectedDriver]);
+
+  const selectedCarRef = useRef(selectedCar);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    selectedCarRef.current = selectedCar;
+  }, [selectedCar]);
 
   // Listen for window resize events
   useEffect(() => {
@@ -517,6 +558,17 @@ export default function LapTimer() {
     setNewDriverName(newName);
   };
 
+  const handleMotionDetected = useCallback(
+    (changePercent: number) => {
+      if (!isRunningRef.current) {
+        startTimer_MD();
+      } else if (isRunningRef.current) {
+        recordLap_MD();
+      }
+    },
+    [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, sessionStartTime, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
+  );
+
   const handleSessionCompletion = async (completedLaps: number[]): Promise<void> => {
     setIsRunning(false);
     setStartTime(null);
@@ -923,58 +975,8 @@ export default function LapTimer() {
     return !isNaN(num) && num > 0 && num <= 999;
   };
 
-  const isRunningRef = useRef(isRunning);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    isRunningRef.current = isRunning;
-  }, [isRunning]);
 
-  const lapsRef = useRef(laps);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    lapsRef.current = laps;
-  }, [laps]);
 
-  const currentTimeRef = useRef(currentTime);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    currentTimeRef.current = currentTime;
-  }, [currentTime]);
-
-  const startTimeRef = useRef(startTime);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    startTimeRef.current = startTime;
-  }, [startTime]);
-
-  const selectedLapCountRef = useRef(selectedLapCount);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    selectedLapCountRef.current = selectedLapCount;
-  }, [selectedLapCount]);
-
-  const selectedDriverRef = useRef(selectedDriver);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    selectedDriverRef.current = selectedDriver;
-  }, [selectedDriver]);
-
-  const selectedCarRef = useRef(selectedCar);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    selectedCarRef.current = selectedCar;
-  }, [selectedCar]);
-
-  const handleMotionDetected = useCallback(
-    (changePercent: number) => {
-      if (!isRunningRef.current) {
-        startTimer_MD();
-      } else if (isRunningRef.current) {
-        recordLap_MD();
-      }
-    },
-    [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, sessionStartTime, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
-  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -1794,7 +1796,6 @@ export default function LapTimer() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
       </div>
     </div>
   );

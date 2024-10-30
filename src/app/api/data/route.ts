@@ -162,63 +162,67 @@ export async function DELETE(request: Request) {
 
     if (clearAll) {
       // Clear all sessions
-      await prisma.$transaction([
-        prisma.penalty.deleteMany({}),
-        prisma.lap.deleteMany({}),
-        prisma.session.deleteMany({}),
-      ]);
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: "All sessions cleared" 
+      await prisma.$transaction([prisma.penalty.deleteMany({}), prisma.lap.deleteMany({}), prisma.session.deleteMany({})]);
+
+      return NextResponse.json({
+        success: true,
+        message: "All sessions cleared",
       });
-    } 
-    
+    }
+
     if (id) {
       try {
         // Delete specific session and its related data
         await prisma.$transaction([
           prisma.penalty.deleteMany({
-            where: { sessionId: id }
+            where: { sessionId: id },
           }),
           prisma.lap.deleteMany({
-            where: { sessionId: id }
+            where: { sessionId: id },
           }),
           prisma.session.delete({
-            where: { id: id }
+            where: { id: id },
           }),
         ]);
 
         return NextResponse.json({
           success: true,
-          message: `Session ${id} deleted successfully`
+          message: `Session ${id} deleted successfully`,
         });
       } catch (prismaError) {
-        console.error('Prisma deletion error:', prismaError);
-        
+        console.error("Prisma deletion error:", prismaError);
+
         // Check if this is a record not found error
-        if ((prismaError as any).code === 'P2025') {
-          return NextResponse.json({
-            error: "Session not found",
-            details: `No session found with ID ${id}`
-          }, { status: 404 });
+        if ((prismaError as any).code === "P2025") {
+          return NextResponse.json(
+            {
+              error: "Session not found",
+              details: `No session found with ID ${id}`,
+            },
+            { status: 404 }
+          );
         }
-        
+
         throw prismaError; // Re-throw other Prisma errors
       }
     }
 
-    return NextResponse.json({ 
-      error: "Invalid delete request - missing id or clearAll parameter" 
-    }, { status: 400 });
-    
+    return NextResponse.json(
+      {
+        error: "Invalid delete request - missing id or clearAll parameter",
+      },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Error in DELETE handler:", error);
-    
-    return NextResponse.json({
-      error: "Error deleting data",
-      details: error instanceof Error ? error.message : "Unknown error occurred"
-    }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        error: "Error deleting data",
+        details: error instanceof Error ? error.message : "Unknown error occurred",
+      },
+      { status: 500 }
+    );
   }
 }
 
