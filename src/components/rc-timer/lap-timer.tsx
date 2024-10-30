@@ -64,7 +64,7 @@ export default function LapTimer() {
   const [penalties, setPenalties] = useState<PenaltyData[]>([]);
   const [penaltyAnimation, setPenaltyAnimation] = useState(false);
   const [activeTab, setActiveTab] = useState("current");
-  const [isMobile, setIsMobile] = useState(false); 
+  const [isMobile, setIsMobile] = useState(false);
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -801,6 +801,24 @@ export default function LapTimer() {
     });
   };
 
+  const playStartBeep = async (): Promise<void> => {
+    await playBeep({
+      frequency: 440,
+      duration: 300,
+      volume: 0.5,
+      type: "square",
+    });
+    // Small gap between beeps
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    await playBeep({
+      frequency: 440,
+      duration: 200,
+      volume: 0.5,
+      type: "square",
+    });
+  };
+
   const recordLap = (): void => {
     fetch("/api/log", {
       method: "POST",
@@ -921,21 +939,11 @@ export default function LapTimer() {
   };
 
   const startTimer = (): void => {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "lap-timer - starting Timer",
-        timestamp: new Date().toISOString(),
-        isRunningVar: isRunning,
-      }),
-    }).catch(console.error);
-
     if (!selectedDriver || !selectedCar) {
       alert("Please select a driver and car before starting the timer");
       return;
     }
-    playBeep();
+    playStartBeep();
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());
@@ -944,16 +952,6 @@ export default function LapTimer() {
   };
 
   const startTimer_MD = (): void => {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "lap-timer - starting Timer",
-        timestamp: new Date().toISOString(),
-        isRunningVar: isRunningRef.current,
-      }),
-    }).catch(console.error);
-
     if (!selectedDriver || !selectedCar) {
       alert("Please select a driver and car before starting the timer");
       return;
