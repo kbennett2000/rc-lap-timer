@@ -1083,11 +1083,13 @@ export default function LapTimer() {
                               <SelectValue placeholder="Select Driver" />
                             </SelectTrigger>
                             <SelectContent>
-                              {drivers.map((driver) => (
-                                <SelectItem key={driver.id} value={driver.id}>
-                                  {driver.name}
-                                </SelectItem>
-                              ))}
+                              {drivers
+                                .sort((a, b) => a.name.localeCompare(b.name))
+                                .map((driver) => (
+                                  <SelectItem key={driver.id} value={driver.id}>
+                                    {driver.name}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <Button variant="outline" onClick={() => setShowNewDriver(!showNewDriver)}>
@@ -1126,11 +1128,13 @@ export default function LapTimer() {
                                 <SelectValue placeholder="Select Car" />
                               </SelectTrigger>
                               <SelectContent>
-                                {getCurrentDriverCars().map((car) => (
-                                  <SelectItem key={car.id} value={car.id}>
-                                    {car.name}
-                                  </SelectItem>
-                                ))}
+                                {getCurrentDriverCars()
+                                  .sort((a, b) => a.name.localeCompare(b.name))
+                                  .map((car) => (
+                                    <SelectItem key={car.id} value={car.id}>
+                                      {car.name}
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                             <Button variant="outline" onClick={() => setShowNewCar(!showNewCar)}>
