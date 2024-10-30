@@ -908,6 +908,16 @@ export default function LapTimer() {
     handleSessionCompletion(finalLaps);
   };
 
+  const stopTimer_MD = (): void => {
+    if (!isRunning) return;
+    playRaceFinish();
+    handleStopCamera();
+    setStopAnimation(true);
+    setTimeout(() => setStopAnimation(false), 500);
+    const finalLaps = [...laps];
+    handleSessionCompletion(finalLaps);
+  };
+
   const validateLapCount = (value: string): boolean => {
     const num = parseInt(value, 10);
     return !isNaN(num) && num > 0 && num <= 999;
@@ -1231,7 +1241,7 @@ export default function LapTimer() {
                       {timingMode === "motion" && (
                         <div className="flex flex-col gap-2">
                           {isRunning && (
-                            <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
+                            <Button onClick={stopTimer_MD} className="mt-4 w-full bg-red-500 hover:bg-red-600">
                               <StopCircle className="mr-2 h-6 w-6" />
                               Stop Timer
                             </Button>

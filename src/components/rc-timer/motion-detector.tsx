@@ -355,7 +355,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
   // Expose control methods via ref
   useEffect(() => {
-    if (controlRef) {
+    if (controlRef) {      
       controlRef.current = {
         stop: handleStop,
       };
