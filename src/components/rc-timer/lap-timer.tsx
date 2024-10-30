@@ -544,16 +544,6 @@ export default function LapTimer() {
   };
 
   const handleSessionCompletion = async (completedLaps: number[]): Promise<void> => {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "handleSessionCompletion",
-        timestamp: new Date().toISOString(),
-        isRunningVar: isRunningRef.current,
-      }),
-    }).catch(console.error);
-
     setIsRunning(false);
     setStartTime(null);
     setCurrentTime(0);
@@ -564,15 +554,6 @@ export default function LapTimer() {
     const driver = drivers.find((d) => d.id === selectedDriverRef.current);
     const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
     if (!driver || !car) {
-      fetch("/api/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "handleSessionCompletion - NO DRIVER OR CAR FOUND!!!",
-          timestamp: new Date().toISOString(),
-          isRunningVar: isRunningRef.current,
-        }),
-      }).catch(console.error);
       return;
     }
 
@@ -820,16 +801,6 @@ export default function LapTimer() {
   };
 
   const recordLap = (): void => {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "lap-timer - recording lap",
-        timestamp: new Date().toISOString(),
-        isRunningVar: isRunning,
-      }),
-    }).catch(console.error);
-
     if (!isRunning) return;
 
     setLapAnimation(true);
@@ -853,17 +824,6 @@ export default function LapTimer() {
   };
 
   const recordLap_MD = (): void => {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "lap-timer - recording lap",
-        timestamp: new Date().toISOString(),
-        isRunningRefVar: isRunningRef.current,
-        selectedLapCountRefVar: selectedLapCountRef.current,
-      }),
-    }).catch(console.error);
-
     if (!isRunningRef.current) return;
 
     setLapAnimation(true);
@@ -964,15 +924,6 @@ export default function LapTimer() {
   };
 
   const stopTimer = (): void => {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "lap-timer - stopping Timer",
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(console.error);
-
     if (!isRunning) return;
     playRaceFinish();
     handleStopCamera();
@@ -1032,16 +983,6 @@ export default function LapTimer() {
 
   const handleMotionDetected = useCallback(
     (changePercent: number) => {
-      fetch("/api/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "lap-timer.handleMotionDetected",
-          isRunningVar: isRunningRef.current,
-          timestamp: new Date().toISOString(),
-        }),
-      }).catch(console.error);
-
       if (!isRunningRef.current) {
         startTimer_MD();
       } else if (isRunningRef.current) {
