@@ -70,3 +70,13 @@ model Penalty {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model MotionSettings {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  sensitivity Int
+  threshold   Float
+  cooldown    Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}

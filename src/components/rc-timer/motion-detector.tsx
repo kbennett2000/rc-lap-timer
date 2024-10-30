@@ -25,6 +25,14 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   enableDebugView: true,
 };
 
+interface MotionSettings {
+  id: string;
+  name: string;
+  sensitivity: number;
+  threshold: number;
+  cooldown: number;
+}
+
 export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -49,13 +57,76 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
   const [isStoppingRef] = useState({ current: false });
   const [isLoading, setIsLoading] = useState(false);
+  const [savedSettings, setSavedSettings] = useState<MotionSettings[]>([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [newSettingsName, setNewSettingsName] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   const isActiveRef = useRef(true);
   const isPreviewingRef = useRef(isPreviewing);
-  
+
   useEffect(() => {
     isPreviewingRef.current = isPreviewing;
   }, [isPreviewing]);
+
+  useEffect(() => {
+    loadSavedSettings();
+  }, []);
+
+  const loadSavedSettings = async () => {
+    try {
+      const response = await fetch("/api/motion-settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSavedSettings(data);
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!newSettingsName.trim()) {
+      setSaveError("Please enter a name");
+      return;
+    }
+
+    if (savedSettings.some((s) => s.name === newSettingsName)) {
+      setSaveError("This name already exists");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/motion-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newSettingsName,
+          sensitivity: settings.sensitivity,
+          threshold: settings.threshold,
+          cooldown: settings.cooldown,
+        }),
+      });
+
+      if (response.ok) {
+        await loadSavedSettings();
+        setShowSaveDialog(false);
+        setNewSettingsName("");
+        setSaveError("");
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+    }
+  };
+
+  const handleLoadSettings = (savedSettings: MotionSettings) => {
+    setSettings((prev) => ({
+      ...prev,
+      sensitivity: savedSettings.sensitivity,
+      threshold: savedSettings.threshold,
+      cooldown: savedSettings.cooldown,
+    }));
+  };
 
   // Add this helper function near the top of the component
   const cleanup = useCallback(() => {
@@ -353,10 +424,13 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       {error && <div className="text-red-500 bg-red-50 p-2 rounded">{error}</div>}
 
       <div className="space-y-4">
+        {/* Control Buttons */}
         <div className="flex gap-2">
+          {/* Preview Button */}
           <button onClick={handlePreviewToggle} className="px-4 py-2 bg-gray-500 text-white rounded disabled:bg-gray-300">
             {isPreviewing ? "Stop Preview" : "Preview"}
           </button>
+          {/* Cam On Button */}
           <button
             onClick={async () => {
               setIsLoading(true);
@@ -371,28 +445,55 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           >
             {isLoading ? "Cam On" : "Cam On"}
           </button>
+          {/* Cam Off Button */}
           <button onClick={handleStop} disabled={(!isRunning && !isPreviewing) || isLoading} className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300">
             {isLoading ? "Cam Off" : "Cam Off"}
           </button>
         </div>
 
+        {/* Control Settings */}
         <div className="space-y-3 p-4 bg-gray-50 rounded">
+          {/* Sensitivity */}
           <div>
             <label className="block text-sm mb-1">Sensitivity ({settings.sensitivity})</label>
             <input type="range" min="5" max="200" value={settings.sensitivity} onChange={(e) => setSettings((prev) => ({ ...prev, sensitivity: Number(e.target.value) }))} className="w-full" />
           </div>
 
+          {/* Threshold */}
           <div>
             <label className="block text-sm mb-1">Threshold ({settings.threshold}%)</label>
             <input type="range" min="0.1" max="10.0" step="0.1" value={settings.threshold} onChange={(e) => setSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))} className="w-full" />
           </div>
 
+          {/* Cooldown */}
           <div>
             <label className="block text-sm mb-1">Cooldown ({settings.cooldown}ms)</label>
             <input type="range" min="100" max="10000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
           </div>
 
-{/* 
+          {/* Save / Load Settings */}
+          <div className="flex gap-2 pt-4">
+            <button onClick={() => setShowSaveDialog(true)} className="px-4 py-2 bg-green-500 text-white rounded">
+              Save Settings
+            </button>
+
+            <select
+              onChange={(e) => {
+                const selected = savedSettings.find((s) => s.id === e.target.value);
+                if (selected) handleLoadSettings(selected);
+              }}
+              className="px-4 py-2 border rounded"
+            >
+              <option value="">Load Settings...</option>
+              {savedSettings.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={settings.enableAudio} onChange={(e) => setSettings((prev) => ({ ...prev, enableAudio: e.target.checked }))} id="enableAudio" />
             <label htmlFor="enableAudio" className="text-sm">
@@ -409,12 +510,38 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           </div>
 */}
 
+          {/* Logging */}
           <div className="pt-2 border-t">
             <div className="text-sm">Motion Events: {motionEvents}</div>
             {lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
           </div>
         </div>
 
+        {/* Dialog */}
+        {showSaveDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white p-4 rounded-lg space-y-4">
+              <h3 className="font-bold">Save Settings</h3>
+              <input type="text" value={newSettingsName} onChange={(e) => setNewSettingsName(e.target.value)} placeholder="Enter settings name" className="px-4 py-2 border rounded w-full" />
+              {saveError && <p className="text-red-500 text-sm">{saveError}</p>}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowSaveDialog(false);
+                    setNewSettingsName("");
+                    setSaveError("");
+                  }}
+                  className="px-4 py-2 bg-gray-500 text-white rounded"
+                >
+                  Cancel
+                </button>
+                <button onClick={handleSaveSettings} className="px-4 py-2 bg-blue-500 text-white rounded">
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

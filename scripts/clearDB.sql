@@ -10,6 +10,7 @@ TRUNCATE TABLE Lap;
 TRUNCATE TABLE Session;
 TRUNCATE TABLE Car;
 TRUNCATE TABLE Driver;
+TRUNCATE TABLE MotionSettings;
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;

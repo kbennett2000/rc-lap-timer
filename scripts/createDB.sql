@@ -1,24 +1,21 @@
 -- create_rc_timer_database.sql
 
--- Create database
 CREATE DATABASE IF NOT EXISTS rc_lap_timer;
 USE rc_lap_timer;
 
--- Create user and grant privileges (change password as needed)
 CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';
 GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
 FLUSH PRIVILEGES;
 
--- Create tables
--- Driver table
+-- Driver table with unique name constraint
 CREATE TABLE IF NOT EXISTS Driver (
     id VARCHAR(191) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updatedAt DATETIME(3) NOT NULL
 );
 
--- Car table
+-- Car table with unique constraint on driverId+name
 CREATE TABLE IF NOT EXISTS Car (
     id VARCHAR(191) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -26,10 +23,9 @@ CREATE TABLE IF NOT EXISTS Car (
     createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updatedAt DATETIME(3) NOT NULL,
     FOREIGN KEY (driverId) REFERENCES Driver(id),
-    INDEX idx_driverId (driverId)
+    UNIQUE KEY unique_driver_car (driverId, name)
 );
 
--- Session table
 CREATE TABLE IF NOT EXISTS Session (
     id VARCHAR(191) PRIMARY KEY,
     date DATETIME(3) NOT NULL,
@@ -48,7 +44,6 @@ CREATE TABLE IF NOT EXISTS Session (
     INDEX idx_carId (carId)
 );
 
--- Lap table
 CREATE TABLE IF NOT EXISTS Lap (
     id VARCHAR(191) PRIMARY KEY,
     sessionId VARCHAR(191) NOT NULL,
@@ -60,7 +55,6 @@ CREATE TABLE IF NOT EXISTS Lap (
     INDEX idx_sessionId (sessionId)
 );
 
--- Penalty table
 CREATE TABLE IF NOT EXISTS Penalty (
     id VARCHAR(191) PRIMARY KEY,
     sessionId VARCHAR(191) NOT NULL,
@@ -72,5 +66,14 @@ CREATE TABLE IF NOT EXISTS Penalty (
     INDEX idx_sessionId (sessionId)
 );
 
--- Set character set and collation
+CREATE TABLE IF NOT EXISTS MotionSettings (
+    id VARCHAR(191) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    sensitivity INT NOT NULL,
+    threshold FLOAT NOT NULL,
+    cooldown INT NOT NULL,
+    createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updatedAt DATETIME(3) NOT NULL
+);
+
 ALTER DATABASE rc_lap_timer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
