@@ -52,7 +52,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
   const isActiveRef = useRef(true);
   const isPreviewingRef = useRef(isPreviewing);
-  // Sync with the ref whenever it changes
+  
   useEffect(() => {
     isPreviewingRef.current = isPreviewing;
   }, [isPreviewing]);
@@ -392,6 +392,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
             <input type="range" min="100" max="10000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
           </div>
 
+{/* 
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={settings.enableAudio} onChange={(e) => setSettings((prev) => ({ ...prev, enableAudio: e.target.checked }))} id="enableAudio" />
             <label htmlFor="enableAudio" className="text-sm">
@@ -399,18 +400,21 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
             </label>
           </div>
 
+
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={settings.enableDebugView} onChange={(e) => setSettings((prev) => ({ ...prev, enableDebugView: e.target.checked }))} id="enableDebugView" />
             <label htmlFor="enableDebugView" className="text-sm">
               Show Debug View
             </label>
           </div>
+*/}
 
           <div className="pt-2 border-t">
             <div className="text-sm">Motion Events: {motionEvents}</div>
             {lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
           </div>
         </div>
+
       </div>
     </div>
   );

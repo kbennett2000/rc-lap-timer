@@ -732,7 +732,7 @@ export default function LapTimer() {
     }
   };
 
-  const playBeep = ({ frequency = 440, duration = 200, volume = 0.9, type = "sine" }: BeepOptions = {}): Promise<void> => {
+  const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
     return new Promise((resolve) => {
       // Create audio context
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
