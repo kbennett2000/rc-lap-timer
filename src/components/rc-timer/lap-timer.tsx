@@ -294,36 +294,11 @@ export default function LapTimer() {
     };
   };
 
-  const clearAllSessions = async (): Promise<void> => {
-    setIsClearingAll(true);
-    try {
-      const response = await fetch("/api/data", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ clearAll: true }),
-      });
-
-      if (!response.ok) throw new Error("Failed to clear sessions");
-
-      setSavedSessions([]);
-      setShowClearAllDialog(false);
-    } catch (error) {
-      console.error("Error clearing sessions:", error);
-      alert("Failed to clear sessions. Please try again.");
-    } finally {
-      setIsClearingAll(false);
-    }
-  };
-
   const deleteSession = async (sessionId: string): Promise<void> => {
     setIsDeleting(true);
     try {
       // Ensure sessionId is a string
       const stringSessionId = sessionId.toString();
-
-      console.log("Attempting to delete session:", stringSessionId); // Debug log
 
       const response = await fetch("/api/data", {
         method: "DELETE",
@@ -342,7 +317,6 @@ export default function LapTimer() {
       }
 
       const data = await response.json();
-      console.log("Delete response:", data); // Debug log
 
       if (data.success) {
         // Update local state only after successful deletion
@@ -1455,10 +1429,6 @@ export default function LapTimer() {
                       <CardHeader>
                         <div className="flex justify-between items-center">
                           <CardTitle>Previous Sessions</CardTitle>
-                          <Button onClick={() => setShowClearAllDialog(true)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Clear All
-                          </Button>
                         </div>
                       </CardHeader>
                       <CardContent>
@@ -1815,21 +1785,6 @@ export default function LapTimer() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Clear All Dialog */}
-        <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Clear All Sessions</AlertDialogTitle>
-              <AlertDialogDescription>WHOA!! You're about to delete ALL YOUR SESSSIONS! Literally all the laps you've ever recorded are going to get deleted and YOU CAN'T EVER GET THEM BACK!!! ARE YOU SURE YOU WANT TO DO THIS???</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={clearAllSessions} className="bg-red-500 hover:bg-red-600">
-                Delete All
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </div>
   );

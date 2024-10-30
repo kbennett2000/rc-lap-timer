@@ -158,8 +158,6 @@ export async function DELETE(request: Request) {
     const clonedRequest = request.clone();
     const data = await clonedRequest.json();
 
-    console.log('Received DELETE request with data:', data); // Debug log
-
     const { id, clearAll } = data;
 
     if (clearAll) {
@@ -177,8 +175,6 @@ export async function DELETE(request: Request) {
     } 
     
     if (id) {
-      console.log('Attempting to delete session with ID:', id); // Debug log
-      
       try {
         // Delete specific session and its related data
         await prisma.$transaction([
