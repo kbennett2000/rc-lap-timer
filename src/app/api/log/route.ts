@@ -9,6 +9,8 @@ export async function POST(request: Request) {
       ...(await request.json())
     };
 
+    // TODO: uncomment to restore file system logging
+    /*
     // Create logs directory if it doesn't exist
     const logsDir = path.join(process.cwd(), "logs");
     if (!fs.existsSync(logsDir)) {
@@ -18,6 +20,7 @@ export async function POST(request: Request) {
     // Append to log file
     const logFile = path.join(logsDir, "motion.log");
     fs.appendFileSync(logFile, JSON.stringify(logData) + "\n");
+    */
 
     // Also console.log on server
     console.log("Motion Log:", logData);
