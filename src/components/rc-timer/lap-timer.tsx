@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion"; // Added Framer Motion 
 import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import { MotionDetector } from "./motion-detector";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { is } from "date-fns/locale";
 
 interface BeepOptions {
   frequency?: number; // Frequency in Hz
@@ -1314,10 +1315,10 @@ export default function LapTimer() {
                       {/* Motion Detector */}
                       {timingMode === "motion" && (
                         <div className="flex flex-col gap-2">
-                          {selectedLapCount === "unlimited" && (
+                          {isRunning && (
                             <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
                               <StopCircle className="mr-2 h-6 w-6" />
-                              Stop Lap Timer
+                              Stop Timer
                             </Button>
                           )}
 

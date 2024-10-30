@@ -354,7 +354,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
       <div className="space-y-4">
         <div className="flex gap-2">
-          <button onClick={handlePreviewToggle} disabled={isRunning || isLoading} className="px-4 py-2 bg-gray-500 text-white rounded disabled:bg-gray-300">
+          <button onClick={handlePreviewToggle} className="px-4 py-2 bg-gray-500 text-white rounded disabled:bg-gray-300">
             {isPreviewing ? "Stop Preview" : "Preview"}
           </button>
           <button
