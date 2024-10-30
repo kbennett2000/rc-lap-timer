@@ -369,10 +369,10 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
             disabled={isRunning || isLoading || isPreviewing}
             className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
           >
-            {isLoading ? "Starting..." : "Start"}
+            {isLoading ? "Cam On" : "Cam On"}
           </button>
           <button onClick={handleStop} disabled={(!isRunning && !isPreviewing) || isLoading} className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300">
-            {isLoading ? "Stopping..." : "Stop"}
+            {isLoading ? "Cam Off" : "Cam Off"}
           </button>
         </div>
 

@@ -64,7 +64,7 @@ export default function LapTimer() {
   const [penalties, setPenalties] = useState<PenaltyData[]>([]);
   const [penaltyAnimation, setPenaltyAnimation] = useState(false);
   const [activeTab, setActiveTab] = useState("current");
-  const [isMobile, setIsMobile] = useState(false); // Initial mobile layout state
+  const [isMobile, setIsMobile] = useState(false); 
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -72,13 +72,11 @@ export default function LapTimer() {
   const [selectedCar, setSelectedCar] = useState<string>("");
   const [savedSessions, setSavedSessions] = useState<Session[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isClearingAll, setIsClearingAll] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
   const [timingMode, setTimingMode] = useState<TimingMode>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
 
-  const lastMotionTimeRef = useRef<number>(0);
   const motionControlRef = useRef<{ stop: () => void }>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
