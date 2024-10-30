@@ -472,9 +472,10 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           </div>
 
           {/* Save / Load Settings */}
-          <div className="flex gap-2 pt-4">
+          <div>Camera Settings:</div>
+          <div className="flex gap-2 pt-4">            
             <button onClick={() => setShowSaveDialog(true)} className="px-4 py-2 bg-green-500 text-white rounded">
-              Save Settings
+              Save
             </button>
 
             <select
@@ -484,7 +485,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
               }}
               className="px-4 py-2 border rounded"
             >
-              <option value="">Load Settings...</option>
+              <option value="">Load</option>
               {savedSettings.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
