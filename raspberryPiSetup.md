@@ -8,9 +8,10 @@
 5. [Database Setup](#5-database-setup)
 6. [Application Installation](#6-application-installation)
 7. [Network Configuration](#7-network-configuration)
-8. [Service Configuration](#8-service-configuration)
-9. [Testing](#9-testing)
-10. [Maintenance & Troubleshooting](#10-maintenance--troubleshooting)
+8. [HTTPS Configuration](#8-https-configuration)
+9. [Service Configuration](#9-service-configuration)
+10. [Testing](#10-testing)
+11. [Maintenance & Troubleshooting](#11-maintenance--troubleshooting)
 
 ## 1. Hardware Requirements
 - Raspberry Pi Zero 2 W
@@ -50,7 +51,7 @@ curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Install required packages
-sudo apt install -y git nginx hostapd dnsmasq mysql-server
+sudo apt install -y git nginx hostapd dnsmasq mysql-server certbot
 
 # Verify installations
 node --version  # Should show v16.x.x
@@ -224,6 +225,16 @@ iface wlan0 inet static
     netmask 255.255.255.0
 ```
 
+## 8. HTTPS Configuration
+
+### Generate Self-Signed Certificate
+```bash
+# Generate SSL certificate
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+-keyout /etc/ssl/private/rc-lap-timer.key \
+-out /etc/ssl/certs/rc-lap-timer.crt
+```
+
 ### Configure Web Server
 ```bash
 sudo nano /etc/nginx/sites-available/rc-lap-timer
@@ -231,10 +242,35 @@ sudo nano /etc/nginx/sites-available/rc-lap-timer
 
 Add to nginx configuration:
 ```nginx
+# HTTP - Redirect all traffic to HTTPS
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name rc-lap-timer;
+    return 301 https://$server_name$request_uri;
+}
+
+# HTTPS configuration
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name rc-lap-timer;
+    
+    # SSL configuration
+    ssl_certificate /etc/ssl/certs/rc-lap-timer.crt;
+    ssl_certificate_key /etc/ssl/private/rc-lap-timer.key;
+    
+    # SSL settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+
     root /var/www/rc-lap-timer;
     index index.html;
     
@@ -249,6 +285,15 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
     }
 }
 ```
@@ -257,9 +302,11 @@ Enable the site:
 ```bash
 sudo ln -s /etc/nginx/sites-available/rc-lap-timer /etc/nginx/sites-enabled/
 sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
 ```
 
-## 8. Service Configuration
+## 9. Service Configuration
 ```bash
 sudo nano /etc/systemd/system/rc-lap-timer.service
 ```
@@ -289,13 +336,14 @@ sudo systemctl enable mysql hostapd dnsmasq rc-lap-timer nginx
 sudo systemctl start mysql hostapd dnsmasq rc-lap-timer nginx
 ```
 
-## 9. Testing
+## 10. Testing
 1. Power cycle the Raspberry Pi
 2. Look for the "rc-lap-timer" WiFi network on your mobile device
 3. Connect using password: "rclaptimer"
-4. Open a web browser and navigate to: `http://rc-lap-timer`
+4. Open a web browser and navigate to: `https://rc-lap-timer`
+5. Accept the self-signed certificate warning in your browser
 
-## 10. Maintenance & Troubleshooting
+## 11. Maintenance & Troubleshooting
 
 ### Database Backup
 ```bash
@@ -329,7 +377,15 @@ cd ~/rc-lap-timer
 npx prisma db push
 ```
 
-4. To update the application:
+4. If SSL issues occur:
+```bash
+sudo nginx -t
+sudo journalctl -u nginx -f
+# Check certificate expiration
+sudo openssl x509 -in /etc/ssl/certs/rc-lap-timer.crt -noout -dates
+```
+
+5. To update the application:
 ```bash
 cd ~/rc-lap-timer
 git pull
@@ -342,3 +398,5 @@ sudo systemctl restart rc-lap-timer
 ### Important Notes
 - Replace `your_secure_password_here` with a strong password wherever it appears
 - The default WiFi password is "rclaptimer" - consider changing it
+- The self-signed certificate will need to be renewed annually
+- Always backup your database before major updates
