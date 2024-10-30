@@ -14,6 +14,7 @@ With features like session notes, best lap tracking, session comparisons, and co
 
 - **Interactive Lap Timing** ⏱️
   - Manual lap recording with millisecond precision
+  - Automatic lap recording via motion detection using a camera on your phone / tablet / laptop 
   - Configurable lap count or unlimited laps
   - Penalty tracking system
   - Real-time current lap display
