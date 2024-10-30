@@ -2,9 +2,11 @@
 
 Traditional transponder-based RC lap timing systems are incredibly expensive and not conducive to backyard or ad-hoc racing. **RC Lap Timer** is a lightweight, free alternative that enables casual RC racing without expensive equipment.
 
-**RC Lap Timer** works with two people: a driver and a timer. While one person drives, the other records lap times as the car crosses the start/finish line. The app supports multiple drivers with multiple cars, making it easy to switch roles and compare performances.
+**RC Lap Timer** has two modes of recording laps, UI mode and Motion Detection mode. UI mode works with two people: a driver and a timer. While one person drives, the other records lap times as the car crosses the start/finish line. Motion Detection mode only requires a driver. It uses a camera on your phone, tablet, or laptop to detect when the car passes by, and records a lap time each time the car passes. 
 
-With features like session notes, best lap tracking, session comparisons, and comprehensive statistics, **RC Lap Timer** offers a robust solution for casual RC racing. Built with modern web technologies and a responsive design, it works seamlessly on both desktop and mobile devices.
+Motion Detection mode is great for single drivers and practice sessions. UI mode allows each timer to time a different driver, and is ideal for situations where you want to have more than one car on the track. UI mode also supports "penalties", Motion Detection mode does not. 
+
+The app supports multiple drivers with multiple cars, making it easy to switch roles and compare performances. With features like session notes, best lap tracking, session comparisons, and comprehensive statistics, **RC Lap Timer** offers a robust solution for casual RC racing. Built with  a responsive design, it works seamlessly on both desktop and mobile devices.
 
 > **NOTE**: This app is designed for casual racing and fun competition. While it's great for backyard racing and practice sessions, it's not intended to replace professional transponder-based timing systems.
 
