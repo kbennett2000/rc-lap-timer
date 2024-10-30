@@ -399,74 +399,148 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
     return { from, to };
   };
 
-  const handleAddCar = () => {
-    const trimmedName = newCarName.trim();
+  
+  
 
+
+
+
+
+
+
+
+
+  const handleAddCar = async () => {
+    const trimmedName = newCarName.trim();
+  
     if (!selectedDriver) {
       alert("Please select a driver first");
       return;
     }
-
+  
     if (!trimmedName) {
       alert("Please enter a car name");
       return;
     }
-
+  
     const currentDriver = drivers.find((d) => d.id === selectedDriver);
     if (!isCarNameUniqueForDriver(trimmedName)) {
       alert(`${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`);
       return;
     }
-
-    const newCar: Car = {
-      id: Date.now().toString(),
-      name: trimmedName,
-    };
-
-    setDrivers((prevDrivers) =>
-      prevDrivers.map((driver) => {
-        if (driver.id === selectedDriver) {
-          return {
-            ...driver,
-            cars: [...driver.cars, newCar],
-          };
-        }
-        return driver;
-      })
-    );
-
-    setSelectedCar(newCar.id);
-    setNewCarName("");
-    setShowNewCar(false);
-    saveData();
+  
+    try {
+      const response = await fetch("/api/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "car",
+          name: trimmedName,
+          driverId: selectedDriver,
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to create car");
+      }
+  
+      const { car } = await response.json();
+      
+      setDrivers((prevDrivers) =>
+        prevDrivers.map((driver) => {
+          if (driver.id === selectedDriver) {
+            return {
+              ...driver,
+              cars: [...driver.cars, car],
+            };
+          }
+          return driver;
+        })
+      );
+  
+      setSelectedCar(car.id);
+      setNewCarName("");
+      setShowNewCar(false);
+      
+    } catch (error) {
+      console.error("Error creating car:", error);
+      alert("Failed to create car. Please try again.");
+    }
   };
 
-  const handleAddDriver = () => {
-    const trimmedName = newDriverName.trim();
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+  const handleAddDriver = async () => {
+    const trimmedName = newDriverName.trim();
+  
     if (!trimmedName) {
       alert("Please enter a driver name");
       return;
     }
-
+  
     if (!isDriverNameUnique(trimmedName)) {
       alert(`A driver named "${trimmedName}" already exists. Please use a different name.`);
       return;
     }
-
-    const newDriver: Driver = {
-      id: Date.now().toString(),
-      name: trimmedName,
-      cars: [],
-    };
-
-    setDrivers((prevDrivers) => [...prevDrivers, newDriver]);
-    setSelectedDriver(newDriver.id);
-    setNewDriverName("");
-    setShowNewDriver(false);
-    setSelectedCar("");
-    saveData();
+  
+    try {
+      const response = await fetch("/api/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "driver",
+          name: trimmedName,
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to create driver");
+      }
+  
+      const { driver } = await response.json();
+      
+      setDrivers((prevDrivers) => [...prevDrivers, driver]);
+      setSelectedDriver(driver.id);
+      setNewDriverName("");
+      setShowNewDriver(false);
+      setSelectedCar("");
+      
+    } catch (error) {
+      console.error("Error creating driver:", error);
+      alert("Failed to create driver. Please try again.");
+    }
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   const handleCarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;

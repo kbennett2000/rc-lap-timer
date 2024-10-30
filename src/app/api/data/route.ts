@@ -36,77 +36,107 @@ export async function POST(request: Request) {
     const clonedRequest = request.clone();
     const data = await clonedRequest.json();
 
-    // Track processed sessions to prevent duplicates
-    const processedIds = new Set<string>();
-
-    // Update sessions using transactions for atomicity
-    for (const session of data.sessions) {
-      const sessionId = session.id?.toString() || Date.now().toString();
-
-      // Skip if we've already processed this session
-      if (processedIds.has(sessionId)) {
-        continue;
-      }
-      processedIds.add(sessionId);
-
-      // Check if session already exists
-      const existingSession = await prisma.session.findUnique({
-        where: { id: sessionId },
+    // Handle driver/car creation
+    if (data.type === "driver") {
+      const newDriver = await prisma.driver.create({
+        data: {
+          id: Date.now().toString(),
+          name: data.name,
+        },
+        include: {
+          cars: true,
+        },
       });
-
-      if (existingSession) {
-        continue;
-      }
-
-      // Calculate total time
-      const totalTime = Math.floor(typeof session.stats.totalTime === "string" ? parseInt(session.stats.totalTime) : session.stats.totalTime || 0);
-
-      // Use transaction to ensure all related data is created atomically
-      await prisma.$transaction(async (tx) => {
-        // Create the session
-        await tx.session.create({
-          data: {
-            id: sessionId,
-            date: new Date(session.date),
-            driver: {
-              connect: { id: session.driverId },
-            },
-            car: {
-              connect: { id: session.carId },
-            },
-            driverName: session.driverName,
-            carName: session.carName,
-            totalTime,
-            totalLaps: session.laps.length,
-          },
-        });
-
-        // Create laps if they exist
-        if (session.laps?.length > 0) {
-          const lapsToCreate = session.laps.map((lap: any, index: number) => ({
-            sessionId,
-            lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
-            lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
-          }));
-
-          await tx.lap.createMany({
-            data: lapsToCreate,
-          });
-        }
-
-        // Create penalties if they exist
-        if (session.penalties?.length > 0) {
-          await tx.penalty.createMany({
-            data: session.penalties.map((penalty: any) => ({
-              sessionId,
-              lapNumber: penalty.lapNumber,
-              count: penalty.count || 0,
-            })),
-          });
-        }
-      });
+      return NextResponse.json({ success: true, driver: newDriver });
     }
 
+    if (data.type === "car") {
+      const newCar = await prisma.car.create({
+        data: {
+          id: Date.now().toString(),
+          name: data.name,
+          driverId: data.driverId,
+        },
+        include: {
+          driver: true,
+        },
+      });
+      return NextResponse.json({ success: true, car: newCar });
+    }
+
+    if (data.sessions) {
+      // Track processed sessions to prevent duplicates
+      const processedIds = new Set<string>();
+
+      // Update sessions using transactions for atomicity
+      for (const session of data.sessions) {
+        const sessionId = session.id?.toString() || Date.now().toString();
+
+        // Skip if we've already processed this session
+        if (processedIds.has(sessionId)) {
+          continue;
+        }
+        processedIds.add(sessionId);
+
+        // Check if session already exists
+        const existingSession = await prisma.session.findUnique({
+          where: { id: sessionId },
+        });
+
+        if (existingSession) {
+          continue;
+        }
+
+        // Calculate total time
+        const totalTime = Math.floor(typeof session.stats.totalTime === "string" ? parseInt(session.stats.totalTime) : session.stats.totalTime || 0);
+
+        // Use transaction to ensure all related data is created atomically
+        await prisma.$transaction(async (tx) => {
+          // Create the session
+          await tx.session.create({
+            data: {
+              id: sessionId,
+              date: new Date(session.date),
+              driver: {
+                connect: { id: session.driverId },
+              },
+              car: {
+                connect: { id: session.carId },
+              },
+              driverName: session.driverName,
+              carName: session.carName,
+              totalTime,
+              totalLaps: session.laps.length,
+            },
+          });
+
+          // Create laps if they exist
+          if (session.laps?.length > 0) {
+            const lapsToCreate = session.laps.map((lap: any, index: number) => ({
+              sessionId,
+              lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
+              lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
+            }));
+
+            await tx.lap.createMany({
+              data: lapsToCreate,
+            });
+          }
+
+          // Create penalties if they exist
+          if (session.penalties?.length > 0) {
+            await tx.penalty.createMany({
+              data: session.penalties.map((penalty: any) => ({
+                sessionId,
+                lapNumber: penalty.lapNumber,
+                count: penalty.count || 0,
+              })),
+            });
+          }
+        });
+      }
+    }
+    
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error saving data:", error);
