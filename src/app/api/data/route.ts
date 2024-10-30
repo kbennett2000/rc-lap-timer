@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         });
       }
     }
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error saving data:", error);
@@ -155,50 +155,74 @@ export async function POST(request: Request) {
 // DELETE method to handle session deletion
 export async function DELETE(request: Request) {
   try {
-    // Clone the request before reading
     const clonedRequest = request.clone();
     const data = await clonedRequest.json();
+
+    console.log('Received DELETE request with data:', data); // Debug log
 
     const { id, clearAll } = data;
 
     if (clearAll) {
       // Clear all sessions
-      await prisma.penalty.deleteMany({});
-      await prisma.lap.deleteMany({});
-      await prisma.session.deleteMany({});
-      return NextResponse.json({ success: true, message: "All sessions cleared" });
-    } else if (id) {
-      // Delete specific session and its related data
       await prisma.$transaction([
-        prisma.penalty.deleteMany({
-          where: { sessionId: id.toString() },
-        }),
-        prisma.lap.deleteMany({
-          where: { sessionId: id.toString() },
-        }),
-        prisma.session.delete({
-          where: { id: id.toString() },
-        }),
+        prisma.penalty.deleteMany({}),
+        prisma.lap.deleteMany({}),
+        prisma.session.deleteMany({}),
       ]);
-
-      return NextResponse.json({
-        success: true,
-        message: `Session ${id} deleted`,
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: "All sessions cleared" 
       });
+    } 
+    
+    if (id) {
+      console.log('Attempting to delete session with ID:', id); // Debug log
+      
+      try {
+        // Delete specific session and its related data
+        await prisma.$transaction([
+          prisma.penalty.deleteMany({
+            where: { sessionId: id }
+          }),
+          prisma.lap.deleteMany({
+            where: { sessionId: id }
+          }),
+          prisma.session.delete({
+            where: { id: id }
+          }),
+        ]);
+
+        return NextResponse.json({
+          success: true,
+          message: `Session ${id} deleted successfully`
+        });
+      } catch (prismaError) {
+        console.error('Prisma deletion error:', prismaError);
+        
+        // Check if this is a record not found error
+        if ((prismaError as any).code === 'P2025') {
+          return NextResponse.json({
+            error: "Session not found",
+            details: `No session found with ID ${id}`
+          }, { status: 404 });
+        }
+        
+        throw prismaError; // Re-throw other Prisma errors
+      }
     }
 
-    return NextResponse.json({ error: "Invalid delete request" }, { status: 400 });
+    return NextResponse.json({ 
+      error: "Invalid delete request - missing id or clearAll parameter" 
+    }, { status: 400 });
+    
   } catch (error) {
-    console.error("Error in DELETE handler:", error); // Debug log
-    return NextResponse.json(
-      {
-        error: "Error deleting data",
-        details: (error as Error).message,
-      },
-      {
-        status: 500,
-      }
-    );
+    console.error("Error in DELETE handler:", error);
+    
+    return NextResponse.json({
+      error: "Error deleting data",
+      details: error instanceof Error ? error.message : "Unknown error occurred"
+    }, { status: 500 });
   }
 }
 

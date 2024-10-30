@@ -58,9 +58,9 @@ export default function LapTimer() {
   const [timingMode, setTimingMode] = useState<TimingMode>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
-
+  
   const lastMotionTimeRef = useRef<number>(0);
-const motionControlRef = useRef<{ stop: () => void }>(null);
+  const motionControlRef = useRef<{ stop: () => void }>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Listen for window resize events
@@ -301,13 +301,21 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
   };
 
   const deleteSession = async (sessionId: string): Promise<void> => {
+    setIsDeleting(true);
     try {
+      // Ensure sessionId is a string
+      const stringSessionId = sessionId.toString();
+
+      console.log("Attempting to delete session:", stringSessionId); // Debug log
+
       const response = await fetch("/api/data", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id: sessionId }),
+        body: JSON.stringify({
+          id: stringSessionId,
+        }),
       });
 
       if (!response.ok) {
@@ -317,12 +325,20 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
       }
 
       const data = await response.json();
+      console.log("Delete response:", data); // Debug log
 
-      setSavedSessions(savedSessions.filter((session) => session.id !== sessionId));
-      setSessionToDelete(null);
+      if (data.success) {
+        // Update local state only after successful deletion
+        setSavedSessions((prevSessions) => prevSessions.filter((session) => session.id !== stringSessionId));
+        setSessionToDelete(null);
+      } else {
+        throw new Error("Server indicated deletion was not successful");
+      }
     } catch (error) {
       console.error("Error deleting session:", error);
       alert("Failed to delete session. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -399,36 +415,25 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
     return { from, to };
   };
 
-  
-  
-
-
-
-
-
-
-
-
-
   const handleAddCar = async () => {
     const trimmedName = newCarName.trim();
-  
+
     if (!selectedDriver) {
       alert("Please select a driver first");
       return;
     }
-  
+
     if (!trimmedName) {
       alert("Please enter a car name");
       return;
     }
-  
+
     const currentDriver = drivers.find((d) => d.id === selectedDriver);
     if (!isCarNameUniqueForDriver(trimmedName)) {
       alert(`${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`);
       return;
     }
-  
+
     try {
       const response = await fetch("/api/data", {
         method: "POST",
@@ -441,13 +446,13 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
           driverId: selectedDriver,
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to create car");
       }
-  
+
       const { car } = await response.json();
-      
+
       setDrivers((prevDrivers) =>
         prevDrivers.map((driver) => {
           if (driver.id === selectedDriver) {
@@ -459,44 +464,29 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
           return driver;
         })
       );
-  
+
       setSelectedCar(car.id);
       setNewCarName("");
       setShowNewCar(false);
-      
     } catch (error) {
       console.error("Error creating car:", error);
       alert("Failed to create car. Please try again.");
     }
   };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   const handleAddDriver = async () => {
     const trimmedName = newDriverName.trim();
-  
+
     if (!trimmedName) {
       alert("Please enter a driver name");
       return;
     }
-  
+
     if (!isDriverNameUnique(trimmedName)) {
       alert(`A driver named "${trimmedName}" already exists. Please use a different name.`);
       return;
     }
-  
+
     try {
       const response = await fetch("/api/data", {
         method: "POST",
@@ -508,39 +498,23 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
           name: trimmedName,
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to create driver");
       }
-  
+
       const { driver } = await response.json();
-      
+
       setDrivers((prevDrivers) => [...prevDrivers, driver]);
       setSelectedDriver(driver.id);
       setNewDriverName("");
       setShowNewDriver(false);
       setSelectedCar("");
-      
     } catch (error) {
       console.error("Error creating driver:", error);
       alert("Failed to create driver. Please try again.");
     }
   };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   const handleCarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -638,10 +612,10 @@ const motionControlRef = useRef<{ stop: () => void }>(null);
   };
 
   // Function to stop the camera
-const handleStopCamera = () => {
-  // Call the stop method through the ref
-  motionControlRef.current?.stop();
-};
+  const handleStopCamera = () => {
+    // Call the stop method through the ref
+    motionControlRef.current?.stop();
+  };
 
   const isCarNameUniqueForDriver = (name: string): boolean => {
     const currentDriver = drivers.find((d) => d.id === selectedDriver);
@@ -1245,7 +1219,7 @@ const handleStopCamera = () => {
                       {timingMode === "motion" && (
                         <div className="flex flex-col gap-2">
                           <MotionDetector
-                          controlRef={motionControlRef}
+                            controlRef={motionControlRef}
                             onMotionDetected={(changePercent) => {
                               handleMotionDetected(changePercent);
                             }}
@@ -1782,19 +1756,33 @@ const handleStopCamera = () => {
 
         {/* Delete Session Dialog */}
         <AlertDialog open={!!sessionToDelete} onOpenChange={() => setSessionToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Session</AlertDialogTitle>
-              <AlertDialogDescription>Are you sure you want to delete the session from {sessionToDelete?.date}? If you delete this session, it's gone for good. So make sure this what you really want to do!!</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => sessionToDelete && deleteSession(sessionToDelete.id.toString())} className="bg-red-500 hover:bg-red-600">
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Delete Session</AlertDialogTitle>
+      <AlertDialogDescription>
+        Are you sure you want to delete the session from {sessionToDelete?.date}? 
+        If you delete this session, it's gone for good. So make sure this is what you really want to do!!
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+      <AlertDialogAction
+        disabled={isDeleting}
+        onClick={() => sessionToDelete && deleteSession(sessionToDelete.id)}
+        className="bg-red-500 hover:bg-red-600"
+      >
+        {isDeleting ? (
+          <div className="flex items-center">
+            <span className="animate-spin mr-2">⏳</span>
+            Deleting...
+          </div>
+        ) : (
+          "Delete"
+        )}
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 
         {/* Clear All Dialog */}
         <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
