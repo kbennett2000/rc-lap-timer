@@ -41,7 +41,6 @@ class AudioContextManager {
   }
 }
 
-
 export default function LapTimer() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -733,40 +732,37 @@ export default function LapTimer() {
     }
   };
 
-
-
-
-  const playBeep = ({
-    frequency = 440,
-    duration = 200,
-    volume = 0.5,
-    type = 'sine'
-  }: BeepOptions = {}): Promise<void> => {
+  const playBeep = ({ frequency = 440, duration = 200, volume = 0.9, type = "sine" }: BeepOptions = {}): Promise<void> => {
     return new Promise((resolve) => {
-      const audioContext = AudioContextManager.getInstance();
-      
+      // Create audio context
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+      // Create oscillator and gain node
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
+      // Configure oscillator
       oscillator.type = type;
       oscillator.frequency.value = frequency;
+
+      // Configure gain (volume)
       gainNode.gain.value = volume;
-      
+
+      // Connect nodes
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
+
+      // Schedule the beep
       oscillator.start();
-      
+
+      // Schedule the end of the beep
       setTimeout(() => {
         oscillator.stop();
+        audioContext.close();
         resolve();
       }, duration);
     });
   };
-  
-
-
-
 
   const playRaceFinish = async (): Promise<void> => {
     // Quick ascending beeps followed by victory tone
@@ -776,38 +772,35 @@ export default function LapTimer() {
       { frequency: 659, duration: 100 },
       { frequency: 880, duration: 100 },
     ];
-  
+
     // Play ascending beeps
     for (const beep of ascendingBeeps) {
       await playBeep({
         frequency: beep.frequency,
         duration: beep.duration,
         volume: 0.5,
-        type: 'square'
+        type: "square",
       });
       // Small gap between beeps
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 20));
     }
-  
+
     // Victory fanfare
     await playBeep({
       frequency: 880,
       duration: 150,
       volume: 0.6,
-      type: 'triangle'
+      type: "triangle",
     });
-    
+
     // Final sustained victory note
     await playBeep({
       frequency: 1320,
       duration: 400,
       volume: 0.7,
-      type: 'square'
+      type: "square",
     });
   };
-  
-
-
 
   const recordLap = (): void => {
     fetch("/api/log", {
@@ -835,8 +828,10 @@ export default function LapTimer() {
     // Check if we've reached the selected number of laps
     if (selectedLapCount !== "unlimited" && laps.length + 1 >= selectedLapCount) {
       playRaceFinish();
-      
+
       handleSessionCompletion([...laps, currentLapTime]);
+    } else {
+      playBeep();
     }
   };
 
@@ -867,7 +862,7 @@ export default function LapTimer() {
     // Check if we've reached the selected number of laps
     if (selectedLapCountRef.current !== "unlimited" && lapsRef.current.length + 1 >= selectedLapCountRef.current) {
       playRaceFinish();
-      
+
       handleStopCamera();
       handleSessionCompletion([...lapsRef.current, currentLapTime]);
     }
@@ -941,6 +936,7 @@ export default function LapTimer() {
       alert("Please select a driver and car before starting the timer");
       return;
     }
+    playBeep();
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());

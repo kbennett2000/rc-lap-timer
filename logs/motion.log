@@ -210,3 +210,11 @@
 {"timestamp":"2024-10-30T01:34:23.102Z","event":"lap-timer.handleMotionDetected","isRunningVar":true}
 {"timestamp":"2024-10-30T01:34:23.103Z","event":"lap-timer - recording lap","isRunningRefVar":true,"selectedLapCountRefVar":3}
 {"timestamp":"2024-10-30T01:34:23.108Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:38:07.949Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:38:11.412Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:38:16.039Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:38:17.695Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:38:17.700Z","event":"handleSessionCompletion","isRunningVar":true}
+{"timestamp":"2024-10-30T01:38:57.910Z","event":"lap-timer - starting Timer","isRunningVar":false}
+{"timestamp":"2024-10-30T01:38:59.619Z","event":"lap-timer - recording lap","isRunningVar":true}
+{"timestamp":"2024-10-30T01:39:00.319Z","event":"lap-timer - recording lap","isRunningVar":true}
