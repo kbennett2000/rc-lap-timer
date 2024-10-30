@@ -977,6 +977,8 @@ export default function LapTimer() {
     }).catch(console.error);
 
     if (!isRunning) return;
+    playRaceFinish();
+    handleStopCamera();
     setStopAnimation(true);
     setTimeout(() => setStopAnimation(false), 500);
     const finalLapTime = currentTime - (laps.length > 0 ? laps.reduce((a, b) => a + b, 0) : 0);
@@ -1271,7 +1273,6 @@ export default function LapTimer() {
                   </Card>
 
                   {/* Timer Display */}
-
                   <Card>
                     <CardHeader>
                       <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
@@ -1313,6 +1314,13 @@ export default function LapTimer() {
                       {/* Motion Detector */}
                       {timingMode === "motion" && (
                         <div className="flex flex-col gap-2">
+                          {selectedLapCount === "unlimited" && (
+                            <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
+                              <StopCircle className="mr-2 h-6 w-6" />
+                              Stop Lap Timer
+                            </Button>
+                          )}
+
                           <MotionDetector
                             controlRef={motionControlRef}
                             onMotionDetected={(changePercent) => {
@@ -1320,13 +1328,6 @@ export default function LapTimer() {
                             }}
                             className="w-full"
                           />
-
-                          {selectedLapCount === "unlimited" && isMotionTimingActive && (
-                            <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
-                              <StopCircle className="mr-2 h-6 w-6" />
-                              Stop Lap Timer
-                            </Button>
-                          )}
                         </div>
                       )}
                     </CardContent>
