@@ -42,6 +42,21 @@
 5. SSH into the Pi: `ssh pi@<IP_ADDRESS>`
 
 ## 4. Software Installation
+
+After first boot and SSH'ing in, before making any other changes, modify the network configuration properly:
+```bash
+# Make backup of original dhcpcd configuration
+sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.backup
+
+# Edit dhcpcd configuration
+sudo nano /etc/dhcpcd.conf
+Add these lines at the end of dhcpcd.conf:
+Copyinterface wlan0
+    static ip_address=192.168.4.1/24
+    nohook wpa_supplicant
+```
+
+Next, update the system:
 ```bash
 # Update system
 sudo apt update && sudo apt upgrade -y
