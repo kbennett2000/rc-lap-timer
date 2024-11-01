@@ -179,6 +179,113 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
         <CardTitle>Session Comparison</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Filters Section */}
+        <div className="space-y-4 mb-6">
+          {/* Driver and Car Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Filter by Driver</Label>
+              <Select
+                value={filterDriver}
+                onValueChange={(value) => {
+                  setFilterDriver(value);
+                  if (value === "all") {
+                    setFilterCar("all");
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Drivers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Drivers</SelectItem>
+                  {getUniqueDrivers().map((driver) => (
+                    <SelectItem key={driver} value={driver}>
+                      {driver}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Filter by Car</Label>
+              <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
+                <SelectTrigger>
+                  <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cars</SelectItem>
+                  {filterDriver !== "all" &&
+                    getDriverCars(filterDriver).map((car) => (
+                      <SelectItem key={car} value={car}>
+                        {car}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Date Range Filters */}
+          <div className="space-y-2">
+            {/* Preset Buttons */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {DATE_PRESETS.map((preset) => {
+                const presetDates = getPresetDates(preset);
+                const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+
+                return (
+                  <Button
+                    key={preset.label}
+                    variant="outline"
+                    size="sm"
+                    className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                    onClick={() => {
+                      const { from, to } = getPresetDates(preset);
+                      setDateRange({ from, to });
+                    }}
+                  >
+                    {preset.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Custom Date Range */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="grid gap-2">
+              <Label>Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid gap-2">
+              <Label>End Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+
         {sessions.length === 0 ? (
           // No sessions at all
           <div className="text-center py-12">
@@ -194,115 +301,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
             <p className="mt-2 text-sm text-muted-foreground">Try adjusting your filters to find more sessions.</p>
           </div>
         ) : (
-          // Your existing content
           <>
-            {/* Filters Section */}
-            <div className="space-y-4 mb-6">
-              {/* Driver and Car Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Filter by Driver</Label>
-                  <Select
-                    value={filterDriver}
-                    onValueChange={(value) => {
-                      setFilterDriver(value);
-                      if (value === "all") {
-                        setFilterCar("all");
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Drivers" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Drivers</SelectItem>
-                      {getUniqueDrivers().map((driver) => (
-                        <SelectItem key={driver} value={driver}>
-                          {driver}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Filter by Car</Label>
-                  <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Cars</SelectItem>
-                      {filterDriver !== "all" &&
-                        getDriverCars(filterDriver).map((car) => (
-                          <SelectItem key={car} value={car}>
-                            {car}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Date Range Filters */}
-              <div className="space-y-2">
-                {/* Preset Buttons */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {DATE_PRESETS.map((preset) => {
-                    const presetDates = getPresetDates(preset);
-                    const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
-
-                    return (
-                      <Button
-                        key={preset.label}
-                        variant="outline"
-                        size="sm"
-                        className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
-                        onClick={() => {
-                          const { from, to } = getPresetDates(preset);
-                          setDateRange({ from, to });
-                        }}
-                      >
-                        {preset.label}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Custom Date Range */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="grid gap-2">
-                  <Label>Start Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="grid gap-2">
-                  <Label>End Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
-
             {/* Session Selection */}
             <div className="space-y-2">
               <Label>Select Sessions to Compare</Label>

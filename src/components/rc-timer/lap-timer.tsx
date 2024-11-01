@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, UserCog } from "lucide-react";
 import cn from "classnames";
 import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +22,7 @@ import { motion, AnimatePresence } from "framer-motion"; // Added Framer Motion 
 import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import { MotionDetector } from "./motion-detector";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { is } from "date-fns/locale";
+import DriverCarManager from "@/components/driver-car-manager";
 
 interface BeepOptions {
   frequency?: number; // Frequency in Hz
@@ -975,9 +975,6 @@ export default function LapTimer() {
     return !isNaN(num) && num > 0 && num <= 999;
   };
 
-
-
-
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content Area - with padding for header and bottom nav */}
@@ -1735,9 +1732,16 @@ export default function LapTimer() {
                 </motion.div>
               </TabsContent>
 
+              {/* Driver Car Manager Tab */}
+              <TabsContent value="drivercarmanager" className="space-y-4">
+                <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+                  <DriverCarManager drivers={drivers} onDriversUpdate={setDrivers} onSessionsUpdate={setSavedSessions} />
+                </motion.div>
+              </TabsContent>
+
               {/* Bottom Navigation */}
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 shadow-up">
-                <TabsList className="grid grid-cols-5 gap-0">
+                <TabsList className="grid grid-cols-6 gap-0">
                   <TabsTrigger value="current" className="py-3">
                     <div className="flex flex-col items-center">
                       <PlayCircle className="h-5 w-5" />
@@ -1766,6 +1770,13 @@ export default function LapTimer() {
                     <div className="flex flex-col items-center">
                       <ListPlus className="h-5 w-5" />
                       <span className="text-xs mt-1">Best</span>
+                    </div>
+                  </TabsTrigger>
+
+                  <TabsTrigger value="drivercarmanager" className="py-3">
+                    <div className="flex flex-col items-center">
+                      <UserCog className="h-5 w-5" />
+                      <span className="text-xs mt-1">Manager</span>
                     </div>
                   </TabsTrigger>
                 </TabsList>

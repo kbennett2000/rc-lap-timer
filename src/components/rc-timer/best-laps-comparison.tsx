@@ -154,6 +154,131 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
         <CardTitle>Best Laps Comparison</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
+        <div className="space-x-4 mb-4">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Filter By Driver */}
+            <div className="space-y-2">
+              <Label>Filter by Driver</Label>
+              <Select
+                value={filterDriver}
+                onValueChange={(value) => {
+                  setFilterDriver(value);
+                  setFilterCar("all"); // Reset car filter when driver changes
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Drivers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Drivers</SelectItem>
+                  {uniqueDrivers.map((driver) => (
+                    <SelectItem key={driver} value={driver}>
+                      {driver}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Filter By Car */}
+            <div className="space-y-2">
+              <Label>Filter by Car</Label>
+              <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
+                <SelectTrigger disabled={filterDriver === "all"}>
+                  <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cars</SelectItem>
+                  {filterDriver !== "all" &&
+                    getAvailableCars(filterDriver).map((car) => (
+                      <SelectItem key={car} value={car}>
+                        {car}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="space-y-2">
+              <Label>Filter by Date Range</Label>
+
+              {/* Preset Buttons */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {DATE_PRESETS.map((preset) => {
+                  const presetDates = getPresetDates(preset);
+                  const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+
+                  return (
+                    <Button
+                      key={preset.label}
+                      variant="outline"
+                      size="sm"
+                      className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                      onClick={() => {
+                        const { from, to } = getPresetDates(preset);
+                        setDateRange({ from, to });
+                      }}
+                    >
+                      {preset.label}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Date Range Selectors */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? format(dateRange.from, "PPP") : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.to ? format(dateRange.to, "PPP") : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} disabled={(date) => (dateRange.from ? isBefore(date, dateRange.from) : false)} initialFocus />
+                  </PopoverContent>
+                </Popover>
+
+                <Button variant="outline" onClick={() => setDateRange({ from: undefined, to: undefined })} className="w-full sm:w-auto">
+                  Reset Dates
+                </Button>
+              </div>
+
+              {/* Date Range Summary */}
+              {(dateRange.from || dateRange.to) && (
+                <div className="text-sm text-muted-foreground">
+                  {dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                    "Showing sessions from today"
+                  ) : dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).to, "yyyy-MM-dd") ? (
+                    "Showing sessions from the last 7 days"
+                  ) : (
+                    <>
+                      Showing sessions
+                      {dateRange.from && !dateRange.to && ` from ${format(dateRange.from, "PPP")}`}
+                      {!dateRange.from && dateRange.to && ` until ${format(dateRange.to, "PPP")}`}
+                      {dateRange.from && dateRange.to && ` from ${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}`}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {sessions.length === 0 ? (
           // No sessions at all
           <div className="text-center py-12">
@@ -170,130 +295,6 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
           </div>
         ) : (
           <>
-            {/* Filters */}
-            <div className="space-x-4 mb-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Filter By Driver */}
-                <div className="space-y-2">
-                  <Label>Filter by Driver</Label>
-                  <Select
-                    value={filterDriver}
-                    onValueChange={(value) => {
-                      setFilterDriver(value);
-                      setFilterCar("all"); // Reset car filter when driver changes
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Drivers" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Drivers</SelectItem>
-                      {uniqueDrivers.map((driver) => (
-                        <SelectItem key={driver} value={driver}>
-                          {driver}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Filter By Car */}
-                <div className="space-y-2">
-                  <Label>Filter by Car</Label>
-                  <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
-                    <SelectTrigger disabled={filterDriver === "all"}>
-                      <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Cars</SelectItem>
-                      {filterDriver !== "all" &&
-                        getAvailableCars(filterDriver).map((car) => (
-                          <SelectItem key={car} value={car}>
-                            {car}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Date Range Filter */}
-                <div className="space-y-2">
-                  <Label>Filter by Date Range</Label>
-
-                  {/* Preset Buttons */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {DATE_PRESETS.map((preset) => {
-                      const presetDates = getPresetDates(preset);
-                      const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
-
-                      return (
-                        <Button
-                          key={preset.label}
-                          variant="outline"
-                          size="sm"
-                          className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
-                          onClick={() => {
-                            const { from, to } = getPresetDates(preset);
-                            setDateRange({ from, to });
-                          }}
-                        >
-                          {preset.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Custom Date Range Selectors */}
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateRange.from ? format(dateRange.from, "PPP") : "Select start date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateRange.to ? format(dateRange.to, "PPP") : "Select end date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} disabled={(date) => (dateRange.from ? isBefore(date, dateRange.from) : false)} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-
-                    <Button variant="outline" onClick={() => setDateRange({ from: undefined, to: undefined })} className="w-full sm:w-auto">
-                      Reset Dates
-                    </Button>
-                  </div>
-
-                  {/* Date Range Summary */}
-                  {(dateRange.from || dateRange.to) && (
-                    <div className="text-sm text-muted-foreground">
-                      {dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
-                        "Showing sessions from today"
-                      ) : dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).to, "yyyy-MM-dd") ? (
-                        "Showing sessions from the last 7 days"
-                      ) : (
-                        <>
-                          Showing sessions
-                          {dateRange.from && !dateRange.to && ` from ${format(dateRange.from, "PPP")}`}
-                          {!dateRange.from && dateRange.to && ` until ${format(dateRange.to, "PPP")}`}
-                          {dateRange.from && dateRange.to && ` from ${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}`}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
             {/* Best Laps Display - Responsive Design */}
             <div>
               {/* Desktop Table View - Hidden on mobile */}
