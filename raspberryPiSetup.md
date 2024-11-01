@@ -355,12 +355,12 @@ WorkingDirectory=/home/pi/rc-lap-timer
 ExecStart=/usr/bin/npm run dev
 Restart=always
 Environment=NODE_ENV=production
-Environment=DATABASE_URL="mysql://rc_timer_user:your_secure_password_here@localhost:3306/rc_lap_timer"
+Environment=DATABASE_URL="mysql://root:password1@localhost:3306/rc_lap_timer"
 
 [Install]
 WantedBy=multi-user.target
 ```
-Unmask the hostapd service:
+Unmask the hostapd service:???
 ```bash
 sudo systemctl unmask hostapd
 ```
