@@ -28,3 +28,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+rc-lap-timer-build.tar.gz

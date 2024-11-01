@@ -47,11 +47,11 @@
 sudo apt update && sudo apt upgrade -y
 
 # Install Node.js 16.x
-curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Install required packages
-sudo apt install -y git nginx hostapd dnsmasq mysql-server certbot
+sudo apt install -y git nginx hostapd dnsmasq maria-server certbot
 
 # Verify installations
 node --version  # Should show v16.x.x
@@ -69,18 +69,20 @@ cat > create_rc_timer_database.sql << 'EOF'
 -- Create database
 CREATE DATABASE IF NOT EXISTS rc_lap_timer;
 USE rc_lap_timer;
--- Create user and grant privileges (change password as needed)
+
 CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';
 GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
 FLUSH PRIVILEGES;
--- Driver table
+
+-- Driver table with unique name constraint
 CREATE TABLE IF NOT EXISTS Driver (
     id VARCHAR(191) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updatedAt DATETIME(3) NOT NULL
 );
--- Car table
+
+-- Car table with unique constraint on driverId+name
 CREATE TABLE IF NOT EXISTS Car (
     id VARCHAR(191) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -88,9 +90,9 @@ CREATE TABLE IF NOT EXISTS Car (
     createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updatedAt DATETIME(3) NOT NULL,
     FOREIGN KEY (driverId) REFERENCES Driver(id),
-    INDEX idx_driverId (driverId)
+    UNIQUE KEY unique_driver_car (driverId, name)
 );
--- Session table
+
 CREATE TABLE IF NOT EXISTS Session (
     id VARCHAR(191) PRIMARY KEY,
     date DATETIME(3) NOT NULL,
@@ -108,7 +110,7 @@ CREATE TABLE IF NOT EXISTS Session (
     INDEX idx_driverId (driverId),
     INDEX idx_carId (carId)
 );
--- Lap table
+
 CREATE TABLE IF NOT EXISTS Lap (
     id VARCHAR(191) PRIMARY KEY,
     sessionId VARCHAR(191) NOT NULL,
@@ -119,7 +121,7 @@ CREATE TABLE IF NOT EXISTS Lap (
     FOREIGN KEY (sessionId) REFERENCES Session(id),
     INDEX idx_sessionId (sessionId)
 );
--- Penalty table
+
 CREATE TABLE IF NOT EXISTS Penalty (
     id VARCHAR(191) PRIMARY KEY,
     sessionId VARCHAR(191) NOT NULL,
@@ -130,7 +132,17 @@ CREATE TABLE IF NOT EXISTS Penalty (
     FOREIGN KEY (sessionId) REFERENCES Session(id),
     INDEX idx_sessionId (sessionId)
 );
--- Set character set and collation
+
+CREATE TABLE IF NOT EXISTS MotionSettings (
+    id VARCHAR(191) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    sensitivity INT NOT NULL,
+    threshold FLOAT NOT NULL,
+    cooldown INT NOT NULL,
+    createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updatedAt DATETIME(3) NOT NULL
+);
+
 ALTER DATABASE rc_lap_timer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 EOF
 
@@ -139,28 +151,47 @@ sudo mysql < create_rc_timer_database.sql
 ```
 
 ## 6. Application Installation
+On your Ubuntu Desktop:
 ```bash
 # Clone the repository
-cd ~
 git clone https://github.com/kbennett2000/rc-lap-timer.git
 cd rc-lap-timer
 
-# Create .env file
-cat > .env << EOF
-DATABASE_URL="mysql://rc_timer_user:your_secure_password_here@localhost:3306/rc_lap_timer"
-EOF
-
-# Install dependencies and generate Prisma client
+# Install dependencies
 npm install
-npx prisma generate
-npx prisma db push
 
-# Build for production
+# Create production build
 npm run build
+```
+
+After the build completes successfully, create a tar archive of the necessary files:
+```bash
+# Create a tar of the required files
+tar -czf rc-lap-timer-build.tar.gz .next package.json package-lock.json node_modules public
+```
+
+Transfer the archive to your Raspberry Pi Zero W:
+```bash
+# From your Ubuntu Desktop
+scp rc-lap-timer-build.tar.gz pi@raspberrypi.local:~
+```
+
+On the Raspberry Pi Zero W:
+```bash
+cd ~
+# Remove old rc-lap-timer directory if it exists
+rm -rf rc-lap-timer
+# Create new directory
+mkdir rc-lap-timer
+cd rc-lap-timer
+# Extract the build files
+tar xzf ../rc-lap-timer-build.tar.gz
+```
 
 # Create web root directory and copy files
+```bash
 sudo mkdir -p /var/www/rc-lap-timer
-sudo cp -r build/* /var/www/rc-lap-timer/
+sudo cp -r .next/* /var/www/rc-lap-timer/
 ```
 
 ## 7. Network Configuration
@@ -328,6 +359,10 @@ Environment=DATABASE_URL="mysql://rc_timer_user:your_secure_password_here@localh
 
 [Install]
 WantedBy=multi-user.target
+```
+Unmask the hostapd service:
+```bash
+sudo systemctl unmask hostapd
 ```
 
 Enable and start all services:
