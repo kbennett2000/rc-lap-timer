@@ -204,7 +204,7 @@ npm run build
 After the build completes successfully, create a tar archive of the necessary files:
 ```bash
 # Create a tar of the required files
-tar -czf rc-lap-timer-build.tar.gz .next package.json package-lock.json node_modules public
+tar -czf rc-lap-timer-build.tar.gz * .next package.json package-lock.json node_modules public
 ```
 
 Transfer the archive to your Raspberry Pi Zero W:
@@ -490,6 +490,7 @@ export DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer
 
 Now try the Prisma commands:
 ```bash
+# BUG:
 # pi@raspberrypi:~/rc-lap-timer $ npx prisma generate
 # Illegal instruction
 npx prisma generate
