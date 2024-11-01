@@ -51,7 +51,7 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Install required packages
-sudo apt install -y git nginx hostapd dnsmasq maria-server certbot
+sudo apt install -y git nginx hostapd dnsmasq mariadb-server certbot
 
 # Verify installations
 node --version  # Should show v16.x.x
