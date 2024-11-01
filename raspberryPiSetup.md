@@ -47,11 +47,16 @@ After first boot and SSH'ing in, before making any other changes, modify the net
 ```bash
 # Make backup of original dhcpcd configuration
 sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.backup
+```
 
+```bash
 # Edit dhcpcd configuration
 sudo nano /etc/dhcpcd.conf
+```
+
 Add these lines at the end of dhcpcd.conf:
-Copyinterface wlan0
+```
+    interface wlan0
     static ip_address=192.168.4.1/24
     nohook wpa_supplicant
 ```
@@ -60,14 +65,20 @@ Next, update the system:
 ```bash
 # Update system
 sudo apt update && sudo apt upgrade -y
+```
 
+```bash
 # Install Node.js 16.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
+```
 
+```bash
 # Install required packages
 sudo apt install -y git nginx hostapd dnsmasq mariadb-server certbot
+```
 
+```bash
 # Verify installations
 node --version  # Should show v16.x.x
 npm --version
@@ -76,9 +87,11 @@ mysql --version
 
 ## 5. Database Setup
 ```bash
-# Secure MySQL installation
+# Secure MySQL installation (use password1 for password)
 sudo mysql_secure_installation
+```
 
+```bash
 # Create database setup script
 cat > create_rc_timer_database.sql << 'EOF'
 -- Create database
@@ -160,7 +173,9 @@ CREATE TABLE IF NOT EXISTS MotionSettings (
 
 ALTER DATABASE rc_lap_timer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 EOF
+```
 
+```bash
 # Run the database setup script
 sudo mysql < create_rc_timer_database.sql
 ```
@@ -170,11 +185,18 @@ On your Ubuntu Desktop:
 ```bash
 # Clone the repository
 git clone https://github.com/kbennett2000/rc-lap-timer.git
-cd rc-lap-timer
+```
 
+```bash
+cd rc-lap-timer
+```
+
+```bash
 # Install dependencies
 npm install
+```
 
+```bash
 # Create production build
 npm run build
 ```
@@ -194,11 +216,18 @@ scp rc-lap-timer-build.tar.gz pi@raspberrypi.local:~
 On the Raspberry Pi Zero W:
 ```bash
 cd ~
-# Remove old rc-lap-timer directory if it exists
-rm -rf rc-lap-timer
+```
+
+```bash
 # Create new directory
 mkdir rc-lap-timer
+```
+
+```bash
 cd rc-lap-timer
+```
+
+```bash
 # Extract the build files
 tar xzf ../rc-lap-timer-build.tar.gz
 ```
@@ -206,6 +235,9 @@ tar xzf ../rc-lap-timer-build.tar.gz
 Create web root directory and copy files
 ```bash
 sudo mkdir -p /var/www/rc-lap-timer
+```
+
+```bash
 sudo cp -r .next/* /var/www/rc-lap-timer/
 ```
 
@@ -215,8 +247,13 @@ sudo cp -r .next/* /var/www/rc-lap-timer/
 ```bash
 # Stop services initially
 sudo systemctl stop hostapd
-sudo systemctl stop dnsmasq
+```
 
+```bash
+sudo systemctl stop dnsmasq
+```
+
+```bash
 # Configure hostapd
 sudo nano /etc/hostapd/hostapd.conf
 ```
@@ -244,13 +281,21 @@ ieee80211n=1
 ```bash
 # Very important: Enable and unmask hostapd properly:
 sudo systemctl unmask hostapd
+```
+
+```bash
 sudo systemctl enable hostapd
 
 # Configure hostapd to use this config
 sudo sed -i 's#^#DAEMON_CONF="/etc/hostapd/hostapd.conf"#' /etc/default/hostapd
+```
 
+```bash
 # Configure dnsmasq
 sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+```
+
+```bash
 sudo nano /etc/dnsmasq.conf
 ```
 
@@ -317,8 +362,17 @@ server {
 Enable the site:
 ```bash
 sudo ln -s /etc/nginx/sites-available/rc-lap-timer /etc/nginx/sites-enabled/
+```
+
+```bash
 sudo rm /etc/nginx/sites-enabled/default
+```
+
+```bash
 sudo nginx -t
+```
+
+```bash
 sudo systemctl restart nginx
 ```
 
@@ -361,6 +415,9 @@ DAEMON_CONF="/etc/hostapd/hostapd.conf"
 Verify the permissions and ownership:
 ```bash
 sudo chown root:root /etc/hostapd/hostapd.conf
+```
+
+```bash
 sudo chmod 600 /etc/hostapd/hostapd.conf
 ```
 
@@ -372,12 +429,17 @@ sudo systemctl restart hostapd
 Enable and start all services:
 ```bash
 sudo systemctl enable mysql hostapd dnsmasq rc-lap-timer nginx
+```
+```bash
 sudo systemctl start mysql hostapd dnsmasq rc-lap-timer nginx
 ```
 
 Make sure nginx user (www-data) has access to the directory:
 ```bash
 sudo chown -R www-data:www-data /var/www/rc-lap-timer
+```
+
+```bash
 sudo chmod -R 755 /var/www/rc-lap-timer
 ```
 
@@ -388,21 +450,9 @@ sudo mysql
 
 In MySQL:
 ```sql
--- Drop and recreate the user
-DROP USER 'rc_timer_user'@'localhost';
-
-CREATE USER 'rc_timer_user'@'localhost' IDENTIFIED BY 'password1';
-
-GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
-
-FLUSH PRIVILEGES;
-
-- Set root password
+-- Set root password
 ALTER USER 'root'@'localhost' IDENTIFIED BY 'password1';
 
-UPDATE mysql.user SET Password=PASSWORD('password1') WHERE User='root';
-
--- or if that doesn't work, try:
 SET PASSWORD FOR 'root'@'localhost' = PASSWORD('password1');
 
 -- Drop and recreate rc_timer_user
@@ -422,6 +472,9 @@ FLUSH PRIVILEGES;
 Create a .env file in your rc-lap-timer directory:
 ```bash
 cd /home/pi/rc-lap-timer
+```
+
+```bash
 nano .env
 ```
 
@@ -437,7 +490,12 @@ export DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer
 
 Now try the Prisma commands:
 ```bash
+# pi@raspberrypi:~/rc-lap-timer $ npx prisma generate
+# Illegal instruction
 npx prisma generate
+```
+
+```bash
 npx prisma db push
 ```
 
@@ -445,7 +503,9 @@ Verify our process user permissions:
 ```bash
 # Check the owner of the rc-lap-timer directory
 ls -la /home/pi/rc-lap-timer
+```
 
+```bash
 # Make sure pi user owns everything
 sudo chown -R pi:pi /home/pi/rc-lap-timer
 ```
@@ -453,10 +513,25 @@ sudo chown -R pi:pi /home/pi/rc-lap-timer
 Restart everything in order:
 ```bash
 sudo systemctl daemon-reload
+```
+
+```bash
 sudo systemctl stop rc-lap-timer
+```
+
+```bash
 sudo systemctl stop nginx
+```
+
+```bash
 sudo pkill -f next
+```
+
+```bash
 sudo systemctl start rc-lap-timer
+```
+
+```bash
 # Wait a few seconds
 sudo systemctl start nginx
 ```
