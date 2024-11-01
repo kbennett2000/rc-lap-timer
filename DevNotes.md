@@ -7,13 +7,9 @@ mkcert localhost 127.0.0.1 192.168.1.* ::1
 
 - (Replace 192.168.1.* with your actual IP)
 
-# To Do:
-- Driver and car delete
--- Delete all sessions associated with Driver, Car
--- Warning prompt, let user know all sessions associated with driver, car will be deleted forever
 
 
-Overview:
+# Overview:
 What is it?
 
 How does it work?

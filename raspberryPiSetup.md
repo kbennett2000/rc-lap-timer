@@ -490,9 +490,6 @@ export DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer
 
 Now try the Prisma commands:
 ```bash
-# BUG:
-# pi@raspberrypi:~/rc-lap-timer $ npx prisma generate
-# Illegal instruction
 npx prisma generate
 ```
 
