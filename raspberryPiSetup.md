@@ -208,6 +208,7 @@ sudo nano /etc/hostapd/hostapd.conf
 
 Add to hostapd.conf:
 ```
+country_code=US  # Replace with your country code
 interface=wlan0
 driver=nl80211
 ssid=rc-lap-timer
@@ -222,6 +223,7 @@ wpa_passphrase=rclaptimer
 wpa_key_mgmt=WPA-PSK
 wpa_pairwise=TKIP
 rsn_pairwise=CCMP
+ieee80211n=1
 ```
 
 ```bash
@@ -237,12 +239,13 @@ Add to dnsmasq.conf:
 ```
 interface=wlan0
 dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+domain=wlan
 address=/rc-lap-timer/192.168.4.1
 ```
 
 Configure network interface:
 ```bash
-sudo nano /etc/network/interfaces
+sudo nano /etc/network/interfaces.d/access-point
 ```
 
 Add to interfaces:
@@ -251,6 +254,11 @@ auto lo
 iface lo inet loopback
 
 auto wlan0
+iface wlan0 inet static
+    address 192.168.4.1
+    netmask 255.255.255.0
+
+allow-hotplug wlan0
 iface wlan0 inet static
     address 192.168.4.1
     netmask 255.255.255.0
@@ -360,11 +368,6 @@ Environment=DATABASE_URL="mysql://root:password1@localhost:3306/rc_lap_timer"
 [Install]
 WantedBy=multi-user.target
 ```
-Unmask the hostapd service:???
-```bash
-sudo systemctl unmask hostapd
-```
-
 Enable and start all services:
 ```bash
 sudo systemctl enable mysql hostapd dnsmasq rc-lap-timer nginx
