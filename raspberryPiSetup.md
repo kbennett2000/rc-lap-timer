@@ -188,7 +188,7 @@ cd rc-lap-timer
 tar xzf ../rc-lap-timer-build.tar.gz
 ```
 
-# Create web root directory and copy files
+Create web root directory and copy files
 ```bash
 sudo mkdir -p /var/www/rc-lap-timer
 sudo cp -r .next/* /var/www/rc-lap-timer/
@@ -227,6 +227,10 @@ ieee80211n=1
 ```
 
 ```bash
+# Very important: Enable and unmask hostapd properly:
+sudo systemctl unmask hostapd
+sudo systemctl enable hostapd
+
 # Configure hostapd to use this config
 sudo sed -i 's#^#DAEMON_CONF="/etc/hostapd/hostapd.conf"#' /etc/default/hostapd
 
@@ -281,58 +285,16 @@ sudo nano /etc/nginx/sites-available/rc-lap-timer
 
 Add to nginx configuration:
 ```nginx
-# HTTP - Redirect all traffic to HTTPS
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 80;
+    listen [::]:80;
     server_name rc-lap-timer;
-    return 301 https://$server_name$request_uri;
-}
 
-# HTTPS configuration
-server {
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
-    server_name rc-lap-timer;
-    
-    # SSL configuration
-    ssl_certificate /etc/ssl/certs/rc-lap-timer.crt;
-    ssl_certificate_key /etc/ssl/private/rc-lap-timer.key;
-    
-    # SSL settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Frame-Options SAMEORIGIN;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-
-    root /var/www/rc-lap-timer;
-    index index.html;
-    
     location / {
-        try_files $uri $uri/ /index.html;
-    }
-    
-    location /api {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-        expires 30d;
-        add_header Cache-Control "public, no-transform";
     }
 }
 ```
@@ -359,20 +321,136 @@ After=network.target mysql.service
 [Service]
 Type=simple
 User=pi
+Group=pi
 WorkingDirectory=/home/pi/rc-lap-timer
-ExecStart=/usr/bin/npm run dev
+ExecStart=/usr/bin/node /home/pi/rc-lap-timer/node_modules/.bin/next start -p 3000
 Restart=always
 Environment=NODE_ENV=production
-Environment=DATABASE_URL="mysql://root:password1@localhost:3306/rc_lap_timer"
+Environment=PORT=3000
+Environment=DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+Fix the default hostapd configuration:
+```bash
+sudo nano /etc/default/hostapd
+```
+
+Replace everything in that file with just this line (make sure there are no extra spaces or characters):
+```
+DAEMON_CONF="/etc/hostapd/hostapd.conf"
+```
+
+Verify the permissions and ownership:
+```bash
+sudo chown root:root /etc/hostapd/hostapd.conf
+sudo chmod 600 /etc/hostapd/hostapd.conf
+```
+
+Now try to restart hostapd:
+```bash
+sudo systemctl restart hostapd
+```
+
 Enable and start all services:
 ```bash
 sudo systemctl enable mysql hostapd dnsmasq rc-lap-timer nginx
 sudo systemctl start mysql hostapd dnsmasq rc-lap-timer nginx
 ```
+
+Make sure nginx user (www-data) has access to the directory:
+```bash
+sudo chown -R www-data:www-data /var/www/rc-lap-timer
+sudo chmod -R 755 /var/www/rc-lap-timer
+```
+
+Log in to MySQL using sudo:
+```bash
+sudo mysql
+```
+
+In MySQL:
+```sql
+-- Drop and recreate the user
+DROP USER 'rc_timer_user'@'localhost';
+
+CREATE USER 'rc_timer_user'@'localhost' IDENTIFIED BY 'password1';
+
+GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
+
+FLUSH PRIVILEGES;
+
+- Set root password
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'password1';
+
+UPDATE mysql.user SET Password=PASSWORD('password1') WHERE User='root';
+
+-- or if that doesn't work, try:
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('password1');
+
+-- Drop and recreate rc_timer_user
+DROP USER IF EXISTS 'rc_timer_user'@'localhost';
+
+CREATE USER 'rc_timer_user'@'localhost' IDENTIFIED BY 'password1';
+
+-- Make sure database exists
+CREATE DATABASE IF NOT EXISTS rc_lap_timer;
+
+-- Grant privileges
+GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
+
+FLUSH PRIVILEGES;
+```
+
+Create a .env file in your rc-lap-timer directory:
+```bash
+cd /home/pi/rc-lap-timer
+nano .env
+```
+
+Add this line:
+```
+DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
+```
+
+For the immediate command, you can export the variable:
+```bash
+export DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
+```
+
+Now try the Prisma commands:
+```bash
+npx prisma generate
+npx prisma db push
+```
+
+Verify our process user permissions:
+```bash
+# Check the owner of the rc-lap-timer directory
+ls -la /home/pi/rc-lap-timer
+
+# Make sure pi user owns everything
+sudo chown -R pi:pi /home/pi/rc-lap-timer
+```
+
+Restart everything in order:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl stop rc-lap-timer
+sudo systemctl stop nginx
+sudo pkill -f next
+sudo systemctl start rc-lap-timer
+# Wait a few seconds
+sudo systemctl start nginx
+```
+
+Reboot:
+```bash
+sudo reboot now
+```
+
 
 ## 10. Testing
 1. Power cycle the Raspberry Pi
@@ -380,61 +458,3 @@ sudo systemctl start mysql hostapd dnsmasq rc-lap-timer nginx
 3. Connect using password: "rclaptimer"
 4. Open a web browser and navigate to: `https://rc-lap-timer`
 5. Accept the self-signed certificate warning in your browser
-
-## 11. Maintenance & Troubleshooting
-
-### Database Backup
-```bash
-# Create backup directory
-mkdir -p ~/backups
-
-# Backup database
-mysqldump -u rc_timer_user -p rc_lap_timer > ~/backups/rc_lap_timer_$(date +%Y%m%d).sql
-```
-
-### Common Issues and Solutions
-
-1. If WiFi network doesn't appear:
-```bash
-sudo systemctl status hostapd
-sudo journalctl -u hostapd -f
-```
-
-2. If web application doesn't load:
-```bash
-sudo systemctl status nginx
-sudo systemctl status rc-lap-timer
-sudo journalctl -u rc-lap-timer -f
-```
-
-3. If database issues occur:
-```bash
-sudo systemctl status mysql
-sudo journalctl -u mysql -f
-cd ~/rc-lap-timer
-npx prisma db push
-```
-
-4. If SSL issues occur:
-```bash
-sudo nginx -t
-sudo journalctl -u nginx -f
-# Check certificate expiration
-sudo openssl x509 -in /etc/ssl/certs/rc-lap-timer.crt -noout -dates
-```
-
-5. To update the application:
-```bash
-cd ~/rc-lap-timer
-git pull
-npm install
-npm run build
-sudo cp -r build/* /var/www/rc-lap-timer/
-sudo systemctl restart rc-lap-timer
-```
-
-### Important Notes
-- Replace `your_secure_password_here` with a strong password wherever it appears
-- The default WiFi password is "rclaptimer" - consider changing it
-- The self-signed certificate will need to be renewed annually
-- Always backup your database before major updates
