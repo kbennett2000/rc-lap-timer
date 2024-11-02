@@ -13,17 +13,10 @@ interface DetectorSettings {
   sensitivity: number;
   threshold: number;
   cooldown: number;
+  framesToSkip: number;
   enableAudio: boolean;
   enableDebugView: boolean;
 }
-
-const DEFAULT_SETTINGS: DetectorSettings = {
-  sensitivity: 50,
-  threshold: 2.0,
-  cooldown: 5000,
-  enableAudio: true,
-  enableDebugView: true,
-};
 
 interface MotionSettings {
   id: string;
@@ -31,7 +24,17 @@ interface MotionSettings {
   sensitivity: number;
   threshold: number;
   cooldown: number;
+  framesToSkip: number;
 }
+
+const DEFAULT_SETTINGS: DetectorSettings = {
+  sensitivity: 50,
+  threshold: 2.0,
+  cooldown: 5000,
+  framesToSkip: 10,
+  enableAudio: true,
+  enableDebugView: true,
+};
 
 export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef }) => {
   // Refs
@@ -105,6 +108,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           sensitivity: settings.sensitivity,
           threshold: settings.threshold,
           cooldown: settings.cooldown,
+          framesToSkip: settings.framesToSkip,
         }),
       });
 
@@ -125,6 +129,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       sensitivity: savedSettings.sensitivity,
       threshold: savedSettings.threshold,
       cooldown: savedSettings.cooldown,
+      framesToSkip: savedSettings.framesToSkip,
     }));
   };
 
@@ -234,7 +239,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     console.log("Processing frame:", frameCountRef.current);
 
     // Only process motion detection after skipping initial frames
-    if (previousFrameRef.current && frameCountRef.current > FRAMES_TO_SKIP) {
+    if (previousFrameRef.current && frameCountRef.current > settings.framesToSkip) {
       let changedPixels = 0;
       const debugFrame = settings.enableDebugView ? debugCtx.createImageData(canvas.width, canvas.height) : null;
 
@@ -462,7 +467,13 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           {/* Cooldown */}
           <div>
             <label className="block text-sm mb-1">Cooldown ({settings.cooldown}ms)</label>
-            <input type="range" min="100" max="10000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
+            <input type="range" min="100" max="25000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
+          </div>
+
+          {/* Frames to Skip */}
+          <div>
+            <label className="block text-sm mb-1">Frames to Skip ({settings.framesToSkip})</label>
+            <input type="range" min="1" max="240" value={settings.framesToSkip} onChange={(e) => setSettings((prev) => ({ ...prev, framesToSkip: Number(e.target.value) }))} className="w-full" />
           </div>
 
           {/* Save / Load Settings */}

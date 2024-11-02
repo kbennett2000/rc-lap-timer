@@ -94,7 +94,6 @@ sudo mysql_secure_installation
 ```bash
 # Create database setup script
 cat > create_rc_timer_database.sql << 'EOF'
--- Create database
 CREATE DATABASE IF NOT EXISTS rc_lap_timer;
 USE rc_lap_timer;
 
@@ -167,6 +166,7 @@ CREATE TABLE IF NOT EXISTS MotionSettings (
     sensitivity INT NOT NULL,
     threshold FLOAT NOT NULL,
     cooldown INT NOT NULL,
+    framesToSkip INT NOT NULL DEFAULT 10,
     createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updatedAt DATETIME(3) NOT NULL
 );
