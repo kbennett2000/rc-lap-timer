@@ -47,9 +47,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number>();
 
+  // Ref for settings to access latest values in callbacks
+  const settingsRef = useRef<DetectorSettings>(DEFAULT_SETTINGS);
+
   // Add ref for initial frames skip
   const frameCountRef = useRef<number>(0);
-  const FRAMES_TO_SKIP = 10; // Skip first 10 frames to avoid false positives
 
   // State
   const [settings, setSettings] = useState<DetectorSettings>(DEFAULT_SETTINGS);
@@ -75,6 +77,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   useEffect(() => {
     loadSavedSettings();
   }, []);
+
+  // Keep settingsRef in sync with settings
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   const loadSavedSettings = async () => {
     try {
@@ -230,25 +237,24 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     ctx.drawImage(video, 0, 0);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    if (settings.enableDebugView) {
+    if (settingsRef.current.enableDebugView) {
       debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
     }
 
-    // Increment frame counter
     frameCountRef.current++;
     console.log("Processing frame:", frameCountRef.current);
 
-    // Only process motion detection after skipping initial frames
-    if (previousFrameRef.current && frameCountRef.current > settings.framesToSkip) {
+    // Use settingsRef.current instead of settings
+    if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
       let changedPixels = 0;
-      const debugFrame = settings.enableDebugView ? debugCtx.createImageData(canvas.width, canvas.height) : null;
+      const debugFrame = settingsRef.current.enableDebugView ? debugCtx.createImageData(canvas.width, canvas.height) : null;
 
       for (let i = 0; i < currentFrame.data.length; i += 4) {
         const rDiff = Math.abs(currentFrame.data[i] - previousFrameRef.current.data[i]);
         const gDiff = Math.abs(currentFrame.data[i + 1] - previousFrameRef.current.data[i + 1]);
         const bDiff = Math.abs(currentFrame.data[i + 2] - previousFrameRef.current.data[i + 2]);
 
-        if (rDiff > settings.sensitivity || gDiff > settings.sensitivity || bDiff > settings.sensitivity) {
+        if (rDiff > settingsRef.current.sensitivity || gDiff > settingsRef.current.sensitivity || bDiff > settingsRef.current.sensitivity) {
           changedPixels++;
           if (debugFrame) {
             debugFrame.data[i] = 255;
@@ -259,7 +265,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         }
       }
 
-      if (settings.enableDebugView && debugFrame) {
+      if (settingsRef.current.enableDebugView && debugFrame) {
         debugCtx.putImageData(debugFrame, 0, 0);
       }
 
@@ -268,9 +274,9 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       setLastChangePercent(changePercent);
       console.log("Change percent:", changePercent.toFixed(2) + "%");
 
-      if (changePercent > settings.threshold) {
+      if (changePercent > settingsRef.current.threshold) {
         const now = Date.now();
-        if (now - lastMotionTimeRef.current > settings.cooldown) {
+        if (now - lastMotionTimeRef.current > settingsRef.current.cooldown) {
           console.log("Motion detected!");
           playBeep();
           setMotionEvents((prev) => prev + 1);
@@ -287,7 +293,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (isActiveRef.current) {
       animationFrameRef.current = requestAnimationFrame(detectMotion);
     }
-  }, [settings, playBeep, onMotionDetected]);
+  }, [playBeep, onMotionDetected]);
 
   const handleStop = useCallback(() => {
     isActiveRef.current = false;
