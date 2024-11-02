@@ -7,7 +7,9 @@ mkcert localhost 127.0.0.1 192.168.1.* ::1
 
 - (Replace 192.168.1.* with your actual IP)
 
-
+```bash
+npm run dev-https
+```
 
 # Overview:
 What is it?

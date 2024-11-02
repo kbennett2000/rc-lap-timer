@@ -474,12 +474,17 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
             <select
               onChange={(e) => {
-                const selected = savedSettings.find((s) => s.id === e.target.value);
-                if (selected) handleLoadSettings(selected);
+                if (e.target.value) {
+                  const selected = savedSettings.find((s) => s.id === e.target.value);
+                  if (selected) handleLoadSettings(selected);
+                }
               }}
-              className="px-4 py-2 border rounded"
+              value=""
+              className="px-4 py-2 border rounded w-[180px]"
             >
-              <option value="">Load</option>
+              <option value="" disabled>
+                Load settings...
+              </option>
               {savedSettings.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
