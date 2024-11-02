@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Driver, Car } from "@/types/rc-timer";
+import { Driver, Car, Session } from "@/types/rc-timer"; // Make sure to import Session type
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,10 @@ import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle } from "lucide-reac
 interface DriverCarManagerProps {
   drivers: Driver[];
   onDriversUpdate: (updatedDrivers: Driver[]) => void;
-  onSessionsUpdate?: (updatedSessions: Session[]) => void; // Add this prop
+  onSessionsUpdate?: (updatedSessions: Session[]) => void;
 }
 
-const DriverCarManager = ({ drivers, onDriversUpdate }: DriverCarManagerProps) => {
+const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversUpdate, onSessionsUpdate }) => {
   const [selectedDriver, setSelectedDriver] = useState<string>("");
   const [selectedCar, setSelectedCar] = useState<string>("");
   const [isEditingDriver, setIsEditingDriver] = useState(false);
@@ -43,18 +43,26 @@ const DriverCarManager = ({ drivers, onDriversUpdate }: DriverCarManagerProps) =
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to update");
+      const data = await response.json();
 
-      const { success, updatedDrivers, updatedSessions } = await response.json();
-      if (success) {
-        onDriversUpdate(updatedDrivers);
-        if (onSessionsUpdate && updatedSessions) {
-          onSessionsUpdate(updatedSessions);
-        }
-        setNewName("");
-        setIsEditingDriver(false);
-        setIsEditingCar(false);
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update");
       }
+
+      // Update drivers state if we have updated drivers data
+      if (data.updatedDrivers) {
+        onDriversUpdate(data.updatedDrivers);
+      }
+
+      // Update sessions state if we have the callback and updated sessions data
+      if (typeof onSessionsUpdate === "function" && data.updatedSessions) {
+        onSessionsUpdate(data.updatedSessions);
+      }
+
+      // Reset form state
+      setNewName("");
+      setIsEditingDriver(false);
+      setIsEditingCar(false);
     } catch (error) {
       console.error("Error updating:", error);
       alert("Failed to update. Please try again.");

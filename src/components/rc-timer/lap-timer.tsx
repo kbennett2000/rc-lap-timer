@@ -310,19 +310,22 @@ export default function LapTimer() {
     const bestLapTime = Math.min(...lapTimes);
     const worstLapTime = Math.max(...lapTimes);
 
-    // Calculate total penalties
-    const totalPenalties = session.penalties?.reduce((sum: number, penalty: any) => sum + (penalty.count || 0), 0) || 0;
-
-    // Find the lap with most penalties
+    // Calculate total penalties and find lap with most penalties
     let maxPenaltyLap = null;
     let maxPenaltyCount = 0;
+    let totalPenalties = 0;
 
-    session.penalties?.forEach((penalty: any) => {
-      if (penalty.count > maxPenaltyCount) {
-        maxPenaltyCount = penalty.count;
-        maxPenaltyLap = penalty.lapNumber;
-      }
-    });
+    if (session.penalties && Array.isArray(session.penalties)) {
+      session.penalties.forEach((penalty: any) => {
+        if (penalty.count) {
+          totalPenalties += penalty.count;
+          if (penalty.count > maxPenaltyCount) {
+            maxPenaltyCount = penalty.count;
+            maxPenaltyLap = penalty.lapNumber;
+          }
+        }
+      });
+    }
 
     return {
       average: totalTime / lapTimes.length,
@@ -1350,7 +1353,8 @@ export default function LapTimer() {
                                     const isBestLap = lap.lapTime === bestLap;
                                     const isWorstLap = lap.lapTime === worstLap;
                                     const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
-                                    const hasMaxPenalties = session.stats.maxPenaltyLap === lap.lapNumber;
+                                    // Safely check for max penalties
+                                    const hasMaxPenalties = Boolean(session.stats?.maxPenaltyLap === lap.lapNumber && session.stats.maxPenaltyCount > 0);
 
                                     return (
                                       <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "", hasMaxPenalties ? "bg-yellow-50" : "")}>
@@ -1638,7 +1642,8 @@ export default function LapTimer() {
                                       const isBestLap = lap.lapTime === bestLap;
                                       const isWorstLap = lap.lapTime === worstLap;
                                       const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
-                                      const hasMaxPenalties = session.stats.maxPenaltyLap === lap.lapNumber;
+                                      // Safely check for max penalties
+                                      const hasMaxPenalties = Boolean(session.stats?.maxPenaltyLap === lap.lapNumber && session.stats.maxPenaltyCount > 0);
 
                                       return (
                                         <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>

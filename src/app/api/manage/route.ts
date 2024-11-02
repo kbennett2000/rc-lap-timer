@@ -5,6 +5,9 @@ export async function PATCH(request: Request) {
   try {
     const { type, id, newName } = await request.json();
 
+    let updatedDrivers;
+    let updatedSessions;
+
     // Use a transaction to ensure all updates are atomic
     await prisma.$transaction(async (tx) => {
       if (type === "driver") {
@@ -45,36 +48,43 @@ export async function PATCH(request: Request) {
     });
 
     // Fetch updated data including all related records
-    const updatedDrivers = await prisma.driver.findMany({
+    updatedDrivers = await prisma.driver.findMany({
       include: {
         cars: true,
-        sessions: {
-          include: {
-            laps: true,
-            penalties: true,
-          },
-        },
       },
     });
 
-    // Fetch all updated sessions
-    const updatedSessions = await prisma.session.findMany({
+    // Fetch all updated sessions with necessary includes
+    updatedSessions = await prisma.session.findMany({
       include: {
-        driver: true,
-        car: true,
         laps: true,
         penalties: true,
       },
+      orderBy: {
+        date: "desc",
+      },
     });
+
+    // Transform sessions to match expected format
+    const formattedSessions = updatedSessions.map((session) => ({
+      ...session,
+      date: session.date.toISOString(), // Convert Date to string
+    }));
 
     return NextResponse.json({
       success: true,
       updatedDrivers,
-      updatedSessions,
+      updatedSessions: formattedSessions,
     });
   } catch (error) {
     console.error("Error updating:", error);
-    return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update",
+      },
+      { status: 500 }
+    );
   }
 }
 
