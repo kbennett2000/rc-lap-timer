@@ -22,13 +22,15 @@ interface DriverCarManagerProps {
   drivers: Driver[];
   onDriversUpdate: (updatedDrivers: Driver[]) => void;
   onSessionsUpdate?: (updatedSessions: Session[]) => void;
+  onLocationsUpdate: (updatedLocations: Location[]) => void;
 }
 
-const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversUpdate, onSessionsUpdate }) => {
+const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations, onDriversUpdate, onLocationsUpdate, onSessionsUpdate }) => {
   const [selectedDriver, setSelectedDriver] = useState<string>("");
   const [selectedCar, setSelectedCar] = useState<string>("");
   const [isEditingDriver, setIsEditingDriver] = useState(false);
   const [isEditingCar, setIsEditingCar] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [newName, setNewName] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteType, setDeleteType] = useState<"driver" | "car" | null>(null);
@@ -40,15 +42,63 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
   const [newCarName, setNewCarName] = useState("");
   const [motionSettings, setMotionSettings] = useState<MotionSettings[]>([]);
   const [selectedMotionSetting, setSelectedMotionSetting] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [showNewLocation, setShowNewLocation] = useState(false);
+  const [newLocationName, setNewLocationName] = useState("");
 
   const currentDriver = drivers.find((d) => d.id === selectedDriver);
   const currentCar = currentDriver?.cars.find((c) => c.id === selectedCar);
   const currentMotionSetting = motionSettings.find((s) => s.id === selectedMotionSetting);
+  const currentLocation = locations.find((l) => l.id === selectedLocation);
 
   // Load motion settings on mount
   useEffect(() => {
     loadMotionSettings();
   }, []);
+
+  const handleLocationNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setNewLocationName(newName);
+  };
+
+  const handleAddLocation = async () => {
+    const trimmedName = newLocationName.trim();
+    if (!trimmedName) {
+      alert("Please enter a location name");
+      return;
+    }
+
+    if (!isLocationNameUnique(trimmedName)) {
+      alert("A location with this name already exists");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "location",
+          name: trimmedName,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create location");
+
+      const { location } = await response.json();
+      onLocationsUpdate([...locations, location]);
+      setSelectedLocation(location.id);
+      setNewLocationName("");
+      setShowNewLocation(false);
+    } catch (error) {
+      console.error("Error creating location:", error);
+      alert("Failed to create location. Please try again.");
+    }
+  };
+
+  const isLocationNameUnique = (name: string): boolean => {
+    return !locations.some((location) => location.name.toLowerCase().trim() === name.toLowerCase().trim());
+  };
 
   const loadMotionSettings = async () => {
     try {
@@ -70,10 +120,10 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
       const endpoint = "/api/manage";
       let body;
 
-      if (isEditingMotionSetting) {
+      if (isEditingLocation) {
         body = {
-          type: "motionSetting",
-          id: selectedMotionSetting,
+          type: "location",
+          id: selectedLocation,
           newName: newName.trim(),
         };
       } else {
@@ -97,8 +147,8 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
       }
 
       if (data.success) {
-        if (isEditingMotionSetting) {
-          await loadMotionSettings();
+        if (isEditingLocation) {
+          onLocationsUpdate(data.updatedLocations);
         } else {
           if (data.updatedDrivers) {
             onDriversUpdate(data.updatedDrivers);
@@ -111,7 +161,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
         setNewName("");
         setIsEditingDriver(false);
         setIsEditingCar(false);
-        setIsEditingMotionSetting(false);
+        setIsEditingLocation(false);
       }
     } catch (error) {
       console.error("Error updating:", error);
@@ -120,41 +170,46 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
       setIsProcessing(false);
     }
   };
-
+  
   const handleDelete = async () => {
     if (!deleteType) return;
     setIsProcessing(true);
-
+  
     try {
       const endpoint = "/api/manage";
       let body;
-
-      if (deleteType === "motionSetting") {
+  
+      if (deleteType === "location") {
         body = {
-          type: "motionSetting",
-          id: selectedMotionSetting,
+          type: "location",
+          id: selectedLocation
         };
-      } else {
+      } else if (deleteType === "driver") {
         body = {
-          type: deleteType,
+          type: "driver",
+          driverId: selectedDriver  // This needs to match what the API expects
+        };
+      } else if (deleteType === "car") {
+        body = {
+          type: "car",
           driverId: selectedDriver,
-          carId: deleteType === "car" ? selectedCar : undefined,
+          carId: selectedCar
         };
       }
-
+  
       const response = await fetch(endpoint, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
+  
       if (!response.ok) throw new Error("Failed to delete");
-
-      const { success, updatedDrivers } = await response.json();
+  
+      const { success, updatedDrivers, updatedLocations } = await response.json();
       if (success) {
-        if (deleteType === "motionSetting") {
-          await loadMotionSettings();
-          setSelectedMotionSetting("");
+        if (deleteType === "location") {
+          onLocationsUpdate(updatedLocations);
+          setSelectedLocation("");
         } else {
           onDriversUpdate(updatedDrivers);
           if (deleteType === "driver") {
@@ -260,6 +315,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
         <Tabs defaultValue="drivers">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="drivers">Drivers & Cars</TabsTrigger>
+            <TabsTrigger value="locations">Locations</TabsTrigger>
             <TabsTrigger value="motionSettings">Motion Settings</TabsTrigger>
           </TabsList>
 
@@ -405,6 +461,88 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
             )}
           </TabsContent>
 
+          {/* New Locations Tab Content */}
+          <TabsContent value="locations" className="space-y-4">
+            {/* Add New Location */}
+            <div className="space-y-2">
+              <Label>Add New Location</Label>
+              <div className="flex space-x-2">
+                <Input placeholder="Enter location name" value={newName} onChange={(e) => setNewName(e.target.value)} className={newName.trim() && locations.some((l) => l.name.toLowerCase() === newName.toLowerCase().trim()) ? "border-red-500" : ""} />
+                <Button onClick={handleAddLocation} disabled={!newName.trim() || locations.some((l) => l.name.toLowerCase() === newName.toLowerCase().trim())}>
+                  Add Location
+                </Button>
+              </div>
+              {newName.trim() && locations.some((l) => l.name.toLowerCase() === newName.toLowerCase().trim()) && <div className="text-sm text-red-500">This location name already exists</div>}
+            </div>
+
+            {/* Location Selection and Management */}
+            <div className="space-y-2">
+              <Label>Manage Locations</Label>
+              <div className="flex gap-2">
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {selectedLocation && !isEditingLocation && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setNewName(currentLocation?.name || "");
+                        setIsEditingLocation(true);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => {
+                        setDeleteType("location");
+                        setDeleteConfirmOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Edit Location Name Form */}
+            {isEditingLocation && (
+              <div className="space-y-2 pt-4 border-t">
+                <Label>Edit Location Name</Label>
+                <div className="flex gap-2">
+                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Enter new location name" />
+                  <Button onClick={handleEdit} disabled={isProcessing || !newName.trim()}>
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditingLocation(false);
+                      setNewName("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="motionSettings" className="space-y-4">
             {/* Motion Settings Selection */}
             <div className="space-y-2">
@@ -488,8 +626,10 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, onDriversU
                   <>Are you sure you want to delete driver "{currentDriver?.name}"? This will also delete all their cars and session data.</>
                 ) : deleteType === "car" ? (
                   <>Are you sure you want to delete car "{currentCar?.name}"? This will also delete all associated session data.</>
+                ) : deleteType === "location" ? (
+                  <>Are you sure you want to delete location "{currentLocation?.name}"? This will also delete all associated session data.</>
                 ) : (
-                  <>Are you sure you want to delete motion setting "{currentMotionSetting?.name}"?</>
+                  <>Are you sure you want to delete this item?</>
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>

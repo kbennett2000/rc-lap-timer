@@ -6,7 +6,7 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, Camera } from "lucide-react";
+import { Video, ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,7 @@ export default function LapTimer() {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [laps, setLaps] = useState<number[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
-    const [newDriverName, setNewDriverName] = useState<string>("");
+  const [newDriverName, setNewDriverName] = useState<string>("");
   const [newCarName, setNewCarName] = useState<string>("");
   const [showNewDriver, setShowNewDriver] = useState<boolean>(false);
   const [showNewCar, setShowNewCar] = useState<boolean>(false);
@@ -65,7 +65,10 @@ export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("current");
   const [isMobile, setIsMobile] = useState(false);
   const [filterDriver, setFilterDriver] = useState<string>("all");
+
   const [filterCar, setFilterCar] = useState<string>("all");
+  const [filterLocation, setFilterLocation] = useState<string>("all");
+
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDriver, setSelectedDriver] = useState<string>("");
   const [selectedCar, setSelectedCar] = useState<string>("");
@@ -79,28 +82,34 @@ export default function LapTimer() {
   const [announceLastLapTime, setAnnounceLastLapTime] = useState(false);
   const [speechVoice, setSpeechVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [playBeeps, setPlayBeeps] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [showNewLocation, setShowNewLocation] = useState<boolean>(false);
+  const [newLocationName, setNewLocationName] = useState<string>("");
 
   const motionControlRef = useRef<{ stop: () => void }>(null);
-  
 
-const announceLapNumberRef = useRef(announceLapNumber);
-// Sync with the ref whenever it changes
-useEffect(() => {
-  announceLapNumberRef.current = announceLapNumber;
-}, [announceLapNumber]);
+  const announceLapNumberRef = useRef(announceLapNumber);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    announceLapNumberRef.current = announceLapNumber;
+  }, [announceLapNumber]);
 
+  const announceLastLapTimeRef = useRef(announceLastLapTime);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    announceLastLapTimeRef.current = announceLastLapTime;
+  }, [announceLastLapTime]);
 
+  const playBeepsRef = useRef(playBeeps);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    playBeepsRef.current = playBeeps;
+  }, [playBeeps]);
 
-const announceLastLapTimeRef = useRef(announceLastLapTime);
-// Sync with the ref whenever it changes
-useEffect(() => {
-  announceLastLapTimeRef.current = announceLastLapTime;
-}, [announceLastLapTime]);
-
-
-  
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const isRunningRef = useRef(isRunning);
   // Sync with the ref whenever it changes
   useEffect(() => {
@@ -359,7 +368,7 @@ useEffect(() => {
       }, delay);
       delay += 1000;
     });
-  }, [announceLapNumber, announceLastLapTime, speechVoice]);
+  }, [speechVoice]);
 
   const announceRaceInfo = useCallback(
     (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
@@ -378,7 +387,7 @@ useEffect(() => {
       // Create a queue of announcements to make
       const announcements: string[] = [];
 
-      if (sessionEnded) {
+      if (sessionEnded && announceLapNumberRef.current) {
         announcements.push("Session Ended");
       } else {
         if (announceLapNumberRef.current) {
@@ -389,7 +398,7 @@ useEffect(() => {
 
       if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
         const timeAnnouncement = `Last lap ${formatTimeForSpeech(lastLapTime)}`;
-        announcements.push(timeAnnouncement);        
+        announcements.push(timeAnnouncement);
       }
 
       // Chain the announcements with slight delays between them
@@ -732,6 +741,46 @@ useEffect(() => {
     }
   };
 
+  const handleAddLocation = async () => {
+    const trimmedName = newLocationName.trim();
+
+    if (!trimmedName) {
+      alert("Please enter a location name");
+      return;
+    }
+
+    if (!isLocationNameUnique(trimmedName)) {
+      alert(`A location named "${trimmedName}" already exists. Please use a different name.`);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "location",
+          name: trimmedName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create location");
+      }
+
+      const { location } = await response.json();
+      setLocations((prevLocations) => [...prevLocations, location]);
+      setSelectedLocation(location.id);
+      setNewLocationName("");
+      setShowNewLocation(false);
+    } catch (error) {
+      console.error("Error creating location:", error);
+      alert("Failed to create location. Please try again.");
+    }
+  };
+
   const handleCarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setNewCarName(newName);
@@ -740,6 +789,11 @@ useEffect(() => {
   const handleDriverNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setNewDriverName(newName);
+  };
+
+  const handleLocationNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setNewLocationName(newName);
   };
 
   const handleMotionDetected = useCallback(
@@ -789,6 +843,8 @@ useEffect(() => {
       driverName: driver.name,
       carId: selectedCar,
       carName: car.name,
+      locationId: selectedLocation,
+      locationName: locations.find((l) => l.id === selectedLocation)?.name || "",
       laps: formattedLaps,
       penalties,
       totalLaps: selectedLapCount === "unlimited" ? completedLaps.length : selectedLapCount,
@@ -834,6 +890,10 @@ useEffect(() => {
 
   const isDriverNameUnique = (name: string): boolean => {
     return !drivers.some((driver) => driver.name.toLowerCase().trim() === name.toLowerCase().trim());
+  };
+
+  const isLocationNameUnique = (name: string): boolean => {
+    return !locations.some((location) => location.name.toLowerCase().trim() === name.toLowerCase().trim());
   };
 
   // Add the date filter function
@@ -917,97 +977,104 @@ useEffect(() => {
 
       setSavedSessions(sessionsWithStats);
       setDrivers(data.drivers);
+      setLocations(data.locations);
     } catch (error) {
       console.error("Error loading data:", error);
     }
   };
 
   const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
-    return new Promise((resolve) => {
-      // Create audio context
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (playBeepsRef.current) {
+      return new Promise((resolve) => {
+        // Create audio context
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-      // Create oscillator and gain node
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+        // Create oscillator and gain node
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
 
-      // Configure oscillator
-      oscillator.type = type;
-      oscillator.frequency.value = frequency;
+        // Configure oscillator
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
 
-      // Configure gain (volume)
-      gainNode.gain.value = volume;
+        // Configure gain (volume)
+        gainNode.gain.value = volume;
 
-      // Connect nodes
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+        // Connect nodes
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
 
-      // Schedule the beep
-      oscillator.start();
+        // Schedule the beep
+        oscillator.start();
 
-      // Schedule the end of the beep
-      setTimeout(() => {
-        oscillator.stop();
-        audioContext.close();
-        resolve();
-      }, duration);
-    });
+        // Schedule the end of the beep
+        setTimeout(() => {
+          oscillator.stop();
+          audioContext.close();
+          resolve();
+        }, duration);
+      });
+    }
   };
 
   const playRaceFinish = async (): Promise<void> => {
-    // Quick ascending beeps followed by victory tone
-    const ascendingBeeps = [
-      { frequency: 440, duration: 100 },
-      { frequency: 554, duration: 100 },
-      { frequency: 659, duration: 100 },
-      { frequency: 880, duration: 100 },
-    ];
+    if (playBeepsRef.current) {
+      // Quick ascending beeps followed by victory tone
+      const ascendingBeeps = [
+        { frequency: 440, duration: 100 },
+        { frequency: 554, duration: 100 },
+        { frequency: 659, duration: 100 },
+        { frequency: 880, duration: 100 },
+      ];
 
-    // Play ascending beeps
-    for (const beep of ascendingBeeps) {
+      // Play ascending beeps
+      for (const beep of ascendingBeeps) {
+        await playBeep({
+          frequency: beep.frequency,
+          duration: beep.duration,
+          volume: 0.5,
+          type: "square",
+        });
+        // Small gap between beeps
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+
+      // Victory fanfare
       await playBeep({
-        frequency: beep.frequency,
-        duration: beep.duration,
+        frequency: 880,
+        duration: 150,
+        volume: 0.6,
+        type: "triangle",
+      });
+
+      // Final sustained victory note
+      await playBeep({
+        frequency: 1320,
+        duration: 400,
+        volume: 0.7,
+        type: "square",
+      });
+    }
+  };
+
+  const playStartBeep = async (): Promise<void> => {
+    if (playBeepsRef.current) {
+      await playBeep({
+        frequency: 440,
+        duration: 300,
         volume: 0.5,
         type: "square",
       });
       // Small gap between beeps
       await new Promise((resolve) => setTimeout(resolve, 20));
+
+      await playBeep({
+        frequency: 440,
+        duration: 200,
+        volume: 0.5,
+        type: "square",
+      });
     }
-
-    // Victory fanfare
-    await playBeep({
-      frequency: 880,
-      duration: 150,
-      volume: 0.6,
-      type: "triangle",
-    });
-
-    // Final sustained victory note
-    await playBeep({
-      frequency: 1320,
-      duration: 400,
-      volume: 0.7,
-      type: "square",
-    });
-  };
-
-  const playStartBeep = async (): Promise<void> => {
-    await playBeep({
-      frequency: 440,
-      duration: 300,
-      volume: 0.5,
-      type: "square",
-    });
-    // Small gap between beeps
-    await new Promise((resolve) => setTimeout(resolve, 20));
-
-    await playBeep({
-      frequency: 440,
-      duration: 200,
-      volume: 0.5,
-      type: "square",
-    });
   };
 
   const recordLap = (): void => {
@@ -1114,7 +1181,7 @@ useEffect(() => {
   };
 
   const startTimer = (): void => {
-    if (!selectedDriver || !selectedCar) {
+    if (!selectedDriver || !selectedCar || !selectedLocation) {
       alert("Please select a driver and car before starting the timer");
       return;
     }
@@ -1128,7 +1195,7 @@ useEffect(() => {
   };
 
   const startTimer_MD = (): void => {
-    if (!selectedDriver || !selectedCar) {
+    if (!selectedDriver || !selectedCar || !selectedLocation) {
       alert("Please select a driver and car before starting the timer");
       return;
     }
@@ -1161,6 +1228,8 @@ useEffect(() => {
     handleSessionCompletion(finalLaps);
   };
 
+  // Testing functions, implementation currenly commented out
+  /*
   const testAnnouncements = () => {
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
@@ -1207,6 +1276,7 @@ useEffect(() => {
     utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
   };
+  */
 
   const validateLapCount = (value: string): boolean => {
     const num = parseInt(value, 10);
@@ -1327,6 +1397,52 @@ useEffect(() => {
                         </div>
                       )}
 
+                      {/* Location Selection - Only show if driver and car are selected */}
+                      {selectedDriver && selectedCar && (
+                        <div className="space-y-2">
+                          <Label>Location</Label>
+                          <div className="flex space-x-2">
+                            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locations
+                                  .sort((a, b) => a.name.localeCompare(b.name))
+                                  .map((location) => (
+                                    <SelectItem key={location.id} value={location.id}>
+                                      {location.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            <Button variant="outline" onClick={() => setShowNewLocation(!showNewLocation)}>
+                              <MapPin className="mr-2 h-4 w-4" />
+                              New Location
+                            </Button>
+                          </div>
+                          {showNewLocation && (
+                            <div className="space-y-2">
+                              <div className="flex space-x-2">
+                                <Input
+                                  placeholder="Enter location name"
+                                  value={newLocationName}
+                                  onChange={handleLocationNameChange}
+                                  onKeyPress={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleAddLocation();
+                                    }
+                                  }}
+                                  className={newLocationName.trim() && !isLocationNameUnique(newLocationName) ? "border-red-500" : ""}
+                                />
+                                <Button onClick={handleAddLocation}>Add</Button>
+                              </div>
+                              {newLocationName.trim() && !isLocationNameUnique(newLocationName) && <div className="text-sm text-red-500">This location name already exists. Please choose a different name.</div>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Lap Count Selection */}
                       {selectedDriver && selectedCar && (
                         <div className="space-y-2">
@@ -1387,6 +1503,7 @@ useEffect(() => {
                       <div className="space-y-3 p-4 bg-gray-50 rounded">
                         <h3 className="font-semibold">Announcements</h3>
                         <div className="space-y-2">
+                          {/* Annouce Lap Number */}
                           <div className="flex items-center space-x-2">
                             <input type="checkbox" id="announceLapNumber" checked={announceLapNumber} onChange={(e) => setAnnounceLapNumber(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
                             <label htmlFor="announceLapNumber" className="text-sm">
@@ -1394,6 +1511,7 @@ useEffect(() => {
                             </label>
                           </div>
 
+                          {/* Annouce Last Lap Time */}
                           <div className="flex items-center space-x-2">
                             <input type="checkbox" id="announceLastLapTime" checked={announceLastLapTime} onChange={(e) => setAnnounceLastLapTime(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
                             <label htmlFor="announceLastLapTime" className="text-sm">
@@ -1401,10 +1519,17 @@ useEffect(() => {
                             </label>
                           </div>
 
-                          <div className="text-sm text-gray-500 mt-2">Current voice: {speechVoice?.name || "Default"}</div>
+                          {/* Play Beeps */}
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="playBeeps" checked={playBeeps} onChange={(e) => setPlayBeeps(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                            <label htmlFor="announceLastLapTime" className="text-sm">
+                              Play Beeps
+                            </label>
+                          </div>
 
                           {/* Voice Selection */}
                           {/* 
+                          <div className="text-sm text-gray-500 mt-2">Current voice: {speechVoice?.name || "Default"}</div>
                           <div className="mt-4">
                             <label className="text-sm font-medium">Select Voice</label>
                             <div className="mt-2 grid gap-2">
@@ -1432,34 +1557,36 @@ useEffect(() => {
                           </div>
                             */}
 
+                          {/* Test Buttons */}
+                          {/* 
                           <div className="flex gap-2 mt-2">
                             <Button variant="outline" size="sm" onClick={testAnnouncements}>
                               Test Announcements
                             </Button>
-
-                            {/* 
+                            
                             <Button variant="outline" size="sm" onClick={debugVoices}>
                               Test Voice
                             </Button>
-                            */}
                           </div>
+                          */}
                         </div>
                       </div>
 
                       {/* Session Settings Summary */}
-                      {selectedDriver && selectedCar && selectedLapCount && (
+                      {selectedDriver && selectedCar && selectedLocation && selectedLapCount && (
                         <div className="mt-4 p-4 bg-muted/50 rounded-lg">
                           <h3 className="font-semibold mb-2">Session Settings</h3>
                           <div className="space-y-1 text-sm">
                             <div>Driver: {drivers.find((d) => d.id === selectedDriver)?.name}</div>
                             <div>Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}</div>
+                            <div>Location: {locations.find((l) => l.id === selectedLocation)?.name}</div>
                             <div>Laps: {selectedLapCount === "unlimited" ? "Unlimited" : selectedLapCount}</div>
                           </div>
                         </div>
                       )}
 
                       {/* Add Timing Mode Selection */}
-                      {selectedDriver && selectedCar && selectedLapCount && (
+                      {selectedDriver && selectedCar && selectedLocation && selectedLapCount && (
                         <div className="space-y-2">
                           <Label>Timing Mode</Label>
                           <RadioGroup
@@ -1553,6 +1680,7 @@ useEffect(() => {
                             onMotionDetected={(changePercent) => {
                               handleMotionDetected(changePercent);
                             }}
+                            playBeeps={playBeepsRef.current}
                             className="w-full"
                           />
                         </div>
@@ -1573,6 +1701,7 @@ useEffect(() => {
                               <h3 className="font-semibold">Session Info:</h3>
                               <div className="font-mono">Driver: {drivers.find((d) => d.id === selectedDriver)?.name}</div>
                               <div className="font-mono">Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}</div>
+                              <div className="font-mono">Location: {locations.find((l) => l.id === selectedLocation)?.name}</div>
                               <h3 className="font-semibold mt-4">Lap Times:</h3>
 
                               {/* Current Session lap times */}
@@ -1631,7 +1760,7 @@ useEffect(() => {
                               <div>
                                 <h3 className="font-semibold">{formatDateTime(session.date)}</h3>
                                 <div className="text-sm text-muted-foreground">
-                                  Driver: {session.driverName} - Car: {session.carName}
+                                  Driver: {session.driverName} - Car: {session.carName} - Location: {session.locationName}
                                 </div>
                               </div>
                               <Button onClick={() => setSessionToDelete(session)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
@@ -1745,7 +1874,8 @@ useEffect(() => {
                       </CardHeader>
                       <CardContent>
                         {/* Driver and Car Filters */}
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-3 gap-4 mb-4">
+                          
                           <div className="space-y-2">
                             <Label>Filter by Driver</Label>
                             <Select
@@ -1793,7 +1923,35 @@ useEffect(() => {
                               </SelectContent>
                             </Select>
                           </div>
+
+                          <div className="space-y-2">
+                          <Label>Filter by Location</Label>
+                          <Select
+                            value={filterLocation}
+                            onValueChange={(value) => {
+                              setFilterLocation(value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Locations" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Locations</SelectItem>
+                              {/* Get unique locations from sessions */}
+                              {Array.from(new Set(savedSessions.map((session) => session.locationName)))
+                                .filter((name) => name && name.trim() !== "")
+                                .sort((a, b) => a.localeCompare(b))
+                                .map((location) => (
+                                  <SelectItem key={location} value={location}>
+                                    {location}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+
+                        </div>
+
 
                         {/* Date Range Filter */}
                         <div className="space-y-2">
@@ -1914,13 +2072,14 @@ useEffect(() => {
                               .filter((session) => isWithinPreviousSessionsDateRange(session.date))
                               .filter((session) => filterDriver === "all" || session.driverName === filterDriver)
                               .filter((session) => filterCar === "all" || session.carName === filterCar)
+                              .filter((session) => filterLocation === "all" || session.locationName === filterLocation)
                           ).map((session) => (
                             <div key={session.id} className="border-t pt-4 first:border-t-0 first:pt-0">
                               <div className="flex justify-between items-center mb-2">
                                 <div>
                                   <h3 className="font-semibold">{formatDateTime(session.date)}</h3>
                                   <div className="text-sm text-muted-foreground">
-                                    Driver: {session.driverName} - Car: {session.carName}
+                                    Driver: {session.driverName} - Car: {session.carName} - Location: {session.locationName}
                                   </div>
                                 </div>
                                 <Button onClick={() => setSessionToDelete(session)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
@@ -2039,7 +2198,7 @@ useEffect(() => {
               {/* Driver Car Manager Tab */}
               <TabsContent value="drivercarmanager" className="space-y-4">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  <DriverCarManager drivers={drivers} onDriversUpdate={setDrivers} onSessionsUpdate={setSavedSessions} />
+                  <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} onSessionsUpdate={setSavedSessions} />
                 </motion.div>
               </TabsContent>
 

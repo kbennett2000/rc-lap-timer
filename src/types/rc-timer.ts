@@ -10,7 +10,7 @@ export interface Car extends PrismaCar {
 }
 
 export interface Session extends Omit<PrismaSession, "date"> {
-  id: string; // Make sure id is required
+  id: string; 
   driver: Driver;
   car: Car;
   laps: Lap[];
@@ -25,6 +25,8 @@ export interface Session extends Omit<PrismaSession, "date"> {
   totalLaps: "unlimited" | number;
   totalPenalties: number;
   notes?: string;
+  locationId: string;
+  locationName: string;
 }
 
 export interface LapStats {
@@ -59,4 +61,11 @@ export interface PenaltyData {
 export interface Lap {
   lapNumber: number;
   lapTime: number;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
 }

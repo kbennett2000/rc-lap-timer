@@ -29,24 +29,28 @@ model Car {
 }
 
 model Session {
-  id            String   @id
+  id            String    @id
   date          DateTime
-  driver        Driver   @relation(fields: [driverId], references: [id])
+  driver        Driver    @relation(fields: [driverId], references: [id])
   driverId      String
-  car           Car      @relation(fields: [carId], references: [id])
+  car           Car       @relation(fields: [carId], references: [id])
   carId         String
+  location      Location  @relation(fields: [locationId], references: [id])  // Add this relation
+  locationId    String                                                       // Add this field
   driverName    String
   carName       String
+  locationName  String
   totalTime     Int
   totalLaps     Int
-  notes         String?  @db.Text  // Add this line
+  notes         String?   @db.Text
   laps          Lap[]
   penalties     Penalty[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([driverId])
   @@index([carId])
+  @@index([locationId])  // Add this index
 }
 
 model Lap {
@@ -80,4 +84,12 @@ model MotionSettings {
   framesToSkip Int      @default(10)  
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Location {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }

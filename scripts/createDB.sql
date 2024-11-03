@@ -1,6 +1,5 @@
 CREATE DATABASE IF NOT EXISTS rc_lap_timer;
 USE rc_lap_timer;
-
 CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';
 GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
 FLUSH PRIVILEGES;
@@ -24,13 +23,23 @@ CREATE TABLE IF NOT EXISTS Car (
     UNIQUE KEY unique_driver_car (driverId, name)
 );
 
+-- Location table with unique name constraint
+CREATE TABLE IF NOT EXISTS Location (
+    id VARCHAR(191) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updatedAt DATETIME(3) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS Session (
     id VARCHAR(191) PRIMARY KEY,
     date DATETIME(3) NOT NULL,
     driverId VARCHAR(191) NOT NULL,
     carId VARCHAR(191) NOT NULL,
+    locationId VARCHAR(191) NOT NULL,
     driverName VARCHAR(255) NOT NULL,
     carName VARCHAR(255) NOT NULL,
+    locationName VARCHAR(255) NOT NULL,
     totalTime INT NOT NULL,
     totalLaps INT NOT NULL,
     notes TEXT,
@@ -38,8 +47,10 @@ CREATE TABLE IF NOT EXISTS Session (
     updatedAt DATETIME(3) NOT NULL,
     FOREIGN KEY (driverId) REFERENCES Driver(id),
     FOREIGN KEY (carId) REFERENCES Car(id),
+    FOREIGN KEY (locationId) REFERENCES Location(id),
     INDEX idx_driverId (driverId),
-    INDEX idx_carId (carId)
+    INDEX idx_carId (carId),
+    INDEX idx_locationId (locationId)
 );
 
 CREATE TABLE IF NOT EXISTS Lap (

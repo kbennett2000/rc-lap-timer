@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   enableDebugView: true,
 };
 
-export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef }) => {
+export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef, playBeeps }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -166,6 +166,8 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const playBeep = useCallback(() => {
     if (!settings.enableAudio || !audioContextRef.current) return;
 
+    if (!playBeeps) return;
+    
     try {
       const context = audioContextRef.current;
       const oscillator = context.createOscillator();
@@ -529,7 +531,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
           {/* Logging */}
           <div className="pt-2 border-t">
-            <div className="text-sm">Motion Events: {motionEvents}</div>
+            { /* <div className="text-sm">Motion Events: {motionEvents}</div> */}
             {lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
           </div>
         </div>

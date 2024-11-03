@@ -14,15 +14,18 @@ export async function GET() {
         include: {
           driver: true,
           car: true,
+          location: true, // Add location include
           laps: true,
           penalties: true,
         },
       }),
+      prisma.location.findMany(), // Add locations query
     ]);
 
     return NextResponse.json({
       drivers: data[0],
       sessions: data[1],
+      locations: data[2], // Add locations to response
     });
   } catch (error) {
     console.error("Error reading data:", error);
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
     const clonedRequest = request.clone();
     const data = await clonedRequest.json();
 
-    // Handle driver/car creation
+    // Handle driver/car/location creation
     if (data.type === "driver") {
       const newDriver = await prisma.driver.create({
         data: {
@@ -62,6 +65,17 @@ export async function POST(request: Request) {
         },
       });
       return NextResponse.json({ success: true, car: newCar });
+    }
+
+    // Add location creation
+    if (data.type === "location") {
+      const newLocation = await prisma.location.create({
+        data: {
+          id: Date.now().toString(),
+          name: data.name,
+        },
+      });
+      return NextResponse.json({ success: true, location: newLocation });
     }
 
     if (data.sessions) {
@@ -92,7 +106,7 @@ export async function POST(request: Request) {
 
         // Use transaction to ensure all related data is created atomically
         await prisma.$transaction(async (tx) => {
-          // Create the session
+          // Create the session with location
           await tx.session.create({
             data: {
               id: sessionId,
@@ -103,8 +117,12 @@ export async function POST(request: Request) {
               car: {
                 connect: { id: session.carId },
               },
+              location: {
+                connect: { id: session.locationId }, // Add location connection
+              },
               driverName: session.driverName,
               carName: session.carName,
+              locationName: session.locationName, // Add location name
               totalTime,
               totalLaps: session.laps.length,
             },

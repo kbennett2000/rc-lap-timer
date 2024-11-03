@@ -6,7 +6,7 @@ export async function PATCH(request: Request) {
     const { type, id, newName } = await request.json();
 
     if (type === "motionSetting") {
-      // Check if name is already taken
+      // Existing motion settings code
       const existingSettings = await prisma.motionSettings.findFirst({
         where: {
           name: newName,
@@ -18,13 +18,69 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "A motion setting with this name already exists" }, { status: 400 });
       }
 
-      // Update motion setting name
       await prisma.motionSettings.update({
         where: { id },
         data: { name: newName },
       });
 
       return NextResponse.json({ success: true });
+    }
+
+    if (type === "location") {
+      // Check if location name is already taken
+      const existingLocation = await prisma.location.findFirst({
+        where: {
+          name: newName,
+          id: { not: id },
+        },
+      });
+
+      if (existingLocation) {
+        return NextResponse.json({ error: "A location with this name already exists" }, { status: 400 });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        // Update location name
+        await tx.location.update({
+          where: { id },
+          data: { name: newName },
+        });
+
+        // Update locationName in all related sessions
+        await tx.session.updateMany({
+          where: { locationId: id },
+          data: { locationName: newName },
+        });
+      });
+
+      // Fetch updated data including locations
+      const [updatedDrivers, updatedSessions, updatedLocations] = await Promise.all([
+        prisma.driver.findMany({
+          include: {
+            cars: true,
+            sessions: {
+              include: {
+                laps: true,
+                penalties: true,
+              },
+            },
+          },
+        }),
+        prisma.session.findMany({
+          include: {
+            laps: true,
+            penalties: true,
+          },
+        }),
+        prisma.location.findMany(),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        updatedDrivers,
+        updatedSessions,
+        updatedLocations,
+      });
     }
 
     // Handle existing driver and car updates
@@ -141,6 +197,53 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (type === "location") {
+      // Delete location and all related sessions
+      await prisma.$transaction(async (tx) => {
+        // First, get all sessions for this location
+        const sessions = await tx.session.findMany({
+          where: { locationId: id },
+          select: { id: true },
+        });
+
+        // Delete all related data for each session
+        for (const session of sessions) {
+          await tx.penalty.deleteMany({
+            where: { sessionId: session.id },
+          });
+          await tx.lap.deleteMany({
+            where: { sessionId: session.id },
+          });
+        }
+
+        // Delete all sessions for this location
+        await tx.session.deleteMany({
+          where: { locationId: id },
+        });
+
+        // Finally delete the location
+        await tx.location.delete({
+          where: { id },
+        });
+      });
+
+      // Fetch updated data including locations
+      const [updatedDrivers, updatedLocations] = await Promise.all([
+        prisma.driver.findMany({
+          include: {
+            cars: true,
+          },
+        }),
+        prisma.location.findMany(),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        updatedDrivers,
+        updatedLocations,
+      });
+    }
+    
     if (type === "driver") {
       // Delete driver and all related data
       await prisma.$transaction(async (tx) => {
