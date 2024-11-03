@@ -5,12 +5,43 @@ export async function PATCH(request: Request) {
   try {
     const { type, id, newName } = await request.json();
 
-    let updatedDrivers;
-    let updatedSessions;
+    if (type === "motionSetting") {
+      // Check if name is already taken
+      const existingSettings = await prisma.motionSettings.findFirst({
+        where: {
+          name: newName,
+          id: { not: id },
+        },
+      });
 
-    // Use a transaction to ensure all updates are atomic
+      if (existingSettings) {
+        return NextResponse.json({ error: "A motion setting with this name already exists" }, { status: 400 });
+      }
+
+      // Update motion setting name
+      await prisma.motionSettings.update({
+        where: { id },
+        data: { name: newName },
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Handle existing driver and car updates
     await prisma.$transaction(async (tx) => {
       if (type === "driver") {
+        // Check if name is already taken
+        const existingDriver = await tx.driver.findFirst({
+          where: {
+            name: newName,
+            id: { not: id },
+          },
+        });
+
+        if (existingDriver) {
+          throw new Error("A driver with this name already exists");
+        }
+
         // Update driver name
         await tx.driver.update({
           where: { id },
@@ -33,6 +64,19 @@ export async function PATCH(request: Request) {
           throw new Error("Car not found");
         }
 
+        // Check if name is already taken for this driver
+        const existingCar = await tx.car.findFirst({
+          where: {
+            name: newName,
+            driverId: car.driverId,
+            id: { not: id },
+          },
+        });
+
+        if (existingCar) {
+          throw new Error("This driver already has a car with this name");
+        }
+
         // Update car name
         await tx.car.update({
           where: { id },
@@ -47,34 +91,31 @@ export async function PATCH(request: Request) {
       }
     });
 
-    // Fetch updated data including all related records
-    updatedDrivers = await prisma.driver.findMany({
-      include: {
-        cars: true,
-      },
-    });
-
-    // Fetch all updated sessions with necessary includes
-    updatedSessions = await prisma.session.findMany({
-      include: {
-        laps: true,
-        penalties: true,
-      },
-      orderBy: {
-        date: "desc",
-      },
-    });
-
-    // Transform sessions to match expected format
-    const formattedSessions = updatedSessions.map((session) => ({
-      ...session,
-      date: session.date.toISOString(), // Convert Date to string
-    }));
+    // Fetch updated data
+    const [updatedDrivers, updatedSessions] = await Promise.all([
+      prisma.driver.findMany({
+        include: {
+          cars: true,
+          sessions: {
+            include: {
+              laps: true,
+              penalties: true,
+            },
+          },
+        },
+      }),
+      prisma.session.findMany({
+        include: {
+          laps: true,
+          penalties: true,
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
       updatedDrivers,
-      updatedSessions: formattedSessions,
+      updatedSessions,
     });
   } catch (error) {
     console.error("Error updating:", error);
@@ -90,7 +131,15 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { type, driverId, carId } = await request.json();
+    const { type, driverId, carId, id } = await request.json();
+
+    if (type === "motionSetting") {
+      await prisma.motionSettings.delete({
+        where: { id },
+      });
+
+      return NextResponse.json({ success: true });
+    }
 
     if (type === "driver") {
       // Delete driver and all related data
@@ -173,6 +222,12 @@ export async function DELETE(request: Request) {
     });
   } catch (error) {
     console.error("Error deleting:", error);
-    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete",
+      },
+      { status: 500 }
+    );
   }
 }
