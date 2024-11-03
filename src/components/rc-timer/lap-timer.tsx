@@ -48,8 +48,7 @@ export default function LapTimer() {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [laps, setLaps] = useState<number[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
-  const [showClearAllDialog, setShowClearAllDialog] = useState<boolean>(false);
-  const [newDriverName, setNewDriverName] = useState<string>("");
+    const [newDriverName, setNewDriverName] = useState<string>("");
   const [newCarName, setNewCarName] = useState<string>("");
   const [showNewDriver, setShowNewDriver] = useState<boolean>(false);
   const [showNewCar, setShowNewCar] = useState<boolean>(false);
@@ -82,7 +81,26 @@ export default function LapTimer() {
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const motionControlRef = useRef<{ stop: () => void }>(null);
+  
+
+const announceLapNumberRef = useRef(announceLapNumber);
+// Sync with the ref whenever it changes
+useEffect(() => {
+  announceLapNumberRef.current = announceLapNumber;
+}, [announceLapNumber]);
+
+
+
+const announceLastLapTimeRef = useRef(announceLastLapTime);
+// Sync with the ref whenever it changes
+useEffect(() => {
+  announceLastLapTimeRef.current = announceLastLapTime;
+}, [announceLastLapTime]);
+
+
+  
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
   const isRunningRef = useRef(isRunning);
   // Sync with the ref whenever it changes
   useEffect(() => {
@@ -363,17 +381,17 @@ export default function LapTimer() {
       if (sessionEnded) {
         announcements.push("Session Ended");
       } else {
-        if (announceLapNumber) {
+        if (announceLapNumberRef.current) {
           const lapAnnouncement = `Lap ${lapNumber}`;
-          console.log("Adding lap announcement:", lapAnnouncement);
           announcements.push(lapAnnouncement);
+          announcements.push("debug 1")
         }
       }
 
-      if (announceLastLapTime && lastLapTime !== undefined) {
+      if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
         const timeAnnouncement = `Last lap ${formatTimeForSpeech(lastLapTime)}`;
-        console.log("Adding time announcement:", timeAnnouncement);
         announcements.push(timeAnnouncement);
+        announcements.push("debug 2")
       }
 
       // Chain the announcements with slight delays between them
