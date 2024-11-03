@@ -308,8 +308,9 @@ Add to dnsmasq.conf:
 ```
 interface=wlan0
 dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
-domain=wlan
+domain=local
 address=/rc-lap-timer/192.168.4.1
+address=/rc-lap-timer.local/192.168.4.1
 ```
 
 Configure network interface:
@@ -363,7 +364,7 @@ Add to nginx configuration:
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
-    server_name _;
+    server_name rc-lap-timer rc-lap-timer.local 192.168.4.1;
     
     # Redirect all HTTP traffic to HTTPS
     return 301 https://$host$request_uri;
@@ -372,7 +373,7 @@ server {
 server {
     listen 443 ssl default_server;
     listen [::]:443 ssl default_server;
-    server_name _;
+    server_name rc-lap-timer rc-lap-timer.local 192.168.4.1;
 
     ssl_certificate /etc/ssl/certs/rc-lap-timer.crt;
     ssl_certificate_key /etc/ssl/private/rc-lap-timer.key;
