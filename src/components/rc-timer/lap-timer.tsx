@@ -76,6 +76,10 @@ export default function LapTimer() {
   const [timingMode, setTimingMode] = useState<TimingMode>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
+  const [announceLapNumber, setAnnounceLapNumber] = useState(false);
+  const [announceLastLapTime, setAnnounceLastLapTime] = useState(false);
+  const [speechVoice, setSpeechVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const motionControlRef = useRef<{ stop: () => void }>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -213,6 +217,54 @@ export default function LapTimer() {
     };
   }, []);
 
+  // Update the useEffect for voice handling
+  useEffect(() => {
+    // Function to get and set available voices
+    const updateVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      // Filter for English voices
+      const englishVoices = voices.filter((voice) => voice.lang.startsWith("en-"));
+      setAvailableVoices(englishVoices);
+
+      // If no voice is selected, set the default
+      if (!speechVoice) {
+        // Try to find Google US English
+        const googleUsVoice = voices.find((voice) => voice.name === "Google US English");
+
+        if (googleUsVoice) {
+          setSpeechVoice(googleUsVoice);
+          console.log("Set default voice to Google US English");
+        } else {
+          // Fallback to any US English voice
+          const usEnglishVoice = voices.find((voice) => voice.lang === "en-US");
+
+          if (usEnglishVoice) {
+            setSpeechVoice(usEnglishVoice);
+            console.log("Fallback to US English voice:", usEnglishVoice.name);
+          } else {
+            // Final fallback to any English voice
+            const anyEnglishVoice = englishVoices[0];
+            if (anyEnglishVoice) {
+              setSpeechVoice(anyEnglishVoice);
+              console.log("Fallback to any English voice:", anyEnglishVoice.name);
+            }
+          }
+        }
+      }
+    };
+
+    // Initial attempt to get voices
+    updateVoices();
+
+    // Set up event listener for when voices are loaded
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+
+    // Cleanup
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, [speechVoice]); // Added speechVoice to dependency array to properly track its state
+
   interface DatePreset {
     label: string;
     days: number | "month" | "year";
@@ -250,6 +302,107 @@ export default function LapTimer() {
       return [...prev, { lapNumber: currentLapNumber, count: 1 }];
     });
   };
+
+  const announceRaceBegin = useCallback(() => {
+    // Safety check - make sure speech synthesis is available
+    if (!window.speechSynthesis) {
+      console.error("Speech synthesis not available");
+      return;
+    }
+
+    // Cancel any ongoing announcements
+    window.speechSynthesis.cancel();
+
+    // Create a queue of announcements to make
+    const announcements: string[] = [];
+
+    announcements.push("Timing Session Started");
+
+    // Chain the announcements with slight delays between them
+    let delay = 0;
+    announcements.forEach((text, index) => {
+      setTimeout(() => {
+        try {
+          const utterance = new SpeechSynthesisUtterance(text);
+          if (speechVoice) {
+            utterance.voice = speechVoice;
+          }
+          utterance.rate = 1.1;
+          utterance.pitch = 1.0;
+
+          // Add event handlers for debugging
+          utterance.onend = () => console.log("Finished announcing:", text);
+          utterance.onerror = (event) => console.error("Error announcing:", text, event);
+
+          window.speechSynthesis.speak(utterance);
+        } catch (error) {
+          console.error("Error creating utterance:", error);
+        }
+      }, delay);
+      delay += 1000;
+    });
+  }, [announceLapNumber, announceLastLapTime, speechVoice]);
+
+  const announceRaceInfo = useCallback(
+    (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
+      console.log("announceRaceInfo called with:", { lapNumber, lastLapTime, sessionEnded });
+      console.log("Announcement settings:", { announceLapNumber, announceLastLapTime });
+
+      // Safety check - make sure speech synthesis is available
+      if (!window.speechSynthesis) {
+        console.error("Speech synthesis not available");
+        return;
+      }
+
+      // Cancel any ongoing announcements
+      window.speechSynthesis.cancel();
+
+      // Create a queue of announcements to make
+      const announcements: string[] = [];
+
+      if (sessionEnded) {
+        announcements.push("Session Ended");
+      } else {
+        if (announceLapNumber) {
+          const lapAnnouncement = `Lap ${lapNumber}`;
+          console.log("Adding lap announcement:", lapAnnouncement);
+          announcements.push(lapAnnouncement);
+        }
+      }
+
+      if (announceLastLapTime && lastLapTime !== undefined) {
+        const timeAnnouncement = `Last lap ${formatTimeForSpeech(lastLapTime)}`;
+        console.log("Adding time announcement:", timeAnnouncement);
+        announcements.push(timeAnnouncement);
+      }
+
+      // Chain the announcements with slight delays between them
+      let delay = 0;
+      announcements.forEach((text, index) => {
+        setTimeout(() => {
+          try {
+            console.log("Speaking announcement:", text);
+            const utterance = new SpeechSynthesisUtterance(text);
+            if (speechVoice) {
+              utterance.voice = speechVoice;
+            }
+            utterance.rate = 1.1;
+            utterance.pitch = 1.0;
+
+            // Add event handlers for debugging
+            utterance.onend = () => console.log("Finished announcing:", text);
+            utterance.onerror = (event) => console.error("Error announcing:", text, event);
+
+            window.speechSynthesis.speak(utterance);
+          } catch (error) {
+            console.error("Error creating utterance:", error);
+          }
+        }, delay);
+        delay += 1000;
+      });
+    },
+    [announceLapNumber, announceLastLapTime, speechVoice]
+  );
 
   const calculateStats = (laps: number[]): LapStats => {
     if (laps.length === 0) {
@@ -374,6 +527,18 @@ export default function LapTimer() {
       alert("Failed to delete session. Please try again.");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const formatTimeForSpeech = (time: number): string => {
+    const minutes = Math.floor(time / 60000);
+    const seconds = Math.floor((time % 60000) / 1000);
+    const milliseconds = Math.floor((time % 1000) / 10);
+
+    if (minutes > 0) {
+      return `${minutes} minute${minutes !== 1 ? "s" : ""}, ${seconds} point ${milliseconds}`;
+    } else {
+      return `${seconds} point ${milliseconds}`;
     }
   };
 
@@ -845,10 +1010,12 @@ export default function LapTimer() {
     // Check if we've reached the selected number of laps
     if (selectedLapCount !== "unlimited" && laps.length + 1 >= selectedLapCount) {
       playRaceFinish();
-
+      announceRaceInfo(lapsRef.current.length, currentLapTime, true);
       handleSessionCompletion([...laps, currentLapTime]);
     } else {
       playBeep();
+      // Announce the lap information
+      announceRaceInfo(laps.length + 2, currentLapTime);
     }
   };
 
@@ -868,9 +1035,12 @@ export default function LapTimer() {
     // Check if we've reached the selected number of laps
     if (selectedLapCountRef.current !== "unlimited" && lapsRef.current.length + 1 >= selectedLapCountRef.current) {
       playRaceFinish();
-
+      announceRaceInfo(lapsRef.current.length, currentLapTime, true);
       handleStopCamera();
       handleSessionCompletion([...lapsRef.current, currentLapTime]);
+    } else {
+      // Announce the lap information
+      announceRaceInfo(lapsRef.current.length + 2, currentLapTime);
     }
   };
 
@@ -933,6 +1103,7 @@ export default function LapTimer() {
       return;
     }
     playStartBeep();
+    announceRaceBegin();
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());
@@ -945,6 +1116,7 @@ export default function LapTimer() {
       alert("Please select a driver and car before starting the timer");
       return;
     }
+    announceRaceBegin();
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());
@@ -971,6 +1143,53 @@ export default function LapTimer() {
     setTimeout(() => setStopAnimation(false), 500);
     const finalLaps = [...laps];
     handleSessionCompletion(finalLaps);
+  };
+
+  const testAnnouncements = () => {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    // Test both types of announcements
+    const testLapNumber = 1;
+    const testLapTime = 45670;
+
+    let delay = 0;
+
+    if (announceLapNumber) {
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(`Lap number ${testLapNumber}`);
+        if (speechVoice) {
+          utterance.voice = speechVoice;
+        }
+        utterance.rate = 1.1;
+        utterance.pitch = 1.0;
+        utterance.onend = () => console.log("Finished announcing lap number");
+        utterance.onerror = (event) => console.error("Error announcing lap number:", event);
+        window.speechSynthesis.speak(utterance);
+      }, delay);
+      delay += 1000;
+    }
+
+    if (announceLastLapTime) {
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(`Last lap time ${formatTimeForSpeech(testLapTime)}`);
+        if (speechVoice) {
+          utterance.voice = speechVoice;
+        }
+        utterance.rate = 1.1;
+        utterance.pitch = 1.0;
+        utterance.onend = () => console.log("Finished announcing lap time");
+        utterance.onerror = (event) => console.error("Error announcing lap time:", event);
+        window.speechSynthesis.speak(utterance);
+      }, delay);
+    }
+  };
+
+  const testVoice = (voice: SpeechSynthesisVoice) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance("Testing voice system");
+    utterance.voice = voice;
+    window.speechSynthesis.speak(utterance);
   };
 
   const validateLapCount = (value: string): boolean => {
@@ -1146,6 +1365,69 @@ export default function LapTimer() {
                           <div className="text-sm text-muted-foreground mt-1">{selectedLapCount === "unlimited" ? "Session will continue until manually stopped" : `Session will automatically complete after ${selectedLapCount} laps`}</div>
                         </div>
                       )}
+
+                      {/* Annoucements Selection */}
+                      <div className="space-y-3 p-4 bg-gray-50 rounded">
+                        <h3 className="font-semibold">Announcements</h3>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="announceLapNumber" checked={announceLapNumber} onChange={(e) => setAnnounceLapNumber(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                            <label htmlFor="announceLapNumber" className="text-sm">
+                              Announce Lap Numbers
+                            </label>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="announceLastLapTime" checked={announceLastLapTime} onChange={(e) => setAnnounceLastLapTime(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                            <label htmlFor="announceLastLapTime" className="text-sm">
+                              Announce Last Lap Time
+                            </label>
+                          </div>
+
+                          <div className="text-sm text-gray-500 mt-2">Current voice: {speechVoice?.name || "Default"}</div>
+
+                          {/* Voice Selection */}
+                          {/* 
+                          <div className="mt-4">
+                            <label className="text-sm font-medium">Select Voice</label>
+                            <div className="mt-2 grid gap-2">
+                              {availableVoices.map((voice) => (
+                                <div
+                                  key={voice.voiceURI}
+                                  className={`p-2 rounded border cursor-pointer
+                ${speechVoice?.voiceURI === voice.voiceURI ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}
+              `}
+                                  onClick={() => {
+                                    setSpeechVoice(voice);
+                                    testVoice(voice);
+                                  }}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <div className="font-medium">{voice.name}</div>
+                                      <div className="text-sm text-gray-500">{voice.lang}</div>
+                                    </div>
+                                    {speechVoice?.voiceURI === voice.voiceURI && <div className="text-blue-500">✓</div>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                            */}
+
+                          <div className="flex gap-2 mt-2">
+                            <Button variant="outline" size="sm" onClick={testAnnouncements}>
+                              Test Announcements
+                            </Button>
+
+                            {/* 
+                            <Button variant="outline" size="sm" onClick={debugVoices}>
+                              Test Voice
+                            </Button>
+                            */}
+                          </div>
+                        </div>
+                      </div>
 
                       {/* Session Settings Summary */}
                       {selectedDriver && selectedCar && selectedLapCount && (
