@@ -176,46 +176,65 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     setIsProcessing(true);
 
     try {
-      const endpoint = "/api/manage";
+      let endpoint;
       let body;
 
-      if (deleteType === "location") {
-        body = {
-          type: "location",
-          id: selectedLocation,
-        };
-      } else if (deleteType === "driver") {
-        body = {
-          type: "driver",
-          driverId: selectedDriver, // This needs to match what the API expects
-        };
-      } else if (deleteType === "car") {
-        body = {
-          type: "car",
-          driverId: selectedDriver,
-          carId: selectedCar,
-        };
-      }
+      // Handle motion settings deletion separately
+      if (deleteType === "motionSetting") {
+        endpoint = `/api/motion-settings?id=${selectedMotionSetting}`;
+        const response = await fetch(endpoint, {
+          method: "DELETE",
+        });
 
-      const response = await fetch(endpoint, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+        if (!response.ok) throw new Error("Failed to delete");
 
-      if (!response.ok) throw new Error("Failed to delete");
-
-      const { success, updatedDrivers, updatedLocations } = await response.json();
-      if (success) {
+        const data = await response.json();
+        if (data.success) {
+          // Refresh motion settings list
+          await loadMotionSettings();
+          setSelectedMotionSetting("");
+        }
+      } else {
+        // Handle other deletion types (driver, car, location)
+        endpoint = "/api/manage";
         if (deleteType === "location") {
-          onLocationsUpdate(updatedLocations);
-          setSelectedLocation("");
-        } else {
-          onDriversUpdate(updatedDrivers);
-          if (deleteType === "driver") {
-            setSelectedDriver("");
+          body = {
+            type: "location",
+            id: selectedLocation,
+          };
+        } else if (deleteType === "driver") {
+          body = {
+            type: "driver",
+            driverId: selectedDriver,
+          };
+        } else if (deleteType === "car") {
+          body = {
+            type: "car",
+            driverId: selectedDriver,
+            carId: selectedCar,
+          };
+        }
+
+        const response = await fetch(endpoint, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) throw new Error("Failed to delete");
+
+        const { success, updatedDrivers, updatedLocations } = await response.json();
+        if (success) {
+          if (deleteType === "location") {
+            onLocationsUpdate(updatedLocations);
+            setSelectedLocation("");
           } else {
-            setSelectedCar("");
+            onDriversUpdate(updatedDrivers);
+            if (deleteType === "driver") {
+              setSelectedDriver("");
+            } else {
+              setSelectedCar("");
+            }
           }
         }
       }

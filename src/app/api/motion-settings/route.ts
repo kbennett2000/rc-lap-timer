@@ -94,22 +94,44 @@ export async function PUT(request: Request) {
 }
 
 // DELETE - Delete motion settings by ID
+// DELETE - Delete motion settings by ID
 export async function DELETE(request: Request) {
   try {
+    logger.log("Motion Settings DELETE - Start");
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    logger.log("Motion Settings DELETE - Attempting to delete ID:", id);
 
     if (!id) {
+      logger.log("Motion Settings DELETE - Error: No ID provided");
       return NextResponse.json({ error: "Motion settings ID is required" }, { status: 400 });
     }
 
+    // Try to find the setting first
+    const existing = await prisma.motionSettings.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      logger.log("Motion Settings DELETE - Error: ID not found:", id);
+      return NextResponse.json({ error: "Motion settings not found" }, { status: 404 });
+    }
+
+    // Delete motion settings
     await prisma.motionSettings.delete({
       where: { id },
     });
 
+    logger.log("Motion Settings DELETE - Successfully deleted ID:", id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting motion settings:", error);
+    logger.error("Motion Settings DELETE - Error:", error);
+    // Log the full error details
+    if (error instanceof Error) {
+      logger.error("Error name:", error.name);
+      logger.error("Error message:", error.message);
+      logger.error("Error stack:", error.stack);
+    }
     return NextResponse.json({ error: "Failed to delete motion settings" }, { status: 500 });
   }
 }
