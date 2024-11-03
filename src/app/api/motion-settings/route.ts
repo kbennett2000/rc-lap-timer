@@ -1,6 +1,7 @@
 // app/api/motion-settings/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { logger } from '@/lib/logger';
 
 // Validation helper functions
 function validateMotionSettings(data: any) {
@@ -18,12 +19,12 @@ function validateMotionSettings(data: any) {
     errors.push("Threshold must be a number between 0.1 and 10.0");
   }
 
-  if (!Number.isInteger(data.cooldown) || data.cooldown < 100 || data.cooldown > 10000) {
-    errors.push("Cooldown must be an integer between 100 and 10000");
+  if (!Number.isInteger(data.cooldown) || data.cooldown < 100 || data.cooldown > 25000) {
+    errors.push("Cooldown must be an integer between 100 and 25000");
   }
 
-  if (!Number.isInteger(data.framesToSkip) || data.framesToSkip < 1 || data.framesToSkip > 30) {
-    errors.push("Frames to skip must be an integer between 1 and 30");
+  if (!Number.isInteger(data.framesToSkip) || data.framesToSkip < 1 || data.framesToSkip > 240) {
+    errors.push("Frames to skip must be an integer between 1 and 240");
   }
 
   return errors;
@@ -42,46 +43,6 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching motion settings:", error);
     return NextResponse.json({ error: "Failed to fetch motion settings" }, { status: 500 });
-  }
-}
-
-// POST - Create new motion settings
-export async function POST(request: Request) {
-  try {
-    const data = await request.json();
-
-    // Validate input data
-    const validationErrors = validateMotionSettings(data);
-    if (validationErrors.length > 0) {
-      return NextResponse.json({ error: "Invalid input data", details: validationErrors }, { status: 400 });
-    }
-
-    // Check if name already exists
-    const existing = await prisma.motionSettings.findFirst({
-      where: {
-        name: data.name,
-      },
-    });
-
-    if (existing) {
-      return NextResponse.json({ error: "A motion setting with this name already exists" }, { status: 400 });
-    }
-
-    // Create new motion settings
-    const settings = await prisma.motionSettings.create({
-      data: {
-        name: data.name,
-        sensitivity: data.sensitivity,
-        threshold: data.threshold,
-        cooldown: data.cooldown,
-        framesToSkip: data.framesToSkip,
-      },
-    });
-
-    return NextResponse.json(settings);
-  } catch (error) {
-    console.error("Error creating motion settings:", error);
-    return NextResponse.json({ error: "Failed to create motion settings" }, { status: 500 });
   }
 }
 
@@ -150,5 +111,57 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("Error deleting motion settings:", error);
     return NextResponse.json({ error: "Failed to delete motion settings" }, { status: 500 });
+  }
+}
+
+// POST - Create new motion settings
+export async function POST(request: Request) {
+  try {
+    logger.log("Motion Settings POST - Start");
+    const data = await request.json();
+    logger.log("Motion Settings Received data:", data);
+
+    // Validate input data
+    const validationErrors = validateMotionSettings(data);
+    if (validationErrors.length > 0) {
+      logger.log("Motion Settings Validation errors:", validationErrors);
+      return NextResponse.json({ error: "Invalid input data", details: validationErrors }, { status: 400 });
+    }
+
+    // Check if name already exists
+    const existing = await prisma.motionSettings.findFirst({
+      where: {
+        name: data.name,
+      },
+    });
+
+    if (existing) {
+      logger.log("Motion Settings Name already exists:", data.name);
+      return NextResponse.json({ error: "A motion setting with this name already exists" }, { status: 400 });
+    }
+
+    logger.log("Creating motion settings...");
+    // Create new motion settings
+    const settings = await prisma.motionSettings.create({
+      data: {
+        name: data.name,
+        sensitivity: data.sensitivity,
+        threshold: data.threshold,
+        cooldown: data.cooldown,
+        framesToSkip: data.framesToSkip,
+      },
+    });
+    logger.log("Created motion settings:", settings);
+
+    return NextResponse.json(settings);
+  } catch (error) {
+    logger.error("Error creating motion settings:", error);
+    // Log the full error details
+    if (error instanceof Error) {
+      logger.error("Error name:", error.name);
+      logger.error("Error message:", error.message);
+      logger.error("Error stack:", error.stack);
+    }
+    return NextResponse.json({ error: "Failed to create motion settings" }, { status: 500 });
   }
 }

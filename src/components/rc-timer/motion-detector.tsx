@@ -295,7 +295,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (isActiveRef.current) {
       animationFrameRef.current = requestAnimationFrame(detectMotion);
     }
-  }, [playBeep, onMotionDetected]);
+  }, [settingsRef, playBeep, onMotionDetected]);
 
   const handleStop = useCallback(() => {
     isActiveRef.current = false;
