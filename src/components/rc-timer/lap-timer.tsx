@@ -384,14 +384,12 @@ useEffect(() => {
         if (announceLapNumberRef.current) {
           const lapAnnouncement = `Lap ${lapNumber}`;
           announcements.push(lapAnnouncement);
-          announcements.push("debug 1")
         }
       }
 
       if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
         const timeAnnouncement = `Last lap ${formatTimeForSpeech(lastLapTime)}`;
-        announcements.push(timeAnnouncement);
-        announcements.push("debug 2")
+        announcements.push(timeAnnouncement);        
       }
 
       // Chain the announcements with slight delays between them
@@ -1357,6 +1355,7 @@ useEffect(() => {
                                 <SelectItem value="3">3 Laps</SelectItem>
                                 <SelectItem value="5">5 Laps</SelectItem>
                                 <SelectItem value="10">10 Laps</SelectItem>
+                                <SelectItem value="25">25 Laps</SelectItem>
                                 <SelectItem value="custom">Custom...</SelectItem>
                               </SelectContent>
                             </Select>
