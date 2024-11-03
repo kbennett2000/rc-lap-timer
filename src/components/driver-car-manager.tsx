@@ -170,7 +170,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       setIsProcessing(false);
     }
   };
-  
+
   const handleDelete = async () => {
     if (!deleteType) return;
     setIsProcessing(true);
@@ -313,7 +313,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="drivers">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="drivers">Drivers & Cars</TabsTrigger>
             <TabsTrigger value="locations">Locations</TabsTrigger>
             <TabsTrigger value="motionSettings">Motion Settings</TabsTrigger>

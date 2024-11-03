@@ -44,8 +44,8 @@
 ## 4. Software Installation
 
 After first boot and SSH'ing in, before making any other changes, modify the network configuration properly:
+Make backup of original dhcpcd configuration
 ```bash
-# Make backup of original dhcpcd configuration
 sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.backup
 ```
 
@@ -549,6 +549,8 @@ Reboot:
 ```bash
 sudo reboot now
 ```
+
+SEE https://claude.ai/chat/fdab882d-5f3b-4765-9b32-385023ce77ba
 
 
 ## 10. Testing
