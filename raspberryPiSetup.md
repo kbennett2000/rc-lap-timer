@@ -49,8 +49,8 @@ Make backup of original dhcpcd configuration
 sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.backup
 ```
 
+Edit dhcpcd configuration
 ```bash
-# Edit dhcpcd configuration
 sudo nano /etc/dhcpcd.conf
 ```
 
@@ -63,36 +63,29 @@ Add these lines at the end of dhcpcd.conf:
 
 Next, update the system:
 ```bash
-# Update system
 sudo apt update && sudo apt upgrade -y
 ```
 
+Install Node.js 20.x
 ```bash
-# Install Node.js 16.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
+Install required packages
 ```bash
-# Install required packages
 sudo apt install -y git nginx hostapd dnsmasq mariadb-server certbot
 ```
 
-```bash
-# Verify installations
-node --version  # Should show v16.x.x
-npm --version
-mysql --version
-```
 
 ## 5. Database Setup
+Secure MySQL installation (use password1 for password)
 ```bash
-# Secure MySQL installation (use password1 for password)
 sudo mysql_secure_installation
 ```
 
+Create database setup script
 ```bash
-# Create database setup script
 cat > create_rc_timer_database.sql << 'EOF'
 CREATE DATABASE IF NOT EXISTS rc_lap_timer;
 USE rc_lap_timer;
@@ -186,15 +179,15 @@ ALTER DATABASE rc_lap_timer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 EOF
 ```
 
+Run the database setup script
 ```bash
-# Run the database setup script
 sudo mysql < create_rc_timer_database.sql
 ```
 
 ## 6. Application Installation
 On your Ubuntu Desktop:
+Clone the repository
 ```bash
-# Clone the repository
 git clone https://github.com/kbennett2000/rc-lap-timer.git
 ```
 
@@ -202,25 +195,24 @@ git clone https://github.com/kbennett2000/rc-lap-timer.git
 cd rc-lap-timer
 ```
 
+Install dependencies
 ```bash
-# Install dependencies
 npm install
 ```
 
+Create production build
 ```bash
-# Create production build
 npm run build
 ```
 
 After the build completes successfully, create a tar archive of the necessary files:
 ```bash
-# Create a tar of the required files
 tar -czf rc-lap-timer-build.tar.gz * .next package.json package-lock.json node_modules public
 ```
 
 Transfer the archive to your Raspberry Pi Zero W:
+From your Ubuntu Desktop
 ```bash
-# From your Ubuntu Desktop
 scp rc-lap-timer-build.tar.gz pi@raspberrypi.local:~
 ```
 
@@ -229,8 +221,8 @@ On the Raspberry Pi Zero W:
 cd ~
 ```
 
+Create new directory
 ```bash
-# Create new directory
 mkdir rc-lap-timer
 ```
 
@@ -238,8 +230,8 @@ mkdir rc-lap-timer
 cd rc-lap-timer
 ```
 
+Extract the build files
 ```bash
-# Extract the build files
 tar xzf ../rc-lap-timer-build.tar.gz
 ```
 
@@ -255,8 +247,8 @@ sudo cp -r .next/* /var/www/rc-lap-timer/
 ## 7. Network Configuration
 
 ### Configure WiFi Access Point
+Stop services initially
 ```bash
-# Stop services initially
 sudo systemctl stop hostapd
 ```
 
@@ -264,8 +256,8 @@ sudo systemctl stop hostapd
 sudo systemctl stop dnsmasq
 ```
 
+Configure hostapd
 ```bash
-# Configure hostapd
 sudo nano /etc/hostapd/hostapd.conf
 ```
 
@@ -289,20 +281,22 @@ rsn_pairwise=CCMP
 ieee80211n=1
 ```
 
+Very important: Enable and unmask hostapd properly:
 ```bash
-# Very important: Enable and unmask hostapd properly:
 sudo systemctl unmask hostapd
 ```
 
 ```bash
 sudo systemctl enable hostapd
+```
 
-# Configure hostapd to use this config
+Configure hostapd to use this config
+```bash
 sudo sed -i 's#^#DAEMON_CONF="/etc/hostapd/hostapd.conf"#' /etc/default/hostapd
 ```
 
+Configure dnsmasq
 ```bash
-# Configure dnsmasq
 sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
 ```
 
@@ -342,11 +336,21 @@ iface wlan0 inet static
 ## 8. HTTPS Configuration
 
 ### Generate Self-Signed Certificate
+Generate SSL certificate
 ```bash
-# Generate SSL certificate
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 -keyout /etc/ssl/private/rc-lap-timer.key \
--out /etc/ssl/certs/rc-lap-timer.crt
+-out /etc/ssl/certs/rc-lap-timer.crt \
+-subj "/CN=rc-lap-timer/O=RC Lap Timer/C=US"
+```
+
+Set proper permissions on the SSL files:
+```bash
+sudo chmod 600 /etc/ssl/private/rc-lap-timer.key
+```
+
+```bash
+sudo chmod 644 /etc/ssl/certs/rc-lap-timer.crt
 ```
 
 ### Configure Web Server
@@ -357,15 +361,37 @@ sudo nano /etc/nginx/sites-available/rc-lap-timer
 Add to nginx configuration:
 ```nginx
 server {
-    listen 80;
-    listen [::]:80;
-    server_name rc-lap-timer;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/rc-lap-timer.crt;
+    ssl_certificate_key /etc/ssl/private/rc-lap-timer.key;
+    
+    # SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
@@ -509,13 +535,13 @@ npx prisma db push
 ```
 
 Verify our process user permissions:
+Check the owner of the rc-lap-timer directory
 ```bash
-# Check the owner of the rc-lap-timer directory
 ls -la /home/pi/rc-lap-timer
 ```
 
+Make sure pi user owns everything
 ```bash
-# Make sure pi user owns everything
 sudo chown -R pi:pi /home/pi/rc-lap-timer
 ```
 
@@ -540,8 +566,8 @@ sudo pkill -f next
 sudo systemctl start rc-lap-timer
 ```
 
+Wait a few seconds
 ```bash
-# Wait a few seconds
 sudo systemctl start nginx
 ```
 
