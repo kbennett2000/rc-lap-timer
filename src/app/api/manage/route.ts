@@ -243,7 +243,7 @@ export async function DELETE(request: Request) {
         updatedLocations,
       });
     }
-    
+
     if (type === "driver") {
       // Delete driver and all related data
       await prisma.$transaction(async (tx) => {

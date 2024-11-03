@@ -10,7 +10,7 @@ export interface Car extends PrismaCar {
 }
 
 export interface Session extends Omit<PrismaSession, "date"> {
-  id: string; 
+  id: string;
   driver: Driver;
   car: Car;
   laps: Lap[];

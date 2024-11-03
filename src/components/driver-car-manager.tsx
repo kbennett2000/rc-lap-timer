@@ -174,37 +174,37 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
   const handleDelete = async () => {
     if (!deleteType) return;
     setIsProcessing(true);
-  
+
     try {
       const endpoint = "/api/manage";
       let body;
-  
+
       if (deleteType === "location") {
         body = {
           type: "location",
-          id: selectedLocation
+          id: selectedLocation,
         };
       } else if (deleteType === "driver") {
         body = {
           type: "driver",
-          driverId: selectedDriver  // This needs to match what the API expects
+          driverId: selectedDriver, // This needs to match what the API expects
         };
       } else if (deleteType === "car") {
         body = {
           type: "car",
           driverId: selectedDriver,
-          carId: selectedCar
+          carId: selectedCar,
         };
       }
-  
+
       const response = await fetch(endpoint, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-  
+
       if (!response.ok) throw new Error("Failed to delete");
-  
+
       const { success, updatedDrivers, updatedLocations } = await response.json();
       if (success) {
         if (deleteType === "location") {
