@@ -81,7 +81,7 @@ The app supports multiple drivers with multiple cars, making it easy to switch r
 Running from a Raspberry Pi Zero 2 W allows for the creation of a wi-fi network (rc-lap-timer) that you and all your friends can connect to. Drivers, their cars, timing session results, and configuration settings are all stored in a MySQL database on the Pi.
 
 To RC Lap Timer, download the Raspberry Pi Zero 2 W image using the link below:
-TODO: Google Drive Link
+[Google Drive Link](https://drive.google.com/file/d/1ltbzeQnuEEVqbrwD79d9cozU-cMB1_ng/view?usp=sharing)
 
 Once downloaded use a card imager such as Win32 Disk Imager to write the image file to the microSD card you'll be using on your Pi.
 
@@ -139,37 +139,6 @@ Contributions are welcome! Please follow these steps:
 - Push to the branch: git push origin feature/feature-name
 - Submit a pull request
 
-
-## 🔧 Troubleshooting
-
-**Common Issues**
-**1. Database Connection**
-```bash
-# Check MySQL service status
-sudo systemctl status mysql
-
-# Verify database exists
-mysql -u root -p
-SHOW DATABASES;
-```
-
-**2. Prisma Issues**
-```bash
-# Reset Prisma
-npx prisma generate --force
-
-# Verify schema
-npx prisma db push
-```
-
-**3. Next.js Build Issues**
-```bash
-# Clear Next.js cache
-rm -rf .next
-
-# Rebuild
-npm run build
-```
 
 ## 📜 License
 
