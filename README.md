@@ -20,6 +20,7 @@ The app supports multiple drivers with multiple cars, making it easy to switch r
   - Configurable lap count or unlimited laps
   - Penalty tracking system
   - Real-time current lap display
+  - Lap Number, Last Lap Time announcements
 
 - **Multi-Driver Support** 👥
   - Multiple drivers and cars management
@@ -67,43 +68,32 @@ The app supports multiple drivers with multiple cars, making it easy to switch r
 ## 🚀 Installation
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- MySQL Server
-- npm or yarn
+- Raspberry Pi Zero 2 W
+- 16GB or greater class 10 microSD card
+- Card imager software, such as Win32 Disk Imager
+- A device with WiFi capabilities, a web browser, and a camera
+    - This includes Android and Apple tablets and phones, a Windows, Mac, or Linux computer with a webcam or USB camera.
 
 ### Setup Instructions
+## This application is designed to run on a Raspbery Pi Zero 2 W. 
+## No other Raspberry Pi models are currently supported!
 
-1. **Clone the repository**:
-```bash
-   git clone https://github.com/kbennett2000/rc-lap-timer.git
-   cd rc-lap-timer
-```
+Running from a Raspberry Pi Zero 2 W allows for the creation of a wi-fi network (rc-lap-timer) that you and all your friends can connect to. Drivers, their cars, timing session results, and configuration settings are all stored in a MySQL database on the Pi.
 
-2. **Install dependencies:**
-```bash
-npm install
-```
+To RC Lap Timer, download the Raspberry Pi Zero 2 W image using the link below:
+TODO: Google Drive Link
 
-3. **Set up MySQL database:**
-- Follow the (database setup instructions in database-setup.md)[database-setup.md]
-- Create a .env file in the project root with your database configuration:
-```env
-DATABASE_URL="mysql://rc_timer_user:your_secure_password_here@localhost:3306/rc_lap_timer"
-```
+Once downloaded use a card imager such as Win32 Disk Imager to write the image file to the microSD card you'll be using on your Pi.
 
-4. **Initialize Prisma:**
-```bash
-npx prisma generate
-npx prisma db push
-```
+Once the image has been writted to the card go ahead an boot up the Pi. After a few minutes you should be the `rc-lap-timer` wi-fi network. Connect to it with the password `rclaptimer`. Then open a browser and navigate to:
+`https://rc-lap-timer.local`
 
-6. **Run the development server:**
-```bash
-npm run dev
-```
+Accept the certificate warning and proceed to the site.
 
-7. **Use the application:**
-- Access the app at http://localhost:3000
+If that address does not work you can also try:
+`https://rc-lap-timer`
+`https://192.168.4.1`
+
 
 
 ## 📊 Usage Guide
