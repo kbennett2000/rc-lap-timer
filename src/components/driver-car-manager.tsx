@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle, Settings2 } from "lucide-react";
+import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle } from "lucide-react";
 
 interface MotionSettings {
   id: string;
@@ -20,6 +20,7 @@ interface MotionSettings {
 
 interface DriverCarManagerProps {
   drivers: Driver[];
+  locations: Location[];
   onDriversUpdate: (updatedDrivers: Driver[]) => void;
   onSessionsUpdate?: (updatedSessions: Session[]) => void;
   onLocationsUpdate: (updatedLocations: Location[]) => void;

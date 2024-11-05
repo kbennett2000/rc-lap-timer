@@ -1,7 +1,6 @@
-// app/api/motion-settings/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 
 // Validation helper functions
 function validateMotionSettings(data: any) {

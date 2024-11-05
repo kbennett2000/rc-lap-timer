@@ -1875,7 +1875,6 @@ export default function LapTimer() {
                       <CardContent>
                         {/* Driver and Car Filters */}
                         <div className="grid grid-cols-3 gap-4 mb-4">
-                          
                           <div className="space-y-2">
                             <Label>Filter by Driver</Label>
                             <Select
@@ -1925,33 +1924,31 @@ export default function LapTimer() {
                           </div>
 
                           <div className="space-y-2">
-                          <Label>Filter by Location</Label>
-                          <Select
-                            value={filterLocation}
-                            onValueChange={(value) => {
-                              setFilterLocation(value);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Locations" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Locations</SelectItem>
-                              {/* Get unique locations from sessions */}
-                              {Array.from(new Set(savedSessions.map((session) => session.locationName)))
-                                .filter((name) => name && name.trim() !== "")
-                                .sort((a, b) => a.localeCompare(b))
-                                .map((location) => (
-                                  <SelectItem key={location} value={location}>
-                                    {location}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                            <Label>Filter by Location</Label>
+                            <Select
+                              value={filterLocation}
+                              onValueChange={(value) => {
+                                setFilterLocation(value);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All Locations" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Locations</SelectItem>
+                                {/* Get unique locations from sessions */}
+                                {Array.from(new Set(savedSessions.map((session) => session.locationName)))
+                                  .filter((name) => name && name.trim() !== "")
+                                  .sort((a, b) => a.localeCompare(b))
+                                  .map((location) => (
+                                    <SelectItem key={location} value={location}>
+                                      {location}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-
-                        </div>
-
 
                         {/* Date Range Filter */}
                         <div className="space-y-2">

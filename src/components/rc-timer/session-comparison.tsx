@@ -7,7 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Session, ComparisonData } from "@/types/rc-timer";
 import { cn } from "@/lib/utils";
 import { formatTime, formatDateTime } from "@/lib/utils";
-import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
+import { format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";

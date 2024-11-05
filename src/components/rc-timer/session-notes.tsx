@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Edit, Save, FileText, Search } from "lucide-react";
+import { CalendarIcon, Edit, Save, FileText } from "lucide-react";
 import { format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Session } from "@/types/rc-timer";
 import { cn } from "@/lib/utils";

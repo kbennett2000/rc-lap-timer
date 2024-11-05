@@ -7,6 +7,7 @@ interface MotionDetectorProps {
   controlRef?: React.RefObject<{
     stop: () => void;
   }>;
+  playBeeps?: boolean;
 }
 
 interface DetectorSettings {
@@ -167,7 +168,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (!settings.enableAudio || !audioContextRef.current) return;
 
     if (!playBeeps) return;
-    
+
     try {
       const context = audioContextRef.current;
       const oscillator = context.createOscillator();
@@ -531,7 +532,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
           {/* Logging */}
           <div className="pt-2 border-t">
-            { /* <div className="text-sm">Motion Events: {motionEvents}</div> */}
+            {/* <div className="text-sm">Motion Events: {motionEvents}</div> */}
             {lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
           </div>
         </div>
