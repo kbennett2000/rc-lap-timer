@@ -12,6 +12,7 @@ model Driver {
   name     String    @unique
   cars     Car[]
   sessions Session[]
+   sessionRequests SessionRequest[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -22,10 +23,10 @@ model Car {
   driver    Driver    @relation(fields: [driverId], references: [id])
   driverId  String
   sessions  Session[]
+   sessionRequests SessionRequest[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
-  @@unique([driverId, name])
+   @@unique([driverId, name])
 }
 
 model Session {
@@ -90,6 +91,33 @@ model Location {
   id        String    @id @default(uuid())
   name      String    @unique
   sessions  Session[]
+   sessionRequests SessionRequest[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+model SessionRequest {
+  id            String   @id @default(uuid())
+  driver        Driver   @relation(fields: [driverId], references: [id])
+  driverId      String
+  car           Car      @relation(fields: [carId], references: [id])
+  carId         String
+  location      Location @relation(fields: [locationId], references: [id])
+  locationId    String
+  numberOfLaps  Int
+  status        SessionRequestStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([driverId])
+  @@index([carId])
+  @@index([locationId])
+  @@index([status])
+}
+
+enum SessionRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
 }

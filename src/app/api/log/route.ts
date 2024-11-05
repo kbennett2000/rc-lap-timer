@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 // import fs from "fs";
 // import path from "path";
 
@@ -22,12 +23,12 @@ export async function POST(request: Request) {
     fs.appendFileSync(logFile, JSON.stringify(logData) + "\n");
     */
 
-    // Also console.log on server
-    console.log("Motion Log:", logData);
+    // Also logger.log on server
+    logger.log("Motion Log:", logData);
 
     return NextResponse.json({ message: "Logged successfully" });
   } catch (error) {
-    console.error("Logging error:", error);
+    logger.error("Logging error:", error);
     return NextResponse.json(
       { message: "Error logging data" }, 
       { status: 500 }

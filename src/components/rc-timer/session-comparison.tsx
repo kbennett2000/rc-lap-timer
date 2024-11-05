@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, BarChart2, Search } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface SessionComparisonProps {
   sessions: Session[];
@@ -126,7 +127,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
 
       return true;
     } catch (error) {
-      console.error("Error parsing date:", error);
+      logger.error("Error parsing date:", error);
       return false;
     }
   };

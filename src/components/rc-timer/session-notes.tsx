@@ -13,6 +13,7 @@ import { format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-
 import { Session } from "@/types/rc-timer";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 interface SessionNotesProps {
   sessions: Session[];
@@ -88,7 +89,7 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
 
       return true;
     } catch (error) {
-      console.error("Error parsing date:", error);
+      logger.error("Error parsing date:", error);
       return false;
     }
   };
@@ -156,7 +157,7 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
       setIsEditing(false);
       setIsRefreshing(false);
     } catch (error) {
-      console.error("Error saving notes:", error);
+      logger.error("Error saving notes:", error);
       alert("Failed to save notes. Please try again.");
     }
   };

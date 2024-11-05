@@ -40,7 +40,7 @@ export async function GET() {
 
     return NextResponse.json(settings);
   } catch (error) {
-    console.error("Error fetching motion settings:", error);
+    logger.error("Error fetching motion settings:", error);
     return NextResponse.json({ error: "Failed to fetch motion settings" }, { status: 500 });
   }
 }
@@ -87,7 +87,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(settings);
   } catch (error) {
-    console.error("Error updating motion settings:", error);
+    logger.error("Error updating motion settings:", error);
     return NextResponse.json({ error: "Failed to update motion settings" }, { status: 500 });
   }
 }

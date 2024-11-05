@@ -5,12 +5,15 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Clear all tables
+TRUNCATE TABLE SessionRequest;
 TRUNCATE TABLE Penalty;
 TRUNCATE TABLE Lap;
 TRUNCATE TABLE Session;
 TRUNCATE TABLE Car;
 TRUNCATE TABLE Driver;
+TRUNCATE TABLE Location;
 TRUNCATE TABLE MotionSettings;
+TRUNCATE TABLE SessionRequestStatus;
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;

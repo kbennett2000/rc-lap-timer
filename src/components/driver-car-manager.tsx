@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface MotionSettings {
   id: string;
@@ -92,7 +93,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       setNewLocationName("");
       setShowNewLocation(false);
     } catch (error) {
-      console.error("Error creating location:", error);
+      logger.error("Error creating location:", error);
       alert("Failed to create location. Please try again.");
     }
   };
@@ -109,7 +110,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
         setMotionSettings(data);
       }
     } catch (error) {
-      console.error("Error loading motion settings:", error);
+      logger.error("Error loading motion settings:", error);
     }
   };
 
@@ -165,7 +166,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
         setIsEditingLocation(false);
       }
     } catch (error) {
-      console.error("Error updating:", error);
+      logger.error("Error updating:", error);
       alert("Failed to update. Please try again.");
     } finally {
       setIsProcessing(false);
@@ -240,7 +241,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
         }
       }
     } catch (error) {
-      console.error("Error deleting:", error);
+      logger.error("Error deleting:", error);
       alert("Failed to delete. Please try again.");
     } finally {
       setIsProcessing(false);
@@ -279,7 +280,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       setNewDriverName("");
       setShowNewDriver(false);
     } catch (error) {
-      console.error("Error creating driver:", error);
+      logger.error("Error creating driver:", error);
       alert("Failed to create driver. Please try again.");
     }
   };
@@ -321,7 +322,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       setNewCarName("");
       setShowNewCar(false);
     } catch (error) {
-      console.error("Error creating car:", error);
+      logger.error("Error creating car:", error);
       alert("Failed to create car. Please try again.");
     }
   };

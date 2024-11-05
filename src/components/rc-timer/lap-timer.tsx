@@ -23,12 +23,22 @@ import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import { MotionDetector } from "./motion-detector";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import DriverCarManager from "@/components/driver-car-manager";
+import { logger } from "@/lib/logger";
+import { SessionRequestForm } from "../session-request-form";
 
 interface BeepOptions {
   frequency?: number; // Frequency in Hz
   duration?: number; // Duration in milliseconds
   volume?: number; // Volume between 0 and 1
   type?: OscillatorType; // Type of wave
+}
+
+interface MotionSettings {
+  sensitivity: number;
+  threshold: number;
+  cooldown: number;
+  framesToSkip: number;
+  enableDebugView: boolean;
 }
 
 class AudioContextManager {
@@ -87,8 +97,24 @@ export default function LapTimer() {
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [showNewLocation, setShowNewLocation] = useState<boolean>(false);
   const [newLocationName, setNewLocationName] = useState<string>("");
+  const [announcementSettings, setAnnouncementSettings] = useState({
+    announceLapNumber: false,
+    announceLastLapTime: false,
+    playBeeps: false,
+  });
 
-  const motionControlRef = useRef<{ stop: () => void }>(null);
+  const [motionSettings, setMotionSettings] = useState<MotionSettings>({
+    sensitivity: 50,
+    threshold: 2.0,
+    cooldown: 5000,
+    framesToSkip: 10,
+    enableDebugView: false,
+  });
+
+  const [remoteControlActive, setRemoteControlActive] = useState(false);
+  const remoteControlIntervalRef = useRef<NodeJS.Timeout>();
+
+  const motionControlRef = useRef<{ stop: () => void; start: () => Promise<void> }>(null);
 
   const announceLapNumberRef = useRef(announceLapNumber);
   // Sync with the ref whenever it changes
@@ -152,6 +178,12 @@ export default function LapTimer() {
     selectedCarRef.current = selectedCar;
   }, [selectedCar]);
 
+  const selectedLocationRef = useRef(selectedLocation);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    selectedLocationRef.current = selectedLocation;
+  }, [selectedLocation]);
+
   // Listen for window resize events
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -174,7 +206,7 @@ export default function LapTimer() {
       if (storedSessions) setSavedSessions(JSON.parse(storedSessions));
       if (storedDrivers) setDrivers(JSON.parse(storedDrivers));
     } catch (error) {
-      console.error("Error loading saved data:", error);
+      logger.error("Error loading saved data:", error);
     }
   }, []);
 
@@ -203,8 +235,9 @@ export default function LapTimer() {
     };
   }, [isRunning, startTime]);
 
+  // TODO: delete this???
   useEffect(() => {
-    setSelectedCar("");
+    // setSelectedCar("");
   }, [selectedDriver]);
 
   // Load data on component mount
@@ -260,20 +293,20 @@ export default function LapTimer() {
 
         if (googleUsVoice) {
           setSpeechVoice(googleUsVoice);
-          console.log("Set default voice to Google US English");
+          logger.log("Set default voice to Google US English");
         } else {
           // Fallback to any US English voice
           const usEnglishVoice = voices.find((voice) => voice.lang === "en-US");
 
           if (usEnglishVoice) {
             setSpeechVoice(usEnglishVoice);
-            console.log("Fallback to US English voice:", usEnglishVoice.name);
+            logger.log("Fallback to US English voice:", usEnglishVoice.name);
           } else {
             // Final fallback to any English voice
             const anyEnglishVoice = englishVoices[0];
             if (anyEnglishVoice) {
               setSpeechVoice(anyEnglishVoice);
-              console.log("Fallback to any English voice:", anyEnglishVoice.name);
+              logger.log("Fallback to any English voice:", anyEnglishVoice.name);
             }
           }
         }
@@ -333,7 +366,7 @@ export default function LapTimer() {
   const announceRaceBegin = useCallback(() => {
     // Safety check - make sure speech synthesis is available
     if (!window.speechSynthesis) {
-      console.error("Speech synthesis not available");
+      logger.error("Speech synthesis not available");
       return;
     }
 
@@ -358,12 +391,12 @@ export default function LapTimer() {
           utterance.pitch = 1.0;
 
           // Add event handlers for debugging
-          utterance.onend = () => console.log("Finished announcing:", text);
-          utterance.onerror = (event) => console.error("Error announcing:", text, event);
+          utterance.onend = () => logger.log("Finished announcing:", text);
+          utterance.onerror = (event) => logger.error("Error announcing:", text, event);
 
           window.speechSynthesis.speak(utterance);
         } catch (error) {
-          console.error("Error creating utterance:", error);
+          logger.error("Error creating utterance:", error);
         }
       }, delay);
       delay += 1000;
@@ -372,12 +405,12 @@ export default function LapTimer() {
 
   const announceRaceInfo = useCallback(
     (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
-      console.log("announceRaceInfo called with:", { lapNumber, lastLapTime, sessionEnded });
-      console.log("Announcement settings:", { announceLapNumber, announceLastLapTime });
+      logger.log("announceRaceInfo called with:", { lapNumber, lastLapTime, sessionEnded });
+      logger.log("Announcement settings:", { announceLapNumber, announceLastLapTime });
 
       // Safety check - make sure speech synthesis is available
       if (!window.speechSynthesis) {
-        console.error("Speech synthesis not available");
+        logger.error("Speech synthesis not available");
         return;
       }
 
@@ -406,7 +439,7 @@ export default function LapTimer() {
       announcements.forEach((text, index) => {
         setTimeout(() => {
           try {
-            console.log("Speaking announcement:", text);
+            logger.log("Speaking announcement:", text);
             const utterance = new SpeechSynthesisUtterance(text);
             if (speechVoice) {
               utterance.voice = speechVoice;
@@ -415,12 +448,12 @@ export default function LapTimer() {
             utterance.pitch = 1.0;
 
             // Add event handlers for debugging
-            utterance.onend = () => console.log("Finished announcing:", text);
-            utterance.onerror = (event) => console.error("Error announcing:", text, event);
+            utterance.onend = () => logger.log("Finished announcing:", text);
+            utterance.onerror = (event) => logger.error("Error announcing:", text, event);
 
             window.speechSynthesis.speak(utterance);
           } catch (error) {
-            console.error("Error creating utterance:", error);
+            logger.error("Error creating utterance:", error);
           }
         }, delay);
         delay += 1000;
@@ -534,7 +567,7 @@ export default function LapTimer() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Delete response error:", errorData); // Debug log
+        logger.error("Delete response error:", errorData); // Debug log
         throw new Error(errorData.error || "Failed to delete session");
       }
 
@@ -548,7 +581,7 @@ export default function LapTimer() {
         throw new Error("Server indicated deletion was not successful");
       }
     } catch (error) {
-      console.error("Error deleting session:", error);
+      logger.error("Error deleting session:", error);
       alert("Failed to delete session. Please try again.");
     } finally {
       setIsDeleting(false);
@@ -590,7 +623,7 @@ export default function LapTimer() {
     const completedLapsTime = laps.reduce((sum, lap) => {
       const lapTime = typeof lap === "object" ? lap.lapTime : lap;
       if (typeof lapTime !== "number" || isNaN(lapTime)) {
-        console.warn("Invalid lap time:", lap);
+        logger.warn("Invalid lap time:", lap);
         return sum;
       }
       return sum + lapTime;
@@ -694,7 +727,7 @@ export default function LapTimer() {
       setNewCarName("");
       setShowNewCar(false);
     } catch (error) {
-      console.error("Error creating car:", error);
+      logger.error("Error creating car:", error);
       alert("Failed to create car. Please try again.");
     }
   };
@@ -736,7 +769,7 @@ export default function LapTimer() {
       setShowNewDriver(false);
       setSelectedCar("");
     } catch (error) {
-      console.error("Error creating driver:", error);
+      logger.error("Error creating driver:", error);
       alert("Failed to create driver. Please try again.");
     }
   };
@@ -776,7 +809,7 @@ export default function LapTimer() {
       setNewLocationName("");
       setShowNewLocation(false);
     } catch (error) {
-      console.error("Error creating location:", error);
+      logger.error("Error creating location:", error);
       alert("Failed to create location. Please try again.");
     }
   };
@@ -870,8 +903,29 @@ export default function LapTimer() {
       setPenalties([]);
       await loadSavedData();
     } catch (error) {
-      console.error("Error saving session:", error);
+      logger.error("Error saving session:", error);
       alert("Failed to save session. Please try again.");
+    }
+  };
+
+  const handleStart = async () => {
+    try {
+      await handleStartCamera();
+      // startTimer_MD();
+    } catch (err) {
+      console.error("Start error:", err);
+      throw err; // Re-throw for remote control error handling
+    }
+  };
+
+  const handleStartCamera = async () => {
+    try {
+      if (motionControlRef.current) {
+        await motionControlRef.current.start();
+      }
+    } catch (error) {
+      logger.error("Failed to start camera:", error);
+      throw error;
     }
   };
 
@@ -924,7 +978,7 @@ export default function LapTimer() {
 
       return true;
     } catch (error) {
-      console.error("Error parsing date:", error);
+      logger.error("Error parsing date:", error);
       return false;
     }
   };
@@ -956,7 +1010,7 @@ export default function LapTimer() {
 
       return true;
     } catch (error) {
-      console.error("Error parsing date:", error);
+      logger.error("Error parsing date:", error);
       return false;
     }
   };
@@ -979,7 +1033,7 @@ export default function LapTimer() {
       setDrivers(data.drivers);
       setLocations(data.locations);
     } catch (error) {
-      console.error("Error loading data:", error);
+      logger.error("Error loading data:", error);
     }
   };
 
@@ -1077,6 +1131,89 @@ export default function LapTimer() {
     }
   };
 
+  const pollForSessionRequests = useCallback(async () => {
+    if (!remoteControlActive) return;
+
+    try {
+      const response = await fetch("/api/session-requests/next");
+      if (!response.ok) throw new Error("Failed to fetch requests");
+
+      const data = await response.json();
+      if (data.request) {
+        const request = data.request;
+
+        // Set up the session configuration
+        await setSelectedDriver(request.driverId);
+        await setSelectedCar(request.carId);
+        await setSelectedLocation(request.locationId);
+        await setSelectedLapCount(parseInt(request.numberOfLaps, 10));
+        await setTimingMode("motion"); // Force motion timing mode
+
+        // Mark request as in progress
+        await fetch(`/api/session-requests/${request.id}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "IN_PROGRESS" }),
+        });
+
+        // Start the session
+        try {
+          await handleStart();
+
+          // Mark request as completed
+          await fetch(`/api/session-requests/${request.id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "COMPLETED" }),
+          });
+        } catch (error) {
+          logger.error("Error during session:", error);
+          // Mark request as failed
+          await fetch(`/api/session-requests/${request.id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "FAILED" }),
+          });
+        }
+      }
+    } catch (error) {
+      logger.error("Error polling for requests:", error);
+    }
+  }, [remoteControlActive]);
+
+  // Add effect for polling
+  useEffect(() => {
+    if (remoteControlActive) {
+      // Initial poll
+      pollForSessionRequests();
+
+      // Set up polling interval
+      remoteControlIntervalRef.current = setInterval(pollForSessionRequests, 5000);
+    } else {
+      // Clean up interval when remote control is disabled
+      if (remoteControlIntervalRef.current) {
+        clearInterval(remoteControlIntervalRef.current);
+        remoteControlIntervalRef.current = undefined;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (remoteControlIntervalRef.current) {
+        clearInterval(remoteControlIntervalRef.current);
+      }
+    };
+  }, [remoteControlActive, pollForSessionRequests]);
+
+  // Add this to your cleanup for components with useEffect
+  useEffect(() => {
+    return () => {
+      if (remoteControlIntervalRef.current) {
+        clearInterval(remoteControlIntervalRef.current);
+      }
+    };
+  }, []);
+
   const recordLap = (): void => {
     if (!isRunning) return;
 
@@ -1149,7 +1286,7 @@ export default function LapTimer() {
         setDrivers(data.drivers);
       }
     } catch (error) {
-      console.error("Error refreshing data:", error);
+      logger.error("Error refreshing data:", error);
     }
   };
 
@@ -1172,7 +1309,7 @@ export default function LapTimer() {
 
       if (!response.ok) throw new Error("Failed to save data");
     } catch (error) {
-      console.error("Error saving data:", error);
+      logger.error("Error saving data:", error);
     }
   };
 
@@ -1195,10 +1332,11 @@ export default function LapTimer() {
   };
 
   const startTimer_MD = (): void => {
-    if (!selectedDriver || !selectedCar || !selectedLocation) {
-      alert("Please select a driver and car before starting the timer");
+    if (!selectedDriverRef || !selectedCarRef || !selectedLocationRef) {
+      alert("Please select a driver, car, and location before starting the timer");
       return;
     }
+
     announceRaceBegin();
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
@@ -1248,8 +1386,8 @@ export default function LapTimer() {
         }
         utterance.rate = 1.1;
         utterance.pitch = 1.0;
-        utterance.onend = () => console.log("Finished announcing lap number");
-        utterance.onerror = (event) => console.error("Error announcing lap number:", event);
+        utterance.onend = () => logger.log("Finished announcing lap number");
+        utterance.onerror = (event) => logger.error("Error announcing lap number:", event);
         window.speechSynthesis.speak(utterance);
       }, delay);
       delay += 1000;
@@ -1263,8 +1401,8 @@ export default function LapTimer() {
         }
         utterance.rate = 1.1;
         utterance.pitch = 1.0;
-        utterance.onend = () => console.log("Finished announcing lap time");
-        utterance.onerror = (event) => console.error("Error announcing lap time:", event);
+        utterance.onend = () => logger.log("Finished announcing lap time");
+        utterance.onerror = (event) => logger.error("Error announcing lap time:", event);
         window.speechSynthesis.speak(utterance);
       }, delay);
     }
@@ -1306,8 +1444,69 @@ export default function LapTimer() {
                       <CardTitle>Session Configuration</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Remote Control Mode */}
+                      <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
+                        <input
+                          type="checkbox"
+                          id="remoteControl"
+                          checked={remoteControlActive}
+                          onChange={(e) => {
+                            // Don't allow enabling remote control if a session is running
+                            if (e.target.checked && isRunning) {
+                              alert("Please end the current session before enabling remote control");
+                              return;
+                            }
+                            setRemoteControlActive(e.target.checked);
+                            setTimingMode("motion");
+                          }}
+                          disabled={isRunning}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <label htmlFor="remoteControl" className="text-sm font-medium">
+                          Enable Remote Control Mode
+                        </label>
+                        {remoteControlActive && <div className="ml-2 text-sm text-gray-500">Polling for session requests...</div>}
+                      </div>
+
+                      {/* Timing Mode Selection */}
+                      <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
+                        <Label>Timing Mode</Label>
+                        <RadioGroup
+                          value={timingMode}
+                          onValueChange={(value) => {
+                            const newMode = value as "ui" | "motion";
+                            setTimingMode(newMode);
+                            if (newMode === "motion") {
+                              setShowMotionDetector(true);
+                              // Reset timer state when switching to motion mode
+                              if (isRunning) {
+                                stopTimer();
+                              }
+                            } else {
+                              setShowMotionDetector(false);
+                              setIsMotionTimingActive(false);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="ui" id="timing-ui" />
+                            <Label htmlFor="timing-ui" className="flex items-center">
+                              <PlayCircle className="mr-2 h-4 w-4" />
+                              Time Using UI
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="motion" id="timing-motion" />
+                            <Label htmlFor="timing-motion" className="flex items-center">
+                              <Video className="mr-2 h-4 w-4" />
+                              Time Using Motion Detection
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
                       {/* Driver Selection */}
-                      <div className="space-y-2">
+                      <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
                         <Label>Driver</Label>
                         <div className="flex space-x-2">
                           <Select value={selectedDriver} onValueChange={setSelectedDriver}>
@@ -1351,153 +1550,159 @@ export default function LapTimer() {
                       </div>
 
                       {/* Car Selection - Only show if driver is selected */}
-                      {selectedDriver && (
-                        <div className="space-y-2">
-                          <Label>Car</Label>
-                          <div className="flex space-x-2">
-                            <Select value={selectedCar} onValueChange={setSelectedCar}>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select Car" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getCurrentDriverCars()
-                                  .sort((a, b) => a.name.localeCompare(b.name))
-                                  .map((car) => (
-                                    <SelectItem key={car.id} value={car.id}>
-                                      {car.name}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                            <Button variant="outline" onClick={() => setShowNewCar(!showNewCar)}>
-                              <CarIcon className="mr-2 h-4 w-4" />
-                              New Car
-                            </Button>
-                          </div>
-
-                          {selectedDriver && showNewCar && (
-                            <div className="space-y-2">
-                              <div className="flex space-x-2">
-                                <Input
-                                  placeholder="Enter car name"
-                                  value={newCarName}
-                                  onChange={handleCarNameChange}
-                                  onKeyPress={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleAddCar();
-                                    }
-                                  }}
-                                  className={newCarName.trim() && !isCarNameUniqueForDriver(newCarName) ? "border-red-500" : ""}
-                                />
-                                <Button onClick={handleAddCar}>Add</Button>
-                              </div>
-                              {newCarName.trim() && !isCarNameUniqueForDriver(newCarName) && <div className="text-sm text-red-500">{drivers.find((d) => d.id === selectedDriver)?.name} already has a car with this name.</div>}
+                      <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
+                        {selectedDriver && (
+                          <>
+                            <Label>Car</Label>
+                            <div className="flex space-x-2">
+                              <Select value={selectedCar} onValueChange={setSelectedCar}>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select Car" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getCurrentDriverCars()
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map((car) => (
+                                      <SelectItem key={car.id} value={car.id}>
+                                        {car.name}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                              <Button variant="outline" onClick={() => setShowNewCar(!showNewCar)}>
+                                <CarIcon className="mr-2 h-4 w-4" />
+                                New Car
+                              </Button>
                             </div>
-                          )}
-                        </div>
-                      )}
+                          </>
+                        )}
+
+                        {selectedDriver && showNewCar && (
+                          <div className="space-y-2">
+                            <div className="flex space-x-2">
+                              <Input
+                                placeholder="Enter car name"
+                                value={newCarName}
+                                onChange={handleCarNameChange}
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleAddCar();
+                                  }
+                                }}
+                                className={newCarName.trim() && !isCarNameUniqueForDriver(newCarName) ? "border-red-500" : ""}
+                              />
+                              <Button onClick={handleAddCar}>Add</Button>
+                            </div>
+                            {newCarName.trim() && !isCarNameUniqueForDriver(newCarName) && <div className="text-sm text-red-500">{drivers.find((d) => d.id === selectedDriver)?.name} already has a car with this name.</div>}
+                          </div>
+                        )}
+                      </div>
 
                       {/* Location Selection - Only show if driver and car are selected */}
-                      {selectedDriver && selectedCar && (
-                        <div className="space-y-2">
-                          <Label>Location</Label>
-                          <div className="flex space-x-2">
-                            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select Location" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {locations
-                                  .sort((a, b) => a.name.localeCompare(b.name))
-                                  .map((location) => (
-                                    <SelectItem key={location.id} value={location.id}>
-                                      {location.name}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                            <Button variant="outline" onClick={() => setShowNewLocation(!showNewLocation)}>
-                              <MapPin className="mr-2 h-4 w-4" />
-                              New Location
-                            </Button>
-                          </div>
-                          {showNewLocation && (
-                            <div className="space-y-2">
-                              <div className="flex space-x-2">
-                                <Input
-                                  placeholder="Enter location name"
-                                  value={newLocationName}
-                                  onChange={handleLocationNameChange}
-                                  onKeyPress={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleAddLocation();
-                                    }
-                                  }}
-                                  className={newLocationName.trim() && !isLocationNameUnique(newLocationName) ? "border-red-500" : ""}
-                                />
-                                <Button onClick={handleAddLocation}>Add</Button>
-                              </div>
-                              {newLocationName.trim() && !isLocationNameUnique(newLocationName) && <div className="text-sm text-red-500">This location name already exists. Please choose a different name.</div>}
+                      <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
+                        {selectedDriver && selectedCar && (
+                          <>
+                            <Label>Location</Label>
+                            <div className="flex space-x-2">
+                              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select Location" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {locations
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map((location) => (
+                                      <SelectItem key={location.id} value={location.id}>
+                                        {location.name}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                              <Button variant="outline" onClick={() => setShowNewLocation(!showNewLocation)}>
+                                <MapPin className="mr-2 h-4 w-4" />
+                                New Location
+                              </Button>
                             </div>
-                          )}
-                        </div>
-                      )}
+                          </>
+                        )}
+                        {showNewLocation && (
+                          <div className="space-y-2">
+                            <div className="flex space-x-2">
+                              <Input
+                                placeholder="Enter location name"
+                                value={newLocationName}
+                                onChange={handleLocationNameChange}
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleAddLocation();
+                                  }
+                                }}
+                                className={newLocationName.trim() && !isLocationNameUnique(newLocationName) ? "border-red-500" : ""}
+                              />
+                              <Button onClick={handleAddLocation}>Add</Button>
+                            </div>
+                            {newLocationName.trim() && !isLocationNameUnique(newLocationName) && <div className="text-sm text-red-500">This location name already exists. Please choose a different name.</div>}
+                          </div>
+                        )}
+                      </div>
 
                       {/* Lap Count Selection */}
-                      {selectedDriver && selectedCar && (
-                        <div className="space-y-2">
-                          <Label>Number of Laps</Label>
-                          <div className="flex space-x-2">
-                            <Select
-                              value={showLapCountInput ? "custom" : selectedLapCount.toString()}
-                              onValueChange={(value) => {
-                                if (value === "custom") {
-                                  setShowLapCountInput(true);
-                                  setInputLapCount("");
-                                } else if (value === "unlimited") {
-                                  setShowLapCountInput(false);
-                                  setSelectedLapCount("unlimited");
-                                } else {
-                                  setShowLapCountInput(false);
-                                  setSelectedLapCount(parseInt(value, 10));
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select number of laps" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="unlimited">Unlimited</SelectItem>
-                                <SelectItem value="3">3 Laps</SelectItem>
-                                <SelectItem value="5">5 Laps</SelectItem>
-                                <SelectItem value="10">10 Laps</SelectItem>
-                                <SelectItem value="25">25 Laps</SelectItem>
-                                <SelectItem value="custom">Custom...</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {showLapCountInput && (
-                            <div className="flex space-x-2 mt-2">
-                              <Input type="number" min="1" max="999" placeholder="Enter number of laps" value={inputLapCount} onChange={(e) => setInputLapCount(e.target.value)} />
-                              <Button
-                                onClick={() => {
-                                  if (validateLapCount(inputLapCount)) {
-                                    setSelectedLapCount(parseInt(inputLapCount, 10));
+                      <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
+                        {selectedDriver && selectedCar && (
+                          <>
+                            <Label>Number of Laps</Label>
+                            <div className="flex space-x-2">
+                              <Select
+                                value={showLapCountInput ? "custom" : selectedLapCount.toString()}
+                                onValueChange={(value) => {
+                                  if (value === "custom") {
+                                    setShowLapCountInput(true);
+                                    setInputLapCount("");
+                                  } else if (value === "unlimited") {
                                     setShowLapCountInput(false);
+                                    setSelectedLapCount("unlimited");
                                   } else {
-                                    alert("Please enter a valid number of laps (1-999)");
+                                    setShowLapCountInput(false);
+                                    setSelectedLapCount(parseInt(value, 10));
                                   }
                                 }}
                               >
-                                Set
-                              </Button>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select number of laps" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unlimited">Unlimited</SelectItem>
+                                  <SelectItem value="3">3 Laps</SelectItem>
+                                  <SelectItem value="5">5 Laps</SelectItem>
+                                  <SelectItem value="10">10 Laps</SelectItem>
+                                  <SelectItem value="25">25 Laps</SelectItem>
+                                  <SelectItem value="custom">Custom...</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          )}
+                          </>
+                        )}
 
-                          <div className="text-sm text-muted-foreground mt-1">{selectedLapCount === "unlimited" ? "Session will continue until manually stopped" : `Session will automatically complete after ${selectedLapCount} laps`}</div>
-                        </div>
-                      )}
+                        {showLapCountInput && (
+                          <div className="flex space-x-2 mt-2">
+                            <Input type="number" min="1" max="999" placeholder="Enter number of laps" value={inputLapCount} onChange={(e) => setInputLapCount(e.target.value)} />
+                            <Button
+                              onClick={() => {
+                                if (validateLapCount(inputLapCount)) {
+                                  setSelectedLapCount(parseInt(inputLapCount, 10));
+                                  setShowLapCountInput(false);
+                                } else {
+                                  alert("Please enter a valid number of laps (1-999)");
+                                }
+                              }}
+                            >
+                              Set
+                            </Button>
+                          </div>
+                        )}
+
+                        <div className="text-sm text-muted-foreground mt-1">{selectedLapCount === "unlimited" ? "Session will continue until manually stopped" : `Session will automatically complete after ${selectedLapCount} laps`}</div>
+                      </div>
 
                       {/* Annoucements Selection */}
                       <div className="space-y-3 p-4 bg-gray-50 rounded">
@@ -1582,45 +1787,6 @@ export default function LapTimer() {
                             <div>Location: {locations.find((l) => l.id === selectedLocation)?.name}</div>
                             <div>Laps: {selectedLapCount === "unlimited" ? "Unlimited" : selectedLapCount}</div>
                           </div>
-                        </div>
-                      )}
-
-                      {/* Add Timing Mode Selection */}
-                      {selectedDriver && selectedCar && selectedLocation && selectedLapCount && (
-                        <div className="space-y-2">
-                          <Label>Timing Mode</Label>
-                          <RadioGroup
-                            value={timingMode}
-                            onValueChange={(value) => {
-                              const newMode = value as "ui" | "motion";
-                              setTimingMode(newMode);
-                              if (newMode === "motion") {
-                                setShowMotionDetector(true);
-                                // Reset timer state when switching to motion mode
-                                if (isRunning) {
-                                  stopTimer();
-                                }
-                              } else {
-                                setShowMotionDetector(false);
-                                setIsMotionTimingActive(false);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="ui" id="timing-ui" />
-                              <Label htmlFor="timing-ui" className="flex items-center">
-                                <PlayCircle className="mr-2 h-4 w-4" />
-                                Time Using UI
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="motion" id="timing-motion" />
-                              <Label htmlFor="timing-motion" className="flex items-center">
-                                <Video className="mr-2 h-4 w-4" />
-                                Time Using Motion Detection
-                              </Label>
-                            </div>
-                          </RadioGroup>
                         </div>
                       )}
                     </CardContent>
@@ -2195,7 +2361,11 @@ export default function LapTimer() {
               {/* Driver Car Manager Tab */}
               <TabsContent value="drivercarmanager" className="space-y-4">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+                  {/* Driver Car Manager */}
                   <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} onSessionsUpdate={setSavedSessions} />
+
+                  {/* Session Request Form */}
+                  <SessionRequestForm drivers={drivers} locations={locations} />
                 </motion.div>
               </TabsContent>
 

@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Trophy, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime, formatDateTime } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 interface DatePreset {
   label: string;
@@ -89,7 +90,7 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
 
       return true;
     } catch (error) {
-      console.error("Error parsing date:", error);
+      logger.error("Error parsing date:", error);
       return false;
     }
   };

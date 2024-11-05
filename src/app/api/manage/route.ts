@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export async function PATCH(request: Request) {
   try {
@@ -174,7 +175,7 @@ export async function PATCH(request: Request) {
       updatedSessions,
     });
   } catch (error) {
-    console.error("Error updating:", error);
+    logger.error("Error updating:", error);
     return NextResponse.json(
       {
         success: false,
@@ -324,7 +325,7 @@ export async function DELETE(request: Request) {
       updatedDrivers,
     });
   } catch (error) {
-    console.error("Error deleting:", error);
+    logger.error("Error deleting:", error);
     return NextResponse.json(
       {
         success: false,

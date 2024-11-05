@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { logger } from "@/lib/logger";
 
 interface MotionDetectorProps {
   onMotionDetected?: (changePercent: number) => void;
@@ -6,6 +7,7 @@ interface MotionDetectorProps {
   // Add ref for external control
   controlRef?: React.RefObject<{
     stop: () => void;
+    start: () => Promise<void>; 
   }>;
   playBeeps?: boolean;
 }
@@ -92,7 +94,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         setSavedSettings(data);
       }
     } catch (error) {
-      console.error("Error loading settings:", error);
+      logger.error("Error loading settings:", error);
     }
   };
 
@@ -127,7 +129,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         setSaveError("");
       }
     } catch (error) {
-      console.error("Error saving settings:", error);
+      logger.error("Error saving settings:", error);
     }
   };
 
@@ -160,7 +162,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         await audioContextRef.current.resume();
       }
     } catch (err) {
-      console.error("Audio initialization error:", err);
+      logger.error("Audio initialization error:", err);
     }
   }, [settings.enableAudio]);
 
@@ -184,7 +186,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       oscillator.start();
       oscillator.stop(context.currentTime + 0.2);
     } catch (err) {
-      console.error("Error playing beep:", err);
+      logger.error("Error playing beep:", err);
     }
   }, [settings.enableAudio]);
 
@@ -245,7 +247,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     }
 
     frameCountRef.current++;
-    console.log("Processing frame:", frameCountRef.current);
+    logger.log("Processing frame:", frameCountRef.current);
 
     // Use settingsRef.current instead of settings
     if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
@@ -275,12 +277,12 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       const frameSize = currentFrame.width * currentFrame.height;
       const changePercent = (changedPixels / frameSize) * 100;
       setLastChangePercent(changePercent);
-      console.log("Change percent:", changePercent.toFixed(2) + "%");
+      logger.log("Change percent:", changePercent.toFixed(2) + "%");
 
       if (changePercent > settingsRef.current.threshold) {
         const now = Date.now();
         if (now - lastMotionTimeRef.current > settingsRef.current.cooldown) {
-          console.log("Motion detected!");
+          logger.log("Motion detected!");
           playBeep();
           setMotionEvents((prev) => prev + 1);
           if (!isPreviewingRef.current) {
@@ -343,7 +345,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       setIsRunning(true);
       detectMotion();
     } catch (err) {
-      console.error("Start error:", err);
+      logger.error("Start error:", err);
       setError("Failed to start: " + (err instanceof Error ? err.message : String(err)));
       isActiveRef.current = false;
       handleStop();
@@ -372,10 +374,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (controlRef) {
       controlRef.current = {
         stop: handleStop,
+        start: handleStart  // Add this line
       };
     }
-  }, [controlRef, handleStop]);
-
+  }, [controlRef, handleStop, handleStart]);
+  
   // ... (previous useEffect hooks remain the same)
   useEffect(() => {
     if (!videoRef.current) return;

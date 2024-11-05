@@ -86,4 +86,36 @@ CREATE TABLE IF NOT EXISTS MotionSettings (
     updatedAt DATETIME(3) NOT NULL
 );
 
+-- Create enum type for SessionRequestStatus
+CREATE TABLE IF NOT EXISTS SessionRequestStatus (
+    status VARCHAR(20) PRIMARY KEY
+);
+
+-- Insert enum values
+INSERT INTO SessionRequestStatus (status) VALUES
+    ('PENDING'),
+    ('IN_PROGRESS'),
+    ('COMPLETED'),
+    ('FAILED');
+
+-- Create SessionRequest table
+CREATE TABLE IF NOT EXISTS SessionRequest (
+    id VARCHAR(191) PRIMARY KEY,
+    driverId VARCHAR(191) NOT NULL,
+    carId VARCHAR(191) NOT NULL,
+    locationId VARCHAR(191) NOT NULL,
+    numberOfLaps INT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updatedAt DATETIME(3) NOT NULL,
+    FOREIGN KEY (driverId) REFERENCES Driver(id),
+    FOREIGN KEY (carId) REFERENCES Car(id),
+    FOREIGN KEY (locationId) REFERENCES Location(id),
+    FOREIGN KEY (status) REFERENCES SessionRequestStatus(status),
+    INDEX idx_driverId (driverId),
+    INDEX idx_carId (carId),
+    INDEX idx_locationId (locationId),
+    INDEX idx_status (status)
+);
+
 ALTER DATABASE rc_lap_timer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

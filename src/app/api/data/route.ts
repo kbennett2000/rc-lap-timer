@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -28,7 +29,7 @@ export async function GET() {
       locations: data[2], // Add locations to response
     });
   } catch (error) {
-    console.error("Error reading data:", error);
+    logger.error("Error reading data:", error);
     return NextResponse.json({ error: "Error reading data" }, { status: 500 });
   }
 }
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error saving data:", error);
+    logger.error("Error saving data:", error);
     return NextResponse.json(
       {
         error: "Error saving data",
@@ -208,7 +209,7 @@ export async function DELETE(request: Request) {
           message: `Session ${id} deleted successfully`,
         });
       } catch (prismaError) {
-        console.error("Prisma deletion error:", prismaError);
+        logger.error("Prisma deletion error:", prismaError);
 
         // Check if this is a record not found error
         if ((prismaError as any).code === "P2025") {
@@ -232,7 +233,7 @@ export async function DELETE(request: Request) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error in DELETE handler:", error);
+    logger.error("Error in DELETE handler:", error);
 
     return NextResponse.json(
       {
@@ -257,7 +258,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, session: updatedSession });
   } catch (error) {
-    console.error("Error updating notes:", error);
+    logger.error("Error updating notes:", error);
     return NextResponse.json({ error: "Error updating notes", details: (error as Error).message }, { status: 500 });
   }
 }
