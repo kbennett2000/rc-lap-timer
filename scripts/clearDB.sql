@@ -13,7 +13,6 @@ TRUNCATE TABLE Car;
 TRUNCATE TABLE Driver;
 TRUNCATE TABLE Location;
 TRUNCATE TABLE MotionSettings;
-TRUNCATE TABLE SessionRequestStatus;
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;

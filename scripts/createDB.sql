@@ -1,6 +1,6 @@
 CREATE DATABASE IF NOT EXISTS rc_lap_timer;
 USE rc_lap_timer;
-CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'password1';
+CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';
 GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
 FLUSH PRIVILEGES;
 
@@ -86,32 +86,19 @@ CREATE TABLE IF NOT EXISTS MotionSettings (
     updatedAt DATETIME(3) NOT NULL
 );
 
--- Create enum type for SessionRequestStatus
-CREATE TABLE IF NOT EXISTS SessionRequestStatus (
-    status VARCHAR(20) PRIMARY KEY
-);
-
--- Insert enum values
-INSERT INTO SessionRequestStatus (status) VALUES
-    ('PENDING'),
-    ('IN_PROGRESS'),
-    ('COMPLETED'),
-    ('FAILED');
-
--- Create SessionRequest table
+-- Create SessionRequest table with ENUM
 CREATE TABLE IF NOT EXISTS SessionRequest (
     id VARCHAR(191) PRIMARY KEY,
     driverId VARCHAR(191) NOT NULL,
     carId VARCHAR(191) NOT NULL,
     locationId VARCHAR(191) NOT NULL,
     numberOfLaps INT NOT NULL,
-    status VARCHAR(20) NOT NULL,
+    status ENUM('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED') NOT NULL DEFAULT 'PENDING',
     createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updatedAt DATETIME(3) NOT NULL,
     FOREIGN KEY (driverId) REFERENCES Driver(id),
     FOREIGN KEY (carId) REFERENCES Car(id),
     FOREIGN KEY (locationId) REFERENCES Location(id),
-    FOREIGN KEY (status) REFERENCES SessionRequestStatus(status),
     INDEX idx_driverId (driverId),
     INDEX idx_carId (carId),
     INDEX idx_locationId (locationId),
