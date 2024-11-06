@@ -89,7 +89,7 @@ Create database setup script
 cat > create_rc_timer_database.sql << 'EOF'
 CREATE DATABASE IF NOT EXISTS rc_lap_timer;
 USE rc_lap_timer;
-CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';
+CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'password1';
 GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
 FLUSH PRIVILEGES;
 
