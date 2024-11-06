@@ -1131,76 +1131,125 @@ export default function LapTimer() {
     }
   };
 
-  const pollForSessionRequests = useCallback(async () => {
-    if (!remoteControlActive) return;
 
-    try {
-      const response = await fetch("/api/session-requests/next");
-      if (!response.ok) throw new Error("Failed to fetch requests");
+  // Add this near your other state variables in lap-timer.tsx
+const [pollingError, setPollingError] = useState<string | null>(null);
 
-      const data = await response.json();
-      if (data.request) {
-        const request = data.request;
+// Update the polling function
+const pollForSessionRequests = useCallback(async () => {
+  if (!remoteControlActive) return;
 
-        // Set up the session configuration
-        await setSelectedDriver(request.driverId);
-        await setSelectedCar(request.carId);
-        await setSelectedLocation(request.locationId);
-        await setSelectedLapCount(parseInt(request.numberOfLaps, 10));
-        await setTimingMode("motion"); // Force motion timing mode
+  try {
+    logger.log("Polling for session requests...");
+    const response = await fetch('/api/session-requests/next', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Add cache control
+      cache: 'no-store'
+    });
 
+    if (!response.ok) {
+      throw new Error(`Failed to fetch requests: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    logger.log("Poll response:", data);
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    setPollingError(null);
+    
+    if (data.request) {
+      const request = data.request;
+      logger.log("Found request:", request);
+
+      // Set up the session configuration
+      setSelectedDriver(request.driverId);
+      setSelectedCar(request.carId);
+      setSelectedLocation(request.locationId);
+      setSelectedLapCount(request.numberOfLaps);
+      setTimingMode("motion"); // Force motion timing mode
+
+      try {
         // Mark request as in progress
         await fetch(`/api/session-requests/${request.id}/status`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "IN_PROGRESS" }),
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'IN_PROGRESS' })
         });
 
         // Start the session
-        try {
-          await handleStart();
+        await handleStart();
 
-          // Mark request as completed
-          await fetch(`/api/session-requests/${request.id}/status`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "COMPLETED" }),
-          });
-        } catch (error) {
-          logger.error("Error during session:", error);
-          // Mark request as failed
-          await fetch(`/api/session-requests/${request.id}/status`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "FAILED" }),
-          });
-        }
+        // Mark as completed
+        await fetch(`/api/session-requests/${request.id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'COMPLETED' })
+        });
+      } catch (error) {
+        logger.error("Session error:", error);
+        await fetch(`/api/session-requests/${request.id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'FAILED' })
+        });
+        throw error;
       }
-    } catch (error) {
-      logger.error("Error polling for requests:", error);
     }
-  }, [remoteControlActive]);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during polling';
+    logger.error("Error polling for requests:", error);
+    setPollingError(errorMessage);
+  }
+}, [remoteControlActive]);
+
+
+  
+
+
 
   // Add effect for polling
+  // In lap-timer.tsx
   useEffect(() => {
+    logger.log("Remote control active state changed:", remoteControlActive);
+
     if (remoteControlActive) {
+      logger.log("Starting polling...");
       // Initial poll
       pollForSessionRequests();
 
       // Set up polling interval
-      remoteControlIntervalRef.current = setInterval(pollForSessionRequests, 5000);
+      const interval = setInterval(() => {
+        logger.log("Polling interval triggered");
+        pollForSessionRequests();
+      }, 5000);
+
+      remoteControlIntervalRef.current = interval;
+
+      // Log when polling starts
+      logger.log("Polling started with interval:", interval);
     } else {
-      // Clean up interval when remote control is disabled
+      // Log when polling stops
+      logger.log("Stopping polling...");
       if (remoteControlIntervalRef.current) {
         clearInterval(remoteControlIntervalRef.current);
         remoteControlIntervalRef.current = undefined;
+        logger.log("Polling stopped");
       }
     }
 
     // Cleanup on unmount
     return () => {
+      logger.log("Cleaning up polling effect");
       if (remoteControlIntervalRef.current) {
         clearInterval(remoteControlIntervalRef.current);
+        remoteControlIntervalRef.current = undefined;
+        logger.log("Polling cleanup complete");
       }
     };
   }, [remoteControlActive, pollForSessionRequests]);
