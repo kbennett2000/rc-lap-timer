@@ -64,7 +64,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
   };
 
   const handleAddLocation = async () => {
-    const trimmedName = newLocationName.trim();
+    const trimmedName = newName.trim();
     if (!trimmedName) {
       alert("Please enter a location name");
       return;
@@ -90,7 +90,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       const { location } = await response.json();
       onLocationsUpdate([...locations, location]);
       setSelectedLocation(location.id);
-      setNewLocationName("");
+      setNewName("");
       setShowNewLocation(false);
     } catch (error) {
       logger.error("Error creating location:", error);
