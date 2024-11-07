@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Driver, Car } from "@/types/rc-timer";
+import { Driver, Car, Location, Session } from "@/types/rc-timer";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [newName, setNewName] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [deleteType, setDeleteType] = useState<"driver" | "car" | null>(null);
+  const [deleteType, setDeleteType] = useState<"driver" | "car" | "location" | "motionSetting" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isEditingMotionSetting, setIsEditingMotionSetting] = useState(false);
   const [showNewDriver, setShowNewDriver] = useState(false);
@@ -173,11 +173,6 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     }
   };
 
-
-
-
-
-
   const handleDelete = async () => {
     if (!deleteType) return;
     setIsProcessing(true);
@@ -255,35 +250,6 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     }
   };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   const handleAddDriver = async () => {
     const trimmedName = newDriverName.trim();
     if (!trimmedName) {
@@ -318,11 +284,6 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       alert("Failed to create driver. Please try again.");
     }
   };
-
-
-
-
-
 
   const handleAddCar = async () => {
     const trimmedName = newCarName.trim();
