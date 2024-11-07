@@ -6,7 +6,7 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin } from "lucide-react";
+import { Video, ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -1301,16 +1301,9 @@ export default function LapTimer() {
         setDrivers(data.drivers);
       }
 
-
-
-
-      if (JSON.stringify(data.locations) !== JSON.stringify(locations)) {        
+      if (JSON.stringify(data.locations) !== JSON.stringify(locations)) {
         setLocations(data.locations);
       }
-
-
-
-
     } catch (error) {
       logger.error("Error refreshing data:", error);
     }
@@ -2313,7 +2306,7 @@ export default function LapTimer() {
                   </TabsTrigger>
                   <TabsTrigger value="previous" className="py-3">
                     <div className="flex flex-col items-center">
-                      <ListChecks className="h-5 w-5" />
+                      <ClipboardList className="h-5 w-5" />
                       <span className="text-xs mt-1">Previous</span>
                     </div>
                   </TabsTrigger>
@@ -2325,13 +2318,13 @@ export default function LapTimer() {
                   </TabsTrigger>
                   <TabsTrigger value="compare" className="py-3">
                     <div className="flex flex-col items-center">
-                      <BarChart2 className="h-5 w-5" />
+                      <ChartArea className="h-5 w-5" />
                       <span className="text-xs mt-1">Compare</span>
                     </div>
                   </TabsTrigger>
                   <TabsTrigger value="notes" className="py-3">
                     <div className="flex flex-col items-center">
-                      <ListPlus className="h-5 w-5" />
+                      <NotebookPen className="h-5 w-5" />
                       <span className="text-xs mt-1">Best</span>
                     </div>
                   </TabsTrigger>
