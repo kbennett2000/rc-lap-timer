@@ -41,17 +41,6 @@ interface MotionSettings {
   enableDebugView: boolean;
 }
 
-class AudioContextManager {
-  private static instance: AudioContext | null = null;
-
-  static getInstance(): AudioContext {
-    if (!this.instance) {
-      this.instance = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return this.instance;
-  }
-}
-
 export default function LapTimer() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -75,10 +64,8 @@ export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("current");
   const [isMobile, setIsMobile] = useState(false);
   const [filterDriver, setFilterDriver] = useState<string>("all");
-
   const [filterCar, setFilterCar] = useState<string>("all");
   const [filterLocation, setFilterLocation] = useState<string>("all");
-
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDriver, setSelectedDriver] = useState<string>("");
   const [selectedCar, setSelectedCar] = useState<string>("");
@@ -97,26 +84,11 @@ export default function LapTimer() {
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [showNewLocation, setShowNewLocation] = useState<boolean>(false);
   const [newLocationName, setNewLocationName] = useState<string>("");
-  const [announcementSettings, setAnnouncementSettings] = useState({
-    announceLapNumber: false,
-    announceLastLapTime: false,
-    playBeeps: false,
-  });
-
-  const [motionSettings, setMotionSettings] = useState<MotionSettings>({
-    sensitivity: 50,
-    threshold: 2.0,
-    cooldown: 5000,
-    framesToSkip: 10,
-    enableDebugView: false,
-  });
-
   const [remoteControlActive, setRemoteControlActive] = useState(false);
   const remoteControlIntervalRef = useRef<NodeJS.Timeout>();
-
   const motionControlRef = useRef<{ stop: () => void; start: () => Promise<void> }>(null);
-
   const announceLapNumberRef = useRef(announceLapNumber);
+
   // Sync with the ref whenever it changes
   useEffect(() => {
     announceLapNumberRef.current = announceLapNumber;
@@ -1131,87 +1103,81 @@ export default function LapTimer() {
     }
   };
 
-
   // Add this near your other state variables in lap-timer.tsx
-const [pollingError, setPollingError] = useState<string | null>(null);
+  const [pollingError, setPollingError] = useState<string | null>(null);
 
-// Update the polling function
-const pollForSessionRequests = useCallback(async () => {
-  if (!remoteControlActive) return;
+  // Update the polling function
+  const pollForSessionRequests = useCallback(async () => {
+    if (!remoteControlActive) return;
 
-  try {
-    logger.log("Polling for session requests...");
-    const response = await fetch('/api/session-requests/next', {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      // Add cache control
-      cache: 'no-store'
-    });
+    try {
+      logger.log("Polling for session requests...");
+      const response = await fetch("/api/session-requests/next", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        // Add cache control
+        cache: "no-store",
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch requests: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    logger.log("Poll response:", data);
-    
-    if (data.error) {
-      throw new Error(data.error);
-    }
-
-    setPollingError(null);
-    
-    if (data.request) {
-      const request = data.request;
-      logger.log("Found request:", request);
-
-      // Set up the session configuration
-      setSelectedDriver(request.driverId);
-      setSelectedCar(request.carId);
-      setSelectedLocation(request.locationId);
-      setSelectedLapCount(request.numberOfLaps);
-      setTimingMode("motion"); // Force motion timing mode
-
-      try {
-        // Mark request as in progress
-        await fetch(`/api/session-requests/${request.id}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'IN_PROGRESS' })
-        });
-
-        // Start the session
-        await handleStart();
-
-        // Mark as completed
-        await fetch(`/api/session-requests/${request.id}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'COMPLETED' })
-        });
-      } catch (error) {
-        logger.error("Session error:", error);
-        await fetch(`/api/session-requests/${request.id}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'FAILED' })
-        });
-        throw error;
+      if (!response.ok) {
+        throw new Error(`Failed to fetch requests: ${response.status} ${response.statusText}`);
       }
+
+      const data = await response.json();
+      logger.log("Poll response:", data);
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setPollingError(null);
+
+      if (data.request) {
+        const request = data.request;
+        logger.log("Found request:", request);
+
+        // Set up the session configuration
+        setSelectedDriver(request.driverId);
+        setSelectedCar(request.carId);
+        setSelectedLocation(request.locationId);
+        setSelectedLapCount(request.numberOfLaps);
+        setTimingMode("motion"); // Force motion timing mode
+
+        try {
+          // Mark request as in progress
+          await fetch(`/api/session-requests/${request.id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "IN_PROGRESS" }),
+          });
+
+          // Start the session
+          await handleStart();
+
+          // Mark as completed
+          await fetch(`/api/session-requests/${request.id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "COMPLETED" }),
+          });
+        } catch (error) {
+          logger.error("Session error:", error);
+          await fetch(`/api/session-requests/${request.id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "FAILED" }),
+          });
+          throw error;
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error during polling";
+      logger.error("Error polling for requests:", error);
+      setPollingError(errorMessage);
     }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error during polling';
-    logger.error("Error polling for requests:", error);
-    setPollingError(errorMessage);
-  }
-}, [remoteControlActive]);
-
-
-  
-
-
+  }, [remoteControlActive]);
 
   // Add effect for polling
   // In lap-timer.tsx
@@ -1334,6 +1300,17 @@ const pollForSessionRequests = useCallback(async () => {
       if (JSON.stringify(data.drivers) !== JSON.stringify(drivers)) {
         setDrivers(data.drivers);
       }
+
+
+
+
+      if (JSON.stringify(data.locations) !== JSON.stringify(locations)) {        
+        setLocations(data.locations);
+      }
+
+
+
+
     } catch (error) {
       logger.error("Error refreshing data:", error);
     }
@@ -1415,56 +1392,6 @@ const pollForSessionRequests = useCallback(async () => {
     handleSessionCompletion(finalLaps);
   };
 
-  // Testing functions, implementation currenly commented out
-  /*
-  const testAnnouncements = () => {
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-
-    // Test both types of announcements
-    const testLapNumber = 1;
-    const testLapTime = 45670;
-
-    let delay = 0;
-
-    if (announceLapNumber) {
-      setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(`Lap number ${testLapNumber}`);
-        if (speechVoice) {
-          utterance.voice = speechVoice;
-        }
-        utterance.rate = 1.1;
-        utterance.pitch = 1.0;
-        utterance.onend = () => logger.log("Finished announcing lap number");
-        utterance.onerror = (event) => logger.error("Error announcing lap number:", event);
-        window.speechSynthesis.speak(utterance);
-      }, delay);
-      delay += 1000;
-    }
-
-    if (announceLastLapTime) {
-      setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(`Last lap time ${formatTimeForSpeech(testLapTime)}`);
-        if (speechVoice) {
-          utterance.voice = speechVoice;
-        }
-        utterance.rate = 1.1;
-        utterance.pitch = 1.0;
-        utterance.onend = () => logger.log("Finished announcing lap time");
-        utterance.onerror = (event) => logger.error("Error announcing lap time:", event);
-        window.speechSynthesis.speak(utterance);
-      }, delay);
-    }
-  };
-
-  const testVoice = (voice: SpeechSynthesisVoice) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance("Testing voice system");
-    utterance.voice = voice;
-    window.speechSynthesis.speak(utterance);
-  };
-  */
-
   const validateLapCount = (value: string): boolean => {
     const num = parseInt(value, 10);
     return !isNaN(num) && num > 0 && num <= 999;
@@ -1515,6 +1442,36 @@ const pollForSessionRequests = useCallback(async () => {
                           Enable Remote Control Mode
                         </label>
                         {remoteControlActive && <div className="ml-2 text-sm text-gray-500">Polling for session requests...</div>}
+                      </div>
+
+                      {/* Annoucements Selection */}
+                      <div className="space-y-3 p-4 bg-gray-50 rounded">
+                        <h3 className="font-semibold">Announcements</h3>
+                        <div className="space-y-2">
+                          {/* Annouce Lap Number */}
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="announceLapNumber" checked={announceLapNumber} onChange={(e) => setAnnounceLapNumber(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                            <label htmlFor="announceLapNumber" className="text-sm">
+                              Announce Lap Numbers
+                            </label>
+                          </div>
+
+                          {/* Annouce Last Lap Time */}
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="announceLastLapTime" checked={announceLastLapTime} onChange={(e) => setAnnounceLastLapTime(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                            <label htmlFor="announceLastLapTime" className="text-sm">
+                              Announce Last Lap Time
+                            </label>
+                          </div>
+
+                          {/* Play Beeps */}
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="playBeeps" checked={playBeeps} onChange={(e) => setPlayBeeps(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                            <label htmlFor="announceLastLapTime" className="text-sm">
+                              Play Beeps
+                            </label>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Timing Mode Selection */}
@@ -1751,79 +1708,6 @@ const pollForSessionRequests = useCallback(async () => {
                         )}
 
                         <div className="text-sm text-muted-foreground mt-1">{selectedLapCount === "unlimited" ? "Session will continue until manually stopped" : `Session will automatically complete after ${selectedLapCount} laps`}</div>
-                      </div>
-
-                      {/* Annoucements Selection */}
-                      <div className="space-y-3 p-4 bg-gray-50 rounded">
-                        <h3 className="font-semibold">Announcements</h3>
-                        <div className="space-y-2">
-                          {/* Annouce Lap Number */}
-                          <div className="flex items-center space-x-2">
-                            <input type="checkbox" id="announceLapNumber" checked={announceLapNumber} onChange={(e) => setAnnounceLapNumber(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
-                            <label htmlFor="announceLapNumber" className="text-sm">
-                              Announce Lap Numbers
-                            </label>
-                          </div>
-
-                          {/* Annouce Last Lap Time */}
-                          <div className="flex items-center space-x-2">
-                            <input type="checkbox" id="announceLastLapTime" checked={announceLastLapTime} onChange={(e) => setAnnounceLastLapTime(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
-                            <label htmlFor="announceLastLapTime" className="text-sm">
-                              Announce Last Lap Time
-                            </label>
-                          </div>
-
-                          {/* Play Beeps */}
-                          <div className="flex items-center space-x-2">
-                            <input type="checkbox" id="playBeeps" checked={playBeeps} onChange={(e) => setPlayBeeps(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
-                            <label htmlFor="announceLastLapTime" className="text-sm">
-                              Play Beeps
-                            </label>
-                          </div>
-
-                          {/* Voice Selection */}
-                          {/* 
-                          <div className="text-sm text-gray-500 mt-2">Current voice: {speechVoice?.name || "Default"}</div>
-                          <div className="mt-4">
-                            <label className="text-sm font-medium">Select Voice</label>
-                            <div className="mt-2 grid gap-2">
-                              {availableVoices.map((voice) => (
-                                <div
-                                  key={voice.voiceURI}
-                                  className={`p-2 rounded border cursor-pointer
-                ${speechVoice?.voiceURI === voice.voiceURI ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"}
-              `}
-                                  onClick={() => {
-                                    setSpeechVoice(voice);
-                                    testVoice(voice);
-                                  }}
-                                >
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <div className="font-medium">{voice.name}</div>
-                                      <div className="text-sm text-gray-500">{voice.lang}</div>
-                                    </div>
-                                    {speechVoice?.voiceURI === voice.voiceURI && <div className="text-blue-500">✓</div>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                            */}
-
-                          {/* Test Buttons */}
-                          {/* 
-                          <div className="flex gap-2 mt-2">
-                            <Button variant="outline" size="sm" onClick={testAnnouncements}>
-                              Test Announcements
-                            </Button>
-                            
-                            <Button variant="outline" size="sm" onClick={debugVoices}>
-                              Test Voice
-                            </Button>
-                          </div>
-                          */}
-                        </div>
                       </div>
 
                       {/* Session Settings Summary */}
@@ -2451,7 +2335,6 @@ const pollForSessionRequests = useCallback(async () => {
                       <span className="text-xs mt-1">Best</span>
                     </div>
                   </TabsTrigger>
-
                   <TabsTrigger value="drivercarmanager" className="py-3">
                     <div className="flex flex-col items-center">
                       <UserCog className="h-5 w-5" />
