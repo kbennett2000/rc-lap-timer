@@ -42,6 +42,7 @@ interface MotionSettings {
 }
 
 export default function LapTimer() {
+  // useState
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -85,10 +86,24 @@ export default function LapTimer() {
   const [showNewLocation, setShowNewLocation] = useState<boolean>(false);
   const [newLocationName, setNewLocationName] = useState<string>("");
   const [remoteControlActive, setRemoteControlActive] = useState(false);
+  const [addEditDialogState, setAddEditDialogState] = useState<{
+    isOpen: boolean;
+    type: "driver" | "car" | "location" | null;
+    action: "add" | null;
+    entityName: string;
+  }>({
+    isOpen: false,
+    type: null,
+    action: null,
+    entityName: "",
+  });
+
+  // useRef
   const remoteControlIntervalRef = useRef<NodeJS.Timeout>();
   const motionControlRef = useRef<{ stop: () => void; start: () => Promise<void> }>(null);
   const announceLapNumberRef = useRef(announceLapNumber);
 
+  // useEffect
   // Sync with the ref whenever it changes
   useEffect(() => {
     announceLapNumberRef.current = announceLapNumber;
@@ -297,11 +312,13 @@ export default function LapTimer() {
     };
   }, [speechVoice]); // Added speechVoice to dependency array to properly track its state
 
+  // interface
   interface DatePreset {
     label: string;
     days: number | "month" | "year";
   }
 
+  // const
   const DATE_PRESETS: DatePreset[] = [
     { label: "Today", days: 0 },
     { label: "Last 7 days", days: 7 },
@@ -646,21 +663,14 @@ export default function LapTimer() {
   };
 
   const handleAddCar = async () => {
-    const trimmedName = newCarName.trim();
+    const trimmedName = addEditDialogState.entityName.trim();
 
     if (!selectedDriver) {
       alert("Please select a driver first");
       return;
     }
 
-    if (!trimmedName) {
-      alert("Please enter a car name");
-      return;
-    }
-
-    const currentDriver = drivers.find((d) => d.id === selectedDriver);
-    if (!isCarNameUniqueForDriver(trimmedName)) {
-      alert(`${currentDriver?.name} already has a car named "${trimmedName}". Please use a different name.`);
+    if (!trimmedName || !isCarNameUniqueForDriver(trimmedName)) {
       return;
     }
 
@@ -696,8 +706,6 @@ export default function LapTimer() {
       );
 
       setSelectedCar(car.id);
-      setNewCarName("");
-      setShowNewCar(false);
     } catch (error) {
       logger.error("Error creating car:", error);
       alert("Failed to create car. Please try again.");
@@ -705,15 +713,9 @@ export default function LapTimer() {
   };
 
   const handleAddDriver = async () => {
-    const trimmedName = newDriverName.trim();
+    const trimmedName = addEditDialogState.entityName.trim();
 
-    if (!trimmedName) {
-      alert("Please enter a driver name");
-      return;
-    }
-
-    if (!isDriverNameUnique(trimmedName)) {
-      alert(`A driver named "${trimmedName}" already exists. Please use a different name.`);
+    if (!trimmedName || !isDriverNameUnique(trimmedName)) {
       return;
     }
 
@@ -734,12 +736,8 @@ export default function LapTimer() {
       }
 
       const { driver } = await response.json();
-
       setDrivers((prevDrivers) => [...prevDrivers, driver]);
       setSelectedDriver(driver.id);
-      setNewDriverName("");
-      setShowNewDriver(false);
-      setSelectedCar("");
     } catch (error) {
       logger.error("Error creating driver:", error);
       alert("Failed to create driver. Please try again.");
@@ -747,15 +745,9 @@ export default function LapTimer() {
   };
 
   const handleAddLocation = async () => {
-    const trimmedName = newLocationName.trim();
+    const trimmedName = addEditDialogState.entityName.trim();
 
-    if (!trimmedName) {
-      alert("Please enter a location name");
-      return;
-    }
-
-    if (!isLocationNameUnique(trimmedName)) {
-      alert(`A location named "${trimmedName}" already exists. Please use a different name.`);
+    if (!trimmedName || !isLocationNameUnique(trimmedName)) {
       return;
     }
 
@@ -778,27 +770,10 @@ export default function LapTimer() {
       const { location } = await response.json();
       setLocations((prevLocations) => [...prevLocations, location]);
       setSelectedLocation(location.id);
-      setNewLocationName("");
-      setShowNewLocation(false);
     } catch (error) {
       logger.error("Error creating location:", error);
       alert("Failed to create location. Please try again.");
     }
-  };
-
-  const handleCarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setNewCarName(newName);
-  };
-
-  const handleDriverNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setNewDriverName(newName);
-  };
-
-  const handleLocationNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setNewLocationName(newName);
   };
 
   const handleMotionDetected = useCallback(
@@ -1522,33 +1497,24 @@ export default function LapTimer() {
                                 ))}
                             </SelectContent>
                           </Select>
-                          <Button variant="outline" onClick={() => setShowNewDriver(!showNewDriver)}>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setAddEditDialogState({
+                                isOpen: true,
+                                type: "driver",
+                                action: "add",
+                                entityName: "",
+                              })
+                            }
+                          >
                             <User className="mr-2 h-4 w-4" />
                             New Driver
                           </Button>
                         </div>
-                        {showNewDriver && (
-                          <div className="space-y-2">
-                            <div className="flex space-x-2">
-                              <Input
-                                placeholder="Enter driver name"
-                                value={newDriverName}
-                                onChange={handleDriverNameChange}
-                                onKeyPress={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleAddDriver();
-                                  }
-                                }}
-                                className={newDriverName.trim() && !isDriverNameUnique(newDriverName) ? "border-red-500" : ""}
-                              />
-                              <Button onClick={handleAddDriver}>Add</Button>
-                            </div>
-                            {newDriverName.trim() && !isDriverNameUnique(newDriverName) && <div className="text-sm text-red-500">This driver name already exists. Please choose a different name.</div>}
-                          </div>
-                        )}
                       </div>
 
-                      {/* Car Selection - Only show if driver is selected */}
+                      {/* Car Selection */}
                       <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
                         {selectedDriver && (
                           <>
@@ -1568,36 +1534,26 @@ export default function LapTimer() {
                                     ))}
                                 </SelectContent>
                               </Select>
-                              <Button variant="outline" onClick={() => setShowNewCar(!showNewCar)}>
+                              <Button
+                                variant="outline"
+                                onClick={() =>
+                                  setAddEditDialogState({
+                                    isOpen: true,
+                                    type: "car",
+                                    action: "add",
+                                    entityName: "",
+                                  })
+                                }
+                              >
                                 <CarIcon className="mr-2 h-4 w-4" />
                                 New Car
                               </Button>
                             </div>
                           </>
                         )}
-
-                        {selectedDriver && showNewCar && (
-                          <div className="space-y-2">
-                            <div className="flex space-x-2">
-                              <Input
-                                placeholder="Enter car name"
-                                value={newCarName}
-                                onChange={handleCarNameChange}
-                                onKeyPress={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleAddCar();
-                                  }
-                                }}
-                                className={newCarName.trim() && !isCarNameUniqueForDriver(newCarName) ? "border-red-500" : ""}
-                              />
-                              <Button onClick={handleAddCar}>Add</Button>
-                            </div>
-                            {newCarName.trim() && !isCarNameUniqueForDriver(newCarName) && <div className="text-sm text-red-500">{drivers.find((d) => d.id === selectedDriver)?.name} already has a car with this name.</div>}
-                          </div>
-                        )}
                       </div>
 
-                      {/* Location Selection - Only show if driver and car are selected */}
+                      {/* Location Selection */}
                       <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
                         {selectedDriver && selectedCar && (
                           <>
@@ -1617,33 +1573,102 @@ export default function LapTimer() {
                                     ))}
                                 </SelectContent>
                               </Select>
-                              <Button variant="outline" onClick={() => setShowNewLocation(!showNewLocation)}>
+                              <Button
+                                variant="outline"
+                                onClick={() =>
+                                  setAddEditDialogState({
+                                    isOpen: true,
+                                    type: "location",
+                                    action: "add",
+                                    entityName: "",
+                                  })
+                                }
+                              >
                                 <MapPin className="mr-2 h-4 w-4" />
                                 New Location
                               </Button>
                             </div>
                           </>
                         )}
-                        {showNewLocation && (
-                          <div className="space-y-2">
-                            <div className="flex space-x-2">
-                              <Input
-                                placeholder="Enter location name"
-                                value={newLocationName}
-                                onChange={handleLocationNameChange}
-                                onKeyPress={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleAddLocation();
-                                  }
-                                }}
-                                className={newLocationName.trim() && !isLocationNameUnique(newLocationName) ? "border-red-500" : ""}
-                              />
-                              <Button onClick={handleAddLocation}>Add</Button>
-                            </div>
-                            {newLocationName.trim() && !isLocationNameUnique(newLocationName) && <div className="text-sm text-red-500">This location name already exists. Please choose a different name.</div>}
-                          </div>
-                        )}
                       </div>
+
+                      {/* Add/Edit Entity Dialog */}
+                      <AlertDialog
+                        open={addEditDialogState.isOpen}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setAddEditDialogState({
+                              isOpen: false,
+                              type: null,
+                              action: null,
+                              entityName: "",
+                            });
+                          }
+                        }}
+                      >
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Add New {addEditDialogState.type === "driver" ? "Driver" : addEditDialogState.type === "car" ? "Car" : "Location"}</AlertDialogTitle>
+                            <AlertDialogDescription>Enter a name for the new {addEditDialogState.type}</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-4">
+                            <Input
+                              value={addEditDialogState.entityName}
+                              onChange={(e) =>
+                                setAddEditDialogState((prev) => ({
+                                  ...prev,
+                                  entityName: e.target.value,
+                                }))
+                              }
+                              placeholder={`Enter ${addEditDialogState.type} name`}
+                              className={
+                                addEditDialogState.entityName.trim() &&
+                                ((addEditDialogState.type === "driver" && !isDriverNameUnique(addEditDialogState.entityName)) ||
+                                  (addEditDialogState.type === "car" && !isCarNameUniqueForDriver(addEditDialogState.entityName)) ||
+                                  (addEditDialogState.type === "location" && !isLocationNameUnique(addEditDialogState.entityName)))
+                                  ? "border-red-500"
+                                  : ""
+                              }
+                            />
+                            {addEditDialogState.entityName.trim() &&
+                              (addEditDialogState.type === "driver" && !isDriverNameUnique(addEditDialogState.entityName) ? (
+                                <p className="text-sm text-red-500 mt-2">This driver name already exists</p>
+                              ) : addEditDialogState.type === "car" && !isCarNameUniqueForDriver(addEditDialogState.entityName) ? (
+                                <p className="text-sm text-red-500 mt-2">This car name already exists for this driver</p>
+                              ) : addEditDialogState.type === "location" && !isLocationNameUnique(addEditDialogState.entityName) ? (
+                                <p className="text-sm text-red-500 mt-2">This location name already exists</p>
+                              ) : null)}
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                if (addEditDialogState.type === "driver") {
+                                  handleAddDriver();
+                                } else if (addEditDialogState.type === "car") {
+                                  handleAddCar();
+                                } else if (addEditDialogState.type === "location") {
+                                  handleAddLocation();
+                                }
+                                setAddEditDialogState({
+                                  isOpen: false,
+                                  type: null,
+                                  action: null,
+                                  entityName: "",
+                                });
+                              }}
+                              disabled={
+                                !addEditDialogState.entityName.trim() ||
+                                (addEditDialogState.type === "driver" && !isDriverNameUnique(addEditDialogState.entityName)) ||
+                                (addEditDialogState.type === "car" && !isCarNameUniqueForDriver(addEditDialogState.entityName)) ||
+                                (addEditDialogState.type === "location" && !isLocationNameUnique(addEditDialogState.entityName))
+                              }
+                            >
+                              Add
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
 
                       {/* Lap Count Selection */}
                       <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
