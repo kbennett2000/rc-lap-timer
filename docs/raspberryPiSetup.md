@@ -71,13 +71,9 @@ Install Node.js 20.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 ```
 
-```bash
-sudo apt-get install -y nodejs
-```
-
 Install required packages
 ```bash
-sudo apt install -y git nginx hostapd dnsmasq mariadb-server certbot
+sudo apt install -y nodejs git nginx hostapd dnsmasq mariadb-server certbot
 ```
 
 

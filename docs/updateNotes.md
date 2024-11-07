@@ -16,7 +16,7 @@ tar -czf rc-lap-timer-build.tar.gz * .next package.json package-lock.json node_m
 ```
 
 ```bash
-scp rc-lap-timer-build.tar.gz pi@raspberrypi.local:~
+scp rc-lap-timer-build.tar.gz pi@rclaptimer.local:~
 ```
 
 
