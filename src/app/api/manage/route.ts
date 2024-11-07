@@ -187,35 +187,47 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  logger.log("app/manage/route.ts-Delete");
   try {
     const { type, driverId, carId, id } = await request.json();
+
+    logger.log("type: " + type);
+    logger.log("driverId: " + driverId);
+    logger.log("carId: " + carId);
+    logger.log("id: " + id);
 
     if (type === "motionSetting") {
       await prisma.motionSettings.delete({
         where: { id },
       });
-
       return NextResponse.json({ success: true });
     }
 
     if (type === "location") {
-      // Delete location and all related sessions
       await prisma.$transaction(async (tx) => {
-        // First, get all sessions for this location
+        // Find all sessions for this location
         const sessions = await tx.session.findMany({
           where: { locationId: id },
           select: { id: true },
         });
 
-        // Delete all related data for each session
-        for (const session of sessions) {
+        // Delete all penalties and laps for these sessions
+        if (sessions.length > 0) {
+          const sessionIds = sessions.map((s) => s.id);
+
           await tx.penalty.deleteMany({
-            where: { sessionId: session.id },
+            where: { sessionId: { in: sessionIds } },
           });
+
           await tx.lap.deleteMany({
-            where: { sessionId: session.id },
+            where: { sessionId: { in: sessionIds } },
           });
         }
+
+        // Delete session requests for this location
+        await tx.sessionRequest.deleteMany({
+          where: { locationId: id },
+        });
 
         // Delete all sessions for this location
         await tx.session.deleteMany({
@@ -228,12 +240,9 @@ export async function DELETE(request: Request) {
         });
       });
 
-      // Fetch updated data including locations
       const [updatedDrivers, updatedLocations] = await Promise.all([
         prisma.driver.findMany({
-          include: {
-            cars: true,
-          },
+          include: { cars: true },
         }),
         prisma.location.findMany(),
       ]);
@@ -246,35 +255,47 @@ export async function DELETE(request: Request) {
     }
 
     if (type === "driver") {
-      // Delete driver and all related data
       await prisma.$transaction(async (tx) => {
-        // First, delete all sessions and related data for all cars
+        // Find all cars for this driver
         const cars = await tx.car.findMany({
           where: { driverId },
           select: { id: true },
         });
 
-        for (const car of cars) {
-          const sessions = await tx.session.findMany({
-            where: { carId: car.id },
-            select: { id: true },
+        const carIds = cars.map((c) => c.id);
+
+        // Find all sessions for these cars
+        const sessions = await tx.session.findMany({
+          where: { carId: { in: carIds } },
+          select: { id: true },
+        });
+
+        const sessionIds = sessions.map((s) => s.id);
+
+        // Delete all penalties and laps for these sessions
+        if (sessionIds.length > 0) {
+          await tx.penalty.deleteMany({
+            where: { sessionId: { in: sessionIds } },
           });
 
-          for (const session of sessions) {
-            await tx.penalty.deleteMany({
-              where: { sessionId: session.id },
-            });
-            await tx.lap.deleteMany({
-              where: { sessionId: session.id },
-            });
-          }
-
-          await tx.session.deleteMany({
-            where: { carId: car.id },
+          await tx.lap.deleteMany({
+            where: { sessionId: { in: sessionIds } },
           });
         }
 
-        // Then delete all cars
+        // Delete session requests for this driver and their cars
+        await tx.sessionRequest.deleteMany({
+          where: {
+            OR: [{ driverId }, { carId: { in: carIds } }],
+          },
+        });
+
+        // Delete all sessions for the cars
+        await tx.session.deleteMany({
+          where: { carId: { in: carIds } },
+        });
+
+        // Delete all cars
         await tx.car.deleteMany({
           where: { driverId },
         });
@@ -285,28 +306,37 @@ export async function DELETE(request: Request) {
         });
       });
     } else if (type === "car") {
-      // Delete car and all related data
       await prisma.$transaction(async (tx) => {
-        // First, delete all sessions and related data
+        // Find all sessions for this car
         const sessions = await tx.session.findMany({
           where: { carId },
           select: { id: true },
         });
 
-        for (const session of sessions) {
+        // Delete all penalties and laps for these sessions
+        if (sessions.length > 0) {
+          const sessionIds = sessions.map((s) => s.id);
+
           await tx.penalty.deleteMany({
-            where: { sessionId: session.id },
+            where: { sessionId: { in: sessionIds } },
           });
+
           await tx.lap.deleteMany({
-            where: { sessionId: session.id },
+            where: { sessionId: { in: sessionIds } },
           });
         }
 
+        // Delete session requests for this car
+        await tx.sessionRequest.deleteMany({
+          where: { carId },
+        });
+
+        // Delete all sessions for this car
         await tx.session.deleteMany({
           where: { carId },
         });
 
-        // Then delete the car
+        // Finally delete the car
         await tx.car.delete({
           where: { id: carId },
         });

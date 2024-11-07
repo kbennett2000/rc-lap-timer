@@ -36,11 +36,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    // Clone the request before reading
     const clonedRequest = request.clone();
     const data = await clonedRequest.json();
 
-    // Handle driver/car/location creation
+    // Handle driver creation
     if (data.type === "driver") {
       const newDriver = await prisma.driver.create({
         data: {
@@ -54,6 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, driver: newDriver });
     }
 
+    // Handle car creation
     if (data.type === "car") {
       const newCar = await prisma.car.create({
         data: {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, car: newCar });
     }
 
-    // Add location creation
+    // Handle location creation
     if (data.type === "location") {
       const newLocation = await prisma.location.create({
         data: {
@@ -82,8 +82,9 @@ export async function POST(request: Request) {
     if (data.sessions) {
       // Track processed sessions to prevent duplicates
       const processedIds = new Set<string>();
+      const errors: Array<{ sessionId: string; error: string }> = [];
 
-      // Update sessions using transactions for atomicity
+      // Process each session
       for (const session of data.sessions) {
         const sessionId = session.id?.toString() || Date.now().toString();
 
@@ -93,67 +94,106 @@ export async function POST(request: Request) {
         }
         processedIds.add(sessionId);
 
-        // Check if session already exists
-        const existingSession = await prisma.session.findUnique({
-          where: { id: sessionId },
-        });
+        try {
+          // Validate existence of required relations before proceeding
+          const [existingSession, driver, car, location] = await Promise.all([
+            prisma.session.findUnique({
+              where: { id: sessionId },
+            }),
+            prisma.driver.findUnique({
+              where: { id: session.driverId },
+            }),
+            prisma.car.findUnique({
+              where: { id: session.carId },
+            }),
+            prisma.location.findUnique({
+              where: { id: session.locationId },
+            }),
+          ]);
 
-        if (existingSession) {
-          continue;
-        }
-
-        // Calculate total time
-        const totalTime = Math.floor(typeof session.stats.totalTime === "string" ? parseInt(session.stats.totalTime) : session.stats.totalTime || 0);
-
-        // Use transaction to ensure all related data is created atomically
-        await prisma.$transaction(async (tx) => {
-          // Create the session with location
-          await tx.session.create({
-            data: {
-              id: sessionId,
-              date: new Date(session.date),
-              driver: {
-                connect: { id: session.driverId },
-              },
-              car: {
-                connect: { id: session.carId },
-              },
-              location: {
-                connect: { id: session.locationId }, // Add location connection
-              },
-              driverName: session.driverName,
-              carName: session.carName,
-              locationName: session.locationName, // Add location name
-              totalTime,
-              totalLaps: session.laps.length,
-            },
-          });
-
-          // Create laps if they exist
-          if (session.laps?.length > 0) {
-            const lapsToCreate = session.laps.map((lap: any, index: number) => ({
-              sessionId,
-              lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
-              lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
-            }));
-
-            await tx.lap.createMany({
-              data: lapsToCreate,
-            });
+          // Skip if session already exists
+          if (existingSession) {
+            continue;
           }
 
-          // Create penalties if they exist
-          if (session.penalties?.length > 0) {
-            await tx.penalty.createMany({
-              data: session.penalties.map((penalty: any) => ({
+          // Validate all required relations exist
+          if (!driver) {
+            errors.push({ sessionId, error: `Driver with id ${session.driverId} not found` });
+            continue;
+          }
+          if (!car) {
+            errors.push({ sessionId, error: `Car with id ${session.carId} not found` });
+            continue;
+          }
+          if (!location) {
+            errors.push({ sessionId, error: `Location with id ${session.locationId} not found` });
+            continue;
+          }
+
+          // Calculate total time
+          const totalTime = Math.floor(typeof session.stats.totalTime === "string" ? parseInt(session.stats.totalTime) : session.stats.totalTime || 0);
+
+          // Use transaction to ensure all related data is created atomically
+          await prisma.$transaction(async (tx) => {
+            // Create the session
+            await tx.session.create({
+              data: {
+                id: sessionId,
+                date: new Date(session.date),
+                driver: {
+                  connect: { id: session.driverId },
+                },
+                car: {
+                  connect: { id: session.carId },
+                },
+                location: {
+                  connect: { id: session.locationId },
+                },
+                driverName: session.driverName,
+                carName: session.carName,
+                locationName: session.locationName,
+                totalTime,
+                totalLaps: session.laps.length,
+              },
+            });
+
+            // Create laps if they exist
+            if (session.laps?.length > 0) {
+              const lapsToCreate = session.laps.map((lap: any, index: number) => ({
                 sessionId,
-                lapNumber: penalty.lapNumber,
-                count: penalty.count || 0,
-              })),
-            });
-          }
-        });
+                lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
+                lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
+              }));
+
+              await tx.lap.createMany({
+                data: lapsToCreate,
+              });
+            }
+
+            // Create penalties if they exist
+            if (session.penalties?.length > 0) {
+              await tx.penalty.createMany({
+                data: session.penalties.map((penalty: any) => ({
+                  sessionId,
+                  lapNumber: penalty.lapNumber,
+                  count: penalty.count || 0,
+                })),
+              });
+            }
+          });
+        } catch (error) {
+          errors.push({
+            sessionId,
+            error: error instanceof Error ? error.message : "Unknown error occurred",
+          });
+        }
       }
+
+      // Return success with any errors that occurred
+      return NextResponse.json({
+        success: true,
+        errors: errors.length > 0 ? errors : undefined,
+      });
     }
 
     return NextResponse.json({ success: true });
@@ -164,9 +204,7 @@ export async function POST(request: Request) {
         error: "Error saving data",
         details: (error as Error).message,
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

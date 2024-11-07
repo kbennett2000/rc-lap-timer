@@ -173,6 +173,11 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     }
   };
 
+
+
+
+
+
   const handleDelete = async () => {
     if (!deleteType) return;
     setIsProcessing(true);
@@ -250,6 +255,35 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     }
   };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const handleAddDriver = async () => {
     const trimmedName = newDriverName.trim();
     if (!trimmedName) {
@@ -284,6 +318,11 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       alert("Failed to create driver. Please try again.");
     }
   };
+
+
+
+
+
 
   const handleAddCar = async () => {
     const trimmedName = newCarName.trim();
