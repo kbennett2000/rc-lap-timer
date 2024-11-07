@@ -148,10 +148,6 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     }
   };
 
-  const isLocationNameUnique = (name: string): boolean => {
-    return !locations.some((location) => location.name.toLowerCase().trim() === name.toLowerCase().trim());
-  };
-
   const loadMotionSettings = async () => {
     try {
       const response = await fetch("/api/motion-settings");
