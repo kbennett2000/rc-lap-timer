@@ -13,6 +13,8 @@ TRUNCATE TABLE rc_lap_timer.Car;
 TRUNCATE TABLE rc_lap_timer.Driver;
 TRUNCATE TABLE rc_lap_timer.Location;
 TRUNCATE TABLE rc_lap_timer.MotionSettings;
+TRUNCATE TABLE rc_lap_timer.CurrentLap;    
+TRUNCATE TABLE rc_lap_timer.CurrentSession; 
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;

@@ -121,3 +121,27 @@ enum SessionRequestStatus {
   COMPLETED
   FAILED
 }
+
+model CurrentSession {
+  id           String           @id @default(uuid())
+  driverName   String
+  carName      String
+  locationName String
+  lapCount     Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  laps         CurrentLap[]    // Relation to laps
+}
+
+model CurrentLap {
+  id         String        @id @default(uuid())
+  session    CurrentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  String
+  lapTime    Int
+  lapNumber  Int
+  penaltyCount Int         @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([sessionId])
+}
