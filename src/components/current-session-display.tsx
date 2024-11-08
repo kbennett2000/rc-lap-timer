@@ -215,4 +215,5 @@ export function CurrentSessionDisplay() {
       </motion.div>
     </AnimatePresence>
   );
+  
 }

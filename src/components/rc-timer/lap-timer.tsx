@@ -2233,15 +2233,31 @@ export default function LapTimer() {
               <TabsContent value="previous" className="px-4 space-y-4 h-full overflow-y-auto">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
                   {savedSessions.length === 0 ? (
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-center py-12">
-                          <ListX className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                          <h3 className="mt-4 text-lg font-semibold">No Sessions Recorded</h3>
-                          <p className="mt-2 text-sm text-muted-foreground">Record your first timing session to see it appear here.</p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <>
+                      {/* Current Session Display */}
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-center">
+                            <CardTitle>Current Session</CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {/* Current Session Display */}
+                          <CurrentSessionDisplay />
+                        </CardContent>
+                      </Card>
+
+                      {/* No Records to Display Message */}
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-center py-12">
+                            <ListX className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                            <h3 className="mt-4 text-lg font-semibold">No Sessions Recorded</h3>
+                            <p className="mt-2 text-sm text-muted-foreground">Record your first timing session to see it appear here.</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
                   ) : (
                     <>
                       {/* Current Session Display */}
