@@ -6,7 +6,7 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ListX, Search, ListChecks, Trophy, BarChart2, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList } from "lucide-react";
+import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { CalendarIcon, UserCog } from "lucide-react";
 import cn from "classnames";
 import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { motion, AnimatePresence } from "framer-motion"; // Added Framer Motion import
+import { motion, AnimatePresence } from "framer-motion"; 
 import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import { MotionDetector } from "./motion-detector";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -27,10 +27,10 @@ import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
 
 interface BeepOptions {
-  frequency?: number; // Frequency in Hz
-  duration?: number; // Duration in milliseconds
-  volume?: number; // Volume between 0 and 1
-  type?: OscillatorType; // Type of wave
+  frequency?: number; 
+  duration?: number; 
+  volume?: number; 
+  type?: OscillatorType; 
 }
 
 interface MotionSettings {
@@ -48,10 +48,6 @@ export default function LapTimer() {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [laps, setLaps] = useState<number[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
-  const [newDriverName, setNewDriverName] = useState<string>("");
-  const [newCarName, setNewCarName] = useState<string>("");
-  const [showNewDriver, setShowNewDriver] = useState<boolean>(false);
-  const [showNewCar, setShowNewCar] = useState<boolean>(false);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<string | null>(null);
   const [selectedLapCount, setSelectedLapCount] = useState<"unlimited" | number>("unlimited");
@@ -83,8 +79,6 @@ export default function LapTimer() {
   const [playBeeps, setPlayBeeps] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [showNewLocation, setShowNewLocation] = useState<boolean>(false);
-  const [newLocationName, setNewLocationName] = useState<string>("");
   const [remoteControlActive, setRemoteControlActive] = useState(false);
   const [addEditDialogState, setAddEditDialogState] = useState<{
     isOpen: boolean;
