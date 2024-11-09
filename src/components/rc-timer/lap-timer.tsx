@@ -30,7 +30,6 @@ import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
 
-
 // ****************************************
 // interface
 // ****************************************
@@ -602,17 +601,20 @@ export default function LapTimer() {
     }
   };
 
-  const formatTimeForSpeech = (time: number): string => {
+  const formatTimeForSpeech = (time: number): string => { 
     const minutes = Math.floor(time / 60000);
     const seconds = Math.floor((time % 60000) / 1000);
     const milliseconds = Math.floor((time % 1000) / 10);
 
+    // Format milliseconds to always have two digits
+    const formattedMilliseconds = milliseconds.toString().padStart(2, '0');
+
     if (minutes > 0) {
-      return `${minutes} minute${minutes !== 1 ? "s" : ""}, ${seconds} point ${milliseconds}`;
+      return `${minutes} minute${minutes !== 1 ? "s" : ""}, ${seconds} point ${formattedMilliseconds}`;
     } else {
-      return `${seconds} point ${milliseconds}`;
+      return `${seconds} point ${formattedMilliseconds}`;
     }
-  };
+};
 
   const getBestLap = (laps: number[]) => {
     if (laps.length === 0) return null;
@@ -1230,7 +1232,7 @@ export default function LapTimer() {
     };
   }, []);
 
-  const recordLap = (): void => {
+  const recordLap = async (): Promise<void> => {
     if (!isRunning) return;
 
     setLapAnimation(true);
@@ -1243,21 +1245,21 @@ export default function LapTimer() {
     // Add the new lap time as a number
     setLaps((prev) => [...prev, currentLapTime]);
 
-    logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
-
     // Check if we've reached the selected number of laps
     if (selectedLapCount !== "unlimited" && laps.length + 1 >= selectedLapCount) {
       playRaceFinish();
-      announceRaceInfo(lapsRef.current.length, currentLapTime, true);
+       announceRaceInfo(lapsRef.current.length, currentLapTime, true);
       handleSessionCompletion([...laps, currentLapTime]);
     } else {
       playBeep();
       // Announce the lap information
-      announceRaceInfo(laps.length + 2, currentLapTime);
+       announceRaceInfo(laps.length + 2, currentLapTime);
     }
+
+     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
   };
 
-  const recordLap_MD = (): void => {
+  const recordLap_MD = async (): Promise<void> => {
     if (!isRunningRef.current) return;
 
     setLapAnimation(true);
@@ -1270,18 +1272,19 @@ export default function LapTimer() {
     // Add the new lap time as a number
     setLaps((prev) => [...prev, currentLapTime]);
 
-    logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
-
     // Check if we've reached the selected number of laps
     if (selectedLapCountRef.current !== "unlimited" && lapsRef.current.length + 1 >= selectedLapCountRef.current) {
       playRaceFinish();
-      announceRaceInfo(lapsRef.current.length, currentLapTime, true);
+       announceRaceInfo(lapsRef.current.length, currentLapTime, true);
       handleStopCamera();
       handleSessionCompletion([...lapsRef.current, currentLapTime]);
     } else {
+      playBeep();
       // Announce the lap information
-      announceRaceInfo(lapsRef.current.length + 2, currentLapTime);
+       announceRaceInfo(lapsRef.current.length + 2, currentLapTime);
     }
+
+     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
   };
 
   // Auto-refresh function
@@ -1341,13 +1344,11 @@ export default function LapTimer() {
     return [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
-  const startTimer = (): void => {
+  const startTimer = async (): Promise<void> => {
     if (!selectedDriver || !selectedCar || !selectedLocation) {
       alert("Please select a driver and car before starting the timer");
       return;
     }
-
-    logCurrentSessionStart();
 
     playStartBeep();
     announceRaceBegin();
@@ -1356,22 +1357,25 @@ export default function LapTimer() {
     setStartTime(Date.now());
     setIsRunning(true);
     setLaps([]);
+    logCurrentSessionStart();
   };
 
-  const startTimer_MD = (): void => {
+  const startTimer_MD = async (): Promise<void> => {
     if (!selectedDriverRef || !selectedCarRef || !selectedLocationRef) {
       alert("Please select a driver, car, and location before starting the timer");
       return;
     }
 
-    logCurrentSessionStart();
-
+    playStartBeep();
     announceRaceBegin();
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());
     setIsRunning(true);
     setLaps([]);
+    logCurrentSessionStart();
+
+    
   };
 
   const stopTimer = (): void => {
@@ -1407,28 +1411,21 @@ export default function LapTimer() {
   // ******************************************************************************************
 
   const [theCurrentSessionId, setTheCurrentSessionId] = useState<string | null>(null);
+  const theCurrentSessionIdRef = useRef(theCurrentSessionId);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    theCurrentSessionIdRef.current = theCurrentSessionId;
+  }, [theCurrentSessionId]);
+  
   const [theCurrentSessionPenaltyCount, setTheCurrentSessionPenaltyCount] = useState<number>(0);
   const [theCurrentSessionLapNumber, setTheCurrentSessionLapNumber] = useState<number>(0);
 
   const logCurrentSessionStart = async (): Promise<void> => {
-    logger.log("**************************************");
-    logger.log("lap-timer.logCurrentSessionStart");
-    // logger.log("selectedDriver: " + selectedDriver);
-    // logger.log("selectedCar: " + selectedCar);
-    // logger.log("selectedLocation: " + selectedLocation);
-    // logger.log("selectedLapCount: " + selectedLapCount);
-
-    // Reset current lap number
-    setTheCurrentSessionLapNumber(0);
+    setTheCurrentSessionLapNumber(1);
 
     const displayDriverName = getDriverNameByIdSync(selectedDriver, drivers);
     const displayCarName = getCarNameByIdSync(selectedCar, drivers);
     const displayLocationName = getLocationNameByIdSync(selectedLocation, locations);
-
-    logger.log("displayDriverName: " + displayDriverName);
-    logger.log("displayCarName: " + displayCarName);
-    logger.log("displayLocationName: " + displayLocationName);
-    logger.log("selectedLapCount: " + selectedLapCount);
 
     var currentSessionLapCount = 0;
     if (selectedLapCount != "unlimited") {
@@ -1454,8 +1451,7 @@ export default function LapTimer() {
 
     if (response.success) {
       // Store the current session ID for future lap additions
-      const currentSessionId = response.session.id;
-      logger.log("Created new current session:", currentSessionId);
+      const currentSessionId = response.session.id;      
       setTheCurrentSessionId(currentSessionId);
     } else {
       throw new Error("Failed to create current session");
@@ -1463,21 +1459,15 @@ export default function LapTimer() {
   };
 
   const logCurrentSessionRecordLap = async (LastLapEndTime: number, CurrentLapTime: number): void => {
-    logger.log("**************************************");
-    logger.log("lap-timer.logCurrentSessionRecordLap");
-    logger.log(`LastLapEndTime: ${LastLapEndTime}`);
-    logger.log(`CurrentLapTime: ${CurrentLapTime}`);
-    logger.log(`Laps.length: ${laps.length}`);
-
     // Type guard to ensure we have a valid session ID
-    if (!theCurrentSessionId) {
+    if (!theCurrentSessionIdRef.current) {
       logger.warn("No current session ID to record laps for");
       return;
     }
 
     // Add CurrentLapTime to db
     const response = await addLapToCurrentSession({
-      sessionId: theCurrentSessionId,
+      sessionId: String(theCurrentSessionIdRef.current),
       lapTime: CurrentLapTime, // lap time in milliseconds
       lapNumber: theCurrentSessionLapNumber + 1,
       penaltyCount: theCurrentSessionPenaltyCount,
@@ -1487,8 +1477,7 @@ export default function LapTimer() {
     setTheCurrentSessionLapNumber(theCurrentSessionLapNumber + 1);
 
     if (response.success) {
-      setTheCurrentSessionPenaltyCount(0);
-      logger.log("Added new lap:", response.lap);
+      setTheCurrentSessionPenaltyCount(0);      
       return response.lap;
     } else {
       throw new Error("Failed to add lap");
@@ -1509,13 +1498,13 @@ export default function LapTimer() {
     logger.log("lap-timer.logCurrentSessionFinish");
 
     // Type guard to ensure we have a valid session ID
-    if (!theCurrentSessionId) {
+    if (!theCurrentSessionIdRef.current) {
       logger.warn("No current session ID to delete");
       return;
     }
 
     // Delete db record
-    const response = await deleteCurrentSession(theCurrentSessionId);
+    const response = await deleteCurrentSession(theCurrentSessionIdRef.current);
   };
 
   function getDriverNameByIdSync(driverId: string, drivers: Driver[]): string | null {
@@ -1562,21 +1551,11 @@ export default function LapTimer() {
   }
 
   // Add a new lap to current session
-  async function addLapToCurrentSession(data: { sessionId: string; lapTime: number; lapNumber: number; penaltyCount?: number }) {
+  async function addLapToCurrentSession(data: { sessionId: string; lapTime: number; lapNumber: number; penaltyCount?: number; }) {
     const response = await fetch("/api/current-session", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "addLap", ...data }),
-    });
-    return await response.json();
-  }
-
-  // Update an existing lap
-  async function updateCurrentLap(data: { lapId: string; lapTime: number; lapNumber: number; penaltyCount: number }) {
-    const response = await fetch("/api/current-session", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "updateLap", ...data }),
     });
     return await response.json();
   }
@@ -1591,10 +1570,7 @@ export default function LapTimer() {
     return await response.json();
   }
 
-  /**
-   * Deletes all records from the CurrentSession and CurrentLap tables
-   * @returns Promise<boolean> true if successful, throws error if failed
-   */
+  // Deletes all records from the CurrentSession and CurrentLap tables
   async function truncateCurrentSessions(): Promise<boolean> {
     try {
       const response = await fetch("/api/current-session/truncate", {
@@ -2245,6 +2221,19 @@ export default function LapTimer() {
                           {/* Current Session Display */}
                           <CurrentSessionDisplay />
                         </CardContent>
+
+                        {/* Request Session Form */}
+                        <Card>
+                          <CardHeader>
+                            <div className="flex justify-between items-center">
+                              <CardTitle>Request a Session</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {/* Session Request Form */}
+                            <SessionRequestForm drivers={drivers} locations={locations} />
+                          </CardContent>
+                        </Card>
                       </Card>
 
                       {/* No Records to Display Message */}

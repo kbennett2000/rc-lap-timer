@@ -145,7 +145,7 @@ export function CurrentSessionDisplay() {
                     <Timer className="h-5 w-5 mx-auto mb-2 text-blue-500" />
                     <div className="text-sm font-medium text-gray-500">Laps</div>
                     <div className="text-lg font-semibold">
-                      {currentSession.laps.length} / {currentSession.lapCount || "∞"}
+                      {currentSession.laps.length + 1} / {currentSession.lapCount || "∞"}
                     </div>
                   </div>
                 </CardContent>

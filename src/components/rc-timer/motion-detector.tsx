@@ -247,7 +247,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     }
 
     frameCountRef.current++;
-    logger.log("Processing frame:", frameCountRef.current);
+    // logger.log("Processing frame:", frameCountRef.current);
 
     // Use settingsRef.current instead of settings
     if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
@@ -277,12 +277,12 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       const frameSize = currentFrame.width * currentFrame.height;
       const changePercent = (changedPixels / frameSize) * 100;
       setLastChangePercent(changePercent);
-      logger.log("Change percent:", changePercent.toFixed(2) + "%");
+      // logger.log("Change percent:", changePercent.toFixed(2) + "%");
 
       if (changePercent > settingsRef.current.threshold) {
         const now = Date.now();
         if (now - lastMotionTimeRef.current > settingsRef.current.cooldown) {
-          logger.log("Motion detected!");
+          // logger.log("Motion detected!");
           playBeep();
           setMotionEvents((prev) => prev + 1);
           if (!isPreviewingRef.current) {
