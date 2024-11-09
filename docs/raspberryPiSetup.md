@@ -615,12 +615,105 @@ Wait a few seconds
 sudo systemctl start nginx
 ```
 
+### System Configuration Feature Setup
+
+Create a shell script to handle system changes:
+```bash
+sudo nano /usr/local/bin/rc-config-helper.sh
+```
+
+Add this content:
+```bash
+#!/bin/bash
+
+# Exit on any error
+set -e
+
+# Function to update wifi settings
+update_wifi() {
+    local name="$1"
+    local pass="$2"
+    echo "Updating WiFi settings: name=$name"
+    if [ ! -z "$name" ]; then
+        sed -i "s/^ssid=.*/ssid=$name/" /etc/hostapd/hostapd.conf
+    fi
+    if [ ! -z "$pass" ]; then
+        sed -i "s/^wpa_passphrase=.*/wpa_passphrase=$pass/" /etc/hostapd/hostapd.conf
+    fi
+    systemctl restart hostapd
+    echo "WiFi settings updated successfully"
+}
+
+# Function to update hostname
+update_hostname() {
+    local name="$1"
+    echo "Updating hostname to: $name"
+    echo "$name" > /etc/hostname
+    sed -i "s/127\.0\.1\.1.*/127.0.1.1\t$name/" /etc/hosts
+    echo "Hostname updated successfully"
+}
+
+# Function to update user password
+update_password() {
+    local pass="$1"
+    echo "Updating user password"
+    echo "pi:$pass" | chpasswd
+    echo "Password updated successfully"
+}
+
+# Log the command being executed (without password)
+if [ "$1" = "password" ]; then
+    echo "Executing command: $1 ****"
+else
+    echo "Executing command: $@"
+fi
+
+# Parse commands
+case "$1" in
+    "wifi")
+        update_wifi "$2" "$3"
+        ;;
+    "hostname")
+        update_hostname "$2"
+        ;;
+    "password")
+        update_password "$2"
+        ;;
+    "reboot")
+        echo "Initiating system reboot..."
+        shutdown -r now
+        ;;
+    *)
+        echo "Invalid command: $1"
+        exit 1
+        ;;
+esac
+```
+
+Update sudoers:
+```bash
+sudo nano /etc/sudoers.d/rc-lap-timer
+```
+
+Replace content with:
+```
+# Allow pi user to execute configuration helper script without password
+pi ALL=(ALL) NOPASSWD: /usr/local/bin/rc-config-helper.sh *
+```
+
+Set proper permissions:
+```bash
+sudo chmod 440 /etc/sudoers.d/rc-lap-timer
+```
+
+```bash
+sudo chmod 755 /usr/local/bin/rc-config-helper.sh
+```
+
 Reboot:
 ```bash
 sudo reboot now
 ```
-
-SEE https://claude.ai/chat/fdab882d-5f3b-4765-9b32-385023ce77ba
 
 
 ## 10. Testing
