@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic"; // Disable route caching
 export const revalidate = 0; // Disable fetch caching
 
 export async function GET() {
-  const execId = Date.now(); // Use timestamp to ensure unique execution ID
+  // const execId = Date.now(); // Use timestamp to ensure unique execution ID
   // logger.log(`[${execId}] Route execution started`);
 
   try {
@@ -59,17 +59,17 @@ export async function GET() {
           createdAt: lap.createdAt.toISOString(),
         })),
       })),
-      execId, // Include execution ID in response
+      // execId, // Include execution ID in response
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    logger.error(`[${execId}] Error in route handler:`, error);
+    // logger.error(`[${execId}] Error in route handler:`, error);
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch current session summary",
         details: error instanceof Error ? error.message : "Unknown error",
-        execId,
+        // execId,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
