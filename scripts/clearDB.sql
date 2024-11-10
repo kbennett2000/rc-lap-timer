@@ -1,6 +1,3 @@
--- clear_all_data.sql
--- This script removes all data from the RC Lap Timer database
-
 -- Disable foreign key checks to allow deletion in any order
 SET FOREIGN_KEY_CHECKS = 0;
 
