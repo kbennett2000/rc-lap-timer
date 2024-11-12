@@ -15,10 +15,10 @@ npm run dev-https
 What is it?
 
 How does it work?
-- Add drivers, cars
+- Add drivers, cars, locations
 
 - Session Setup
--- Number of Laps
+-- Number of Laps, timing mode
 
 - Timing Modes:
 -- UI
@@ -27,6 +27,7 @@ How does it work?
 --- Preview Mode
 --- Camera settings
 --- Saving / Loading settings
+-- Remote MD
 
 Session Listing
 - Search filters
