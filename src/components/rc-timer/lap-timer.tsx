@@ -241,11 +241,6 @@ export default function LapTimer() {
     };
   }, [isRunning, startTime]);
 
-  // TODO: delete this???
-  useEffect(() => {
-    // setSelectedCar("");
-  }, [selectedDriver]);
-
   // Load data on component mount
   useEffect(() => {
     loadSavedData();
@@ -290,6 +285,7 @@ export default function LapTimer() {
       const voices = window.speechSynthesis.getVoices();
       // Filter for English voices
       const englishVoices = voices.filter((voice) => voice.lang.startsWith("en-"));
+
       setAvailableVoices(englishVoices);
 
       // If no voice is selected, set the default
@@ -380,43 +376,6 @@ export default function LapTimer() {
   // ************************************************************************************************
   // ************************************************************************************************
 
-  // Add this state to manage the speech queue
-  const [speechQueue, setSpeechQueue] = useState<string[]>([]);
-  const isSpeaking = useRef(false);
-
-  // Add this effect to process the speech queue
-  useEffect(() => {
-    const processSpeechQueue = async () => {
-      if (speechQueue.length === 0 || isSpeaking.current) return;
-
-      isSpeaking.current = true;
-      const text = speechQueue[0];
-
-      try {
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        if (speechVoice) utterance.voice = speechVoice;
-
-        await new Promise((resolve) => {
-          utterance.onend = resolve;
-          utterance.onerror = resolve;
-          window.speechSynthesis.speak(utterance);
-        });
-      } catch (error) {
-        logger.error("Speech error:", error);
-      } finally {
-        setSpeechQueue((queue) => queue.slice(1));
-        isSpeaking.current = false;
-      }
-    };
-
-    processSpeechQueue();
-  }, [speechQueue, speechVoice]);
-
   // Add this effect to keep speech synthesis active
   useEffect(() => {
     const resumeInterval = setInterval(() => {
@@ -428,120 +387,12 @@ export default function LapTimer() {
     return () => clearInterval(resumeInterval);
   }, []);
 
-  const checkSpeechSupport = () => {
-    return "speechSynthesis" in window && window.speechSynthesis.getVoices().length > 0;
-  };
-
-  interface SpeechSynthesisErrorEvent extends Event {
-    error: string;
-    utterance: SpeechSynthesisUtterance;
-    charIndex: number;
-    charLength: number;
-  }
-
   const announceRaceBegin = useCallback(async () => {
-    logger.log("announceRaceBegin.001");
-
-    
-    // Try speech synthesis first
-    // if (window.speechSynthesis && await testSpeechSynthesis()) {
-    if (window.speechSynthesis) {
-    logger.log("announceRaceBegin.002");
-
-    try {
-      // Force cancel and wait longer for cleanup
-      window.speechSynthesis.cancel();
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Increased wait time
-
-      logger.log("announceRaceBegin.003");
-
-      // Create announcement with retry logic
-      const announcement = "Timing Session Started";
-      const maxRetries = 1;
-      let attempt = 0;
-      let success = false;
-
-      logger.log("announceRaceBegin.004");
-
-      while (attempt < maxRetries && !success) {
-        try {
-          logger.log("announceRaceBegin.005", `Attempt ${attempt + 1}`);
-
-          // Force resume before each attempt
-          window.speechSynthesis.resume();
-          await new Promise((resolve) => setTimeout(resolve, 100));
-
-          const utterance = new SpeechSynthesisUtterance(announcement);
-
-          // Configure speech parameters
-          if (speechVoice) {
-            utterance.voice = speechVoice;
-          }
-          utterance.rate = 1.0; // Reduced rate for better reliability
-          utterance.pitch = 1.0;
-          utterance.volume = 1.0;
-
-          logger.log("announceRaceBegin.006");
-
-          // Create a timeout promise
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("Speech timeout")), 5000);
-          });
-
-          // Create a speech promise
-          const speechPromise = new Promise((resolve) => {
-            utterance.onend = () => {
-              success = true;
-              resolve(true);
-            };
-
-            utterance.onerror = (event) => {
-              logger.error(`Speech error on attempt ${attempt + 1}:`, event);
-              resolve(false);
-            };
-
-            // Force resume and speak
-            window.speechSynthesis.resume();
-            window.speechSynthesis.speak(utterance);
-          });
-
-          // Race between timeout and speech
-          try {
-            await Promise.race([speechPromise, timeoutPromise]);
-          } catch (error) {
-            logger.error("Speech timed out:", error);
-          }
-
-          if (success) break;
-        } catch (attemptError) {
-          logger.error(`Error on attempt ${attempt + 1}:`, attemptError);
-        }
-
-        // Longer wait between retries
-        if (!success && attempt < maxRetries - 1) {
-          window.speechSynthesis.cancel(); // Cancel before retry
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-
-        attempt++;
-      }
-
-      logger.log("announceRaceBegin.007", `Final result: ${success ? "Success" : "Failed"}`);
-    } catch (error) {
-      logger.error("Error in announceRaceBegin:", error);
-    } finally {
-      // Always ensure we clean up properly
-      window.speechSynthesis.cancel();
-      logger.log("announceRaceBegin.008");
+    var didTTSWork = sayIt("Timing Session Started");
+    if (!didTTSWork) {
+      logger.log("announceRaceBegin - TTS FAILED!!!");
     }
-  } else {
-      // Fall back to audio
-      await createAudioSpeech("Session Started");
-  }
-
-
-
-  }, [speechVoice]);
+  }, []);
 
   // Add this effect to manage speech synthesis state globally
   useEffect(() => {
@@ -575,44 +426,6 @@ export default function LapTimer() {
     };
   }, []);
 
-  // Add this to handle speech synthesis initialization
-  useEffect(() => {
-    const initSpeechSynthesis = async () => {
-      if (!window.speechSynthesis) return;
-
-      // Reset speech synthesis state
-      window.speechSynthesis.cancel();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      try {
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length === 0) {
-          // Wait for voices to load
-          await new Promise((resolve) => {
-            window.speechSynthesis.onvoiceschanged = () => {
-              resolve(true);
-            };
-            // Timeout after 3 seconds
-            setTimeout(resolve, 3000);
-          });
-        }
-
-        // Try again to get voices
-        const availableVoices = window.speechSynthesis.getVoices();
-        const googleVoice = availableVoices.find((v) => v.name === "Google US English");
-        const englishVoice = availableVoices.find((v) => v.lang.startsWith("en-"));
-
-        if (googleVoice || englishVoice) {
-          setSpeechVoice(googleVoice || englishVoice);
-        }
-      } catch (error) {
-        logger.error("Speech synthesis initialization error:", error);
-      }
-    };
-
-    initSpeechSynthesis();
-  }, []);
-
   // Add this useEffect to manage speech synthesis state
   useEffect(() => {
     let resumeInterval: NodeJS.Timeout;
@@ -636,237 +449,59 @@ export default function LapTimer() {
     };
   }, []);
 
-  const announceRaceInfo = useCallback(
-    async (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
-      logger.log("announceRaceInfo.001");
+  const announceRaceInfo = useCallback(async (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
+    var announcement = "";
 
-      // Try speech synthesis first
-      // if (window.speechSynthesis && (await testSpeechSynthesis())) {
-      if (window.speechSynthesis) {
+    if (sessionEnded && announceLapNumberRef.current) {
+      announcement += "Timing Session Ended.";
+    } else if (announceLapNumberRef.current) {
+      announcement += `Lap ${lapNumber} started.`;
+    }
 
-        logger.log("announceRaceInfo.002");
+    if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
+      announcement += `Last lap time ${formatTimeForSpeech(lastLapTime)}`;
+    }
 
-        try {
-          // Force cancel and wait longer for cleanup
-          window.speechSynthesis.cancel();
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Increased wait time
-
-          logger.log("announceRaceInfo.003");
-
-          // Create announcements array
-          const announcements: string[] = [];
-
-          // Build announcements based on conditions
-          if (sessionEnded && announceLapNumberRef.current) {
-            announcements.push("Session Ended");
-          } else if (announceLapNumberRef.current) {
-            const lapAnnouncement = `Lap ${lapNumber}`;
-            announcements.push(lapAnnouncement);
-          }
-
-          if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
-            announcements.push(`Last lap ${formatTimeForSpeech(lastLapTime)}`);
-          }
-
-          logger.log("announceRaceInfo.004");
-
-          // Process each announcement with retry logic
-          for (const text of announcements) {
-            const maxRetries = 1;
-            let attempt = 0;
-            let success = false;
-
-            while (attempt < maxRetries && !success) {
-              try {
-                logger.log("announceRaceInfo.005", `Attempt ${attempt + 1} for: ${text}`);
-
-                // Force resume before each attempt
-                window.speechSynthesis.resume();
-                await new Promise((resolve) => setTimeout(resolve, 100));
-
-                const utterance = new SpeechSynthesisUtterance(text);
-
-                // Configure speech parameters
-                if (speechVoice) {
-                  utterance.voice = speechVoice;
-                }
-                utterance.rate = 1.0; // Reduced rate for better reliability
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-
-                logger.log("announceRaceInfo.006");
-
-                // Create a timeout promise
-                const timeoutPromise = new Promise((_, reject) => {
-                  setTimeout(() => reject(new Error("Speech timeout")), 5000);
-                });
-
-                // Create a speech promise
-                const speechPromise = new Promise((resolve) => {
-                  utterance.onend = () => {
-                    success = true;
-                    resolve(true);
-                  };
-
-                  utterance.onerror = (event) => {
-                    logger.error(`Speech error on attempt ${attempt + 1} for: ${text}`, event);
-                    resolve(false);
-                  };
-
-                  // Force resume and speak
-                  window.speechSynthesis.resume();
-                  window.speechSynthesis.speak(utterance);
-                });
-
-                // Race between timeout and speech
-                try {
-                  await Promise.race([speechPromise, timeoutPromise]);
-                } catch (error) {
-                  logger.error("Speech timed out:", error);
-                }
-
-                if (success) break;
-              } catch (attemptError) {
-                logger.error(`Error on attempt ${attempt + 1} for: ${text}`, attemptError);
-              }
-
-              // Longer wait between retries
-              if (!success && attempt < maxRetries - 1) {
-                window.speechSynthesis.cancel(); // Cancel before retry
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-              }
-
-              attempt++;
-            }
-
-            logger.log("announceRaceInfo.007", `Final result for ${text}: ${success ? "Success" : "Failed"}`);
-
-            // Add longer pause between announcements
-            if (success) {
-              await new Promise((resolve) => setTimeout(resolve, 500));
-            }
-          }
-        } catch (error) {
-          logger.error("Error in announceRaceInfo:", error);
-        } finally {
-          // Always ensure we clean up properly
-          window.speechSynthesis.cancel();
-          logger.log("announceRaceInfo.008");
-        }
-      } else {
-
-        var textToSpeak = "";
-           // Build announcements based on conditions
-           if (sessionEnded && announceLapNumberRef.current) {
-            textToSpeak += ("Session Ended");
-          } 
-
-          if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
-            textToSpeak += `Last lap ${formatTimeForSpeech(lastLapTime)}`
-          }
-
-
-        // Fall back to audio
-        await createAudioSpeech(textToSpeak);
-      }
-    },
-    [announceLapNumber, announceLastLapTime, speechVoice]
-  );
-
-  // Add this useEffect to keep speech synthesis active
-  useEffect(() => {
-    const resumeInterval = setInterval(() => {
-      try {
-        if (window.speechSynthesis && !window.speechSynthesis.speaking) {
-          window.speechSynthesis.resume();
-        }
-      } catch (error) {
-        logger.error("Error in speech resume interval:", error);
-      }
-    }, 100);
-
-    return () => clearInterval(resumeInterval);
+    var didTTSWork = sayIt(announcement);
+    if (!didTTSWork) {
+      logger.log("announceRaceInfo - TTS FAILED!!!");
+    }
   }, []);
 
-  // Add this to handle speech synthesis initialization
+  const speechVoiceRef = useRef(speechVoice);
+  // Sync with the ref whenever it changes
   useEffect(() => {
-    const initSpeech = () => {
-      try {
-        // Force speech synthesis to initialize
-        window.speechSynthesis.cancel();
+    speechVoiceRef.current = speechVoice;
+  }, [speechVoice]);
 
-        // Get available voices
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-          // Find Google US English voice or fallback to first English voice
-          const googleVoice = voices.find((v) => v.name === "Google US English");
-          const englishVoice = voices.find((v) => v.lang.startsWith("en-")) || voices[0];
-          setSpeechVoice(googleVoice || englishVoice);
-        }
-      } catch (error) {
-        logger.error("Speech initialization error:", error);
-      }
-    };
-
-    // Initialize immediately and also listen for voiceschanged event
-    initSpeech();
-    window.speechSynthesis.onvoiceschanged = initSpeech;
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
-
-  // Create a simple audio synthesizer using the Web Audio API
-  const createAudioSpeech = (text: string) => {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-
-    // Create simple tones based on text
-    const speak = async () => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      // Different patterns for different messages
-      if (text.includes("Lap")) {
-        // Higher beep for lap announcements
-        osc.frequency.value = 880;
-        gain.gain.value = 0.5;
-        osc.start();
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        gain.gain.value = 0;
-        osc.stop();
-      } else if (text.includes("Session")) {
-        // Pattern for session messages
-        osc.frequency.value = 440;
-        gain.gain.value = 0.5;
-        osc.start();
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        gain.gain.value = 0;
-        osc.stop();
-      }
-    };
-
-    return speak();
-  };
-
-  // Test if speech synthesis is actually working
-  const testSpeechSynthesis = async (): Promise<boolean> => {
+  // Say something
+  const sayIt = async (textToSpeak: string): Promise<boolean> => {
     try {
-      const utterance = new SpeechSynthesisUtterance("test");
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1000));
+      // Force cancel and wait for cleanup
+      window.speechSynthesis.cancel();
+      await new Promise((resolve) => setTimeout(resolve, 500)); // <-- wait time
 
-      const speechPromise = new Promise((resolve) => {
-        utterance.onend = () => resolve(true);
-        utterance.onerror = () => resolve(false);
-        window.speechSynthesis.speak(utterance);
-      });
+      const warmUpUtterance = new SpeechSynthesisUtterance("    ");
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
 
-      return await Promise.race([speechPromise, timeoutPromise])
-        .then(() => true)
-        .catch(() => false);
+      // TODO: change settings?
+      utterance.rate = 1.2;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      // Configure speech parameters
+      if (speechVoiceRef.current) {
+        utterance.voice = speechVoiceRef.current;
+      }
+
+      window.speechSynthesis.resume();      
+      window.speechSynthesis.speak(warmUpUtterance);
+      window.speechSynthesis.speak(utterance);
+
+      // Pause between announcements
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      return true;
     } catch {
       return false;
     }
@@ -1658,7 +1293,6 @@ export default function LapTimer() {
     }
 
     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
-
   };
 
   const recordLap_MD = async (): Promise<void> => {
@@ -1685,9 +1319,8 @@ export default function LapTimer() {
       // Announce the lap information
       announceRaceInfo(lapsRef.current.length + 2, currentLapTime);
     }
-    
-    logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
 
+    logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
   };
 
   // Auto-refresh function
@@ -1759,7 +1392,7 @@ export default function LapTimer() {
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());
     setIsRunning(true);
-    setLaps([]);    
+    setLaps([]);
     logCurrentSessionStart();
   };
 

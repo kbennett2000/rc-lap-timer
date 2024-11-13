@@ -31,10 +31,10 @@ interface MotionSettings {
 }
 
 const DEFAULT_SETTINGS: DetectorSettings = {
-  sensitivity: 50,
-  threshold: 2.0,
-  cooldown: 5000,
-  framesToSkip: 10,
+  sensitivity: 100,
+  threshold: 1.0,
+  cooldown: 10000,
+  framesToSkip: 60,
   enableAudio: true,
   enableDebugView: true,
 };
