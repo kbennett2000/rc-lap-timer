@@ -30,9 +30,10 @@ export interface Session extends Omit<PrismaSession, "date"> {
 }
 
 export interface LapStats {
-  average: number;
-  mean: number;
+  average: number;  
   totalTime: number;
+  bestLap: number;
+  worstLap: number;
   maxPenaltyLap: number | null;
   maxPenaltyCount: number;
 }
