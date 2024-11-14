@@ -388,9 +388,11 @@ export default function LapTimer() {
   }, []);
 
   const announceRaceBegin = useCallback(async () => {
-    var didTTSWork = await sayIt("Timing Session Started");
-    if (!didTTSWork) {
-      logger.log("announceRaceBegin - TTS FAILED!!!");
+    if (announceLapNumberRef) {
+      var didTTSWork = await sayIt("Timing Session Started");
+      if (!didTTSWork) {
+        logger.log("announceRaceBegin - TTS FAILED!!!");
+      }
     }
   }, []);
 

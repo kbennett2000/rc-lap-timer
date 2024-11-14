@@ -30,11 +30,9 @@ tar xzf ../rc-lap-timer-build.tar.gz && sudo mkdir -p /var/www/rc-lap-timer && s
 ```
 
 ```bash
-nano .env
-```
-
-```
+cat > .env << 'EOF'
 DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
+EOF
 ```
 
 ```bash

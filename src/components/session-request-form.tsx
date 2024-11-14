@@ -96,9 +96,6 @@ export const SessionRequestForm: React.FC<SessionRequestFormProps> = ({ drivers,
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Request New Session</CardTitle>
-      </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {/* Driver Selection */}
@@ -181,7 +178,7 @@ export const SessionRequestForm: React.FC<SessionRequestFormProps> = ({ drivers,
 
           {/* Submit Button */}
           <Button onClick={() => setShowConfirmDialog(true)} disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Submitting..." : "Submit Session Request"}
+            {isSubmitting ? "Submitting..." : "Submit Request"}
           </Button>
 
           {/* Confirmation Dialog */}
