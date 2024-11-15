@@ -90,8 +90,11 @@ sudo dnf install rpi-imager
 ![wifi connection warning](/images/connectionWarning.jpg)
 - Open up a browser and go to `https://rc-lap-timer`
 - Accept the certificate warning and proceed to the site.
+
 ![certificate warning image 1](/images/certWarning1.jpg)
+
 ![certificate warning image 2](/images/certWarning2.jpg)
+
 
 
 # 📊 Usage Guide
