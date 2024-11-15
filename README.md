@@ -11,14 +11,7 @@ Motion Detection mode is great for single drivers and practice sessions. UI mode
 ![RC Car](https://img.icons8.com/color/48/000000/car.png)
 
 
-# 🚀 Installation
-## Prerequisites
-- Raspberry Pi Zero 2 W
-- 16GB or greater class 10 microSD card
-- A device with WiFi capabilities, a web browser, and a camera
-    - This includes Android and Apple tablets and phones, a Windows, Mac, or Linux computer with a webcam or USB camera.
-
-## Setup Instructions
+# 🚀 Setup Instructions
 
 **This application is designed to run on a Raspbery Pi Zero 2 W.**
 
@@ -27,15 +20,18 @@ Motion Detection mode is great for single drivers and practice sessions. UI mode
 Running from a Raspberry Pi Zero 2 W allows for the creation of a wi-fi network (`rc-lap-timer`) that you and all your friends can connect to. Drivers, their cars, timing session results, and configuration settings are all stored in a MySQL database on the Pi.
 These instructions will guide you through writing the RC Lap Timer image to a microSD card for use with your Raspberry Pi Zero 2 W.
 
-### Required Materials
-- A microSD card (32GB recommended)
+## Required Materials
+- Raspberry Pi Zero 2 W
+- 16GB or greater class 10 microSD card
+- A device with WiFi capabilities, a web browser, and a camera
+    - This includes Android and Apple tablets and phones, a Windows, Mac, or Linux computer with a webcam or USB camera.
 - A computer with a microSD card reader
 - The RC Lap Timer image file:
     - [Download from Google Drive](https://drive.google.com/file/d/1OfJgifu01UUm5-NBkiQAxeGV99CQwXfX/view?usp=sharing)
 - Raspberry Pi Imager software
     - [https://www.raspberrypi.com/software/](https://www.raspberrypi.com/software/)
 
-### Windows Instructions
+## Windows Instructions
 - Download and install Raspberry Pi Imager
 - Insert your microSD card into your computer
 - Launch Raspberry Pi Imager
@@ -48,7 +44,7 @@ These instructions will guide you through writing the RC Lap Timer image to a mi
 - Remove the microSD card when prompted
 
 
-### macOS Instructions
+## macOS Instructions
 - Download and install Raspberry Pi Imager
 - Insert your microSD card into your computer
 - Launch Raspberry Pi Imager
@@ -61,7 +57,7 @@ These instructions will guide you through writing the RC Lap Timer image to a mi
 - Remove the microSD card when prompted
 
 
-### Linux Instructions
+## Linux Instructions
 - Install Raspberry Pi Imager:
 Ubuntu/Debian: 
 ```bash
@@ -81,7 +77,7 @@ sudo dnf install rpi-imager
 - Wait for the writing and verification process to complete
 - Remove the microSD card when prompted
 
-### After Writing the Image
+## After Writing the Image
 - Safely remove the microSD card from your computer
 - Insert the microSD card into your Raspberry Pi Zero 2 W
 - Power on your Raspberry Pi Zero 2 W
