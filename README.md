@@ -33,6 +33,10 @@ These instructions will guide you through writing the RC Lap Timer image to a mi
     - [https://www.raspberrypi.com/software/](https://www.raspberrypi.com/software/)
 
 
+## Optional but Helpful Materials
+- Mobile phone tripod
+
+
 ## Windows Instructions
 - Download and install Raspberry Pi Imager
 - Insert your microSD card into your computer
