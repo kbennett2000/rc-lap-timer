@@ -10,24 +10,21 @@ Motion Detection mode is great for single drivers and practice sessions. UI mode
 
 ![RC Car](https://img.icons8.com/color/48/000000/car.png)
 
-## 🚀 Installation
 
-### Prerequisites
+# 🚀 Installation
+## Prerequisites
 - Raspberry Pi Zero 2 W
 - 16GB or greater class 10 microSD card
 - A device with WiFi capabilities, a web browser, and a camera
     - This includes Android and Apple tablets and phones, a Windows, Mac, or Linux computer with a webcam or USB camera.
 
-### Setup Instructions
-#### This application is designed to run on a Raspbery Pi Zero 2 W. 
-#### No other Raspberry Pi models are currently supported!
-
+## Setup Instructions
+**This application is designed to run on a Raspbery Pi Zero 2 W.**
+**No other Raspberry Pi models are currently supported!**
 Running from a Raspberry Pi Zero 2 W allows for the creation of a wi-fi network (`rc-lap-timer`) that you and all your friends can connect to. Drivers, their cars, timing session results, and configuration settings are all stored in a MySQL database on the Pi.
-
-### RC Lap Timer - Installation Instructions
 These instructions will guide you through writing the RC Lap Timer image to a microSD card for use with your Raspberry Pi Zero 2 W.
 
-#### Required Materials
+### Required Materials
 - A microSD card (32GB recommended)
 - A computer with a microSD card reader
 - The RC Lap Timer image file:
@@ -35,7 +32,7 @@ These instructions will guide you through writing the RC Lap Timer image to a mi
 - Raspberry Pi Imager software
     - [https://www.raspberrypi.com/software/](https://www.raspberrypi.com/software/)
 
-#### Windows Instructions
+### Windows Instructions
 - Download and install Raspberry Pi Imager
 - Insert your microSD card into your computer
 - Launch Raspberry Pi Imager
@@ -48,7 +45,7 @@ These instructions will guide you through writing the RC Lap Timer image to a mi
 - Remove the microSD card when prompted
 
 
-#### macOS Instructions
+### macOS Instructions
 - Download and install Raspberry Pi Imager
 - Insert your microSD card into your computer
 - Launch Raspberry Pi Imager
@@ -61,7 +58,7 @@ These instructions will guide you through writing the RC Lap Timer image to a mi
 - Remove the microSD card when prompted
 
 
-#### Linux Instructions
+### Linux Instructions
 - Install Raspberry Pi Imager:
 Ubuntu/Debian: 
 ```bash
@@ -81,29 +78,7 @@ sudo dnf install rpi-imager
 - Wait for the writing and verification process to complete
 - Remove the microSD card when prompted
 
-##### Using Command Line (Alternative Method)
-- Identify your microSD card device name:
-```bash
-lsblk
-```
-- Unmount any mounted partitions:
-```bash
-sudo umount /dev/sdX*
-```
-    - (Replace sdX with your device name)
-
-- Write the image:
-```bash
-sudo dd bs=4M if=path/to/rc_lap_timer.img of=/dev/sdX status=progress conv=fsync
-```
-    - (Replace path/to/rc_lap_timer.img with the actual path and sdX with your device name)
-- Wait for the process to complete
-- Run sync to ensure all data is written:
-```bash
-sudo sync
-```
-
-#### After Writing the Image
+### After Writing the Image
 - Safely remove the microSD card from your computer
 - Insert the microSD card into your Raspberry Pi Zero 2 W
 - Power on your Raspberry Pi Zero 2 W
@@ -113,35 +88,35 @@ sudo sync
 - Accept the certificate warning and proceed to the site.
 
 
-## 📊 Usage Guide
-### Adding Drivers, Cars, and Locations
+# 📊 Usage Guide
+## Adding Drivers, Cars, and Locations
 Before running any timing sessions you will need to create at least one driver, create at least one car for that driver, and create at least one timing session location.
 - Begin by adding one or more drivers using the 'New Driver' option. Each driver name should be unique. You can change the name of a driver after creation using the Configuration tab. 
 - Once you've added one or more drivers, add one or more cars for that driver using the 'New Car' option. Each car name should be unique for that driver. Different drivers can have the same car name. You can change the name of a car after creation using the Configuration tab. 
 - Finally, add at least one location using the 'New Location' option. Each location name should be unique. You can change the name of a location after creation using the Configuration tab. 
 
 
-### Timing a Session
+## Timing a Session
 Once you've created a driver, a car for that driver, and a location you can record a timing session. Begin by configuring the new timing session.
 
-#### Configuring a Timing Session
-#### Announcements
+## Configuring a Timing Session
+### Announcements
 When configuring a new timing session can choose to enable lap announcements and lap beeps. 
 - **Announce Lap Numbers**: The current lap number will be announced once a new lap is started.
 - **Announce Last Lap Time**: The time for the last lap will be announced once a new lap is started.
 - **Play Beeps**: Beeps will be played at the start of a session, each time a lap is recorded, when the session completes, and also when motion is detected in motion detection preview mode (see the Motion Detect Timing Mode section for more information)
 
-#### Enabling Remote Control
+### Enabling Remote Control
 If you're driving by yourself remote control can be a handy option. This option allows you to setup your camera device (phone, tablet, laptop, etc) to be used with motion detection timing. Then, from another device on the same network you can submit a timing session request. Each request contains a driver, a car, a location, and a number of laps. Once the 'Enable Remote Control' option is selected the camera device will listen for any timing session requests. When a timing session request is received the camera will be enabled and a new motion detection timing session will start. This prevents the driver from having to walk out to the camera device and back each time they want to start a new session.
 
 It is important to ensure your camera device is properly placed and configured before using this option!
 
 **NOTE** - If you're using a phone or mobile device as a camera recording device you want to make sure the screen does not timeout / lock during a session. Apps such as 'Screen Alive' for Android can be helpful as they prevent your device from timing out, turning off, or locking for extended periods of time.
 
-#### Driver, Car, Location, Number of Laps
+### Driver, Car, Location, Number of Laps
 Once you've selected the timing mode you want to use for the current session, select the driver being timed, their car, the location, and the number of laps being timed. Selecting an Unlimited number of laps will require the driver or an observer to manually end the timing session. Selecting a fixed number of laps will cause the session to end automatically once the last lap has been recorded.
 
-#### Timing Mode
+### Timing Mode
 The application supports two different timing modes, UI mode and Motion Detect mode. 
 - UI mode requires two people, a driver and a timer. 
 - The timer will use the application's user interface (UI) to begin the session, record each lap when the car being timed crosses the timing point, assign a lap penalty, and end the timing session. 
@@ -159,12 +134,12 @@ Selecting the **Time Using Motion Detection** option will enable motion detectio
 - Selecting the 'Time Using Motion Detection' option displays camera controls and motion detection settings.
 **NOTE** - Lap penalties cannot be added in Motion Detection mode!
 
-##### Camera Controls:
+#### Camera Controls:
 - **Preview**: Preview turns on the camera and uses the motion detection settings the user has set or loaded. Preview mode is used to test motion detection without recording a timing session. To use preview mode, begin by selecting the 'Play Beeps' option under the Annoucements section. This will play a beep each time motion is detected. You should also consider temporarily setting the Cooldown time setting low to enable more frequent detections while testing. Use preview mode to test where you setup your device, and run a few practice laps to ensure your car is being detected by the device camera each time it passes by.
 - **Cam On**: Once you're ready to start your timing session click this button to turn the camera on. Once the camera is on and the number of frames to skip has passed the camera will start looking for motion. The first time motion is detected (car drives by) the timing session will begin. 
 - **Cam Off**: This button turns the camera off and ends the current timing session. Use this button to end a timing session with an 'Unlimited' number of laps, or to end a session with a pre-defined number of laps early.
 
-##### Motion Detection Settings:
+#### Motion Detection Settings:
 **NOTE** - If you change any of these settings while the device camera is on, you MUST stop and restart it for the new settings to take effect.
 - **Sensitivity**: Sets the level of sensitivity for motion detection. Increase the sensitity if your car has trouble being detected, lower the sensititivy to reduce the risk of false lap detections.
 - **Threshold**: Threshold determines the percentage of the image frame that must change for motion to be recorded. If your car passes the timing point father from the camera you might need a lower Threshold value. Typically values from 0.5% to 5% work well.
@@ -173,31 +148,31 @@ Selecting the **Time Using Motion Detection** option will enable motion detectio
 - **Save / Load Settings**: If you wish to save your current motion detection settings for later use you can use the Save option. Use the Load Settings option to load a previously saved set of motion detection settings.
 
 
-### Recent Sessions
+## Recent Sessions
 The three most recent sessions can be viewed at the bottom of the Current Session tab. You'll see flags incating the Fastest Lap, the Slowest Lap, and the Lap with the most penalties.
 If you wish to delete a recent session, use the Delete icon and confirm the deletion.
 
 
-### Session Management
-#### Current Session Stats
+## Session Management
+### Current Session Stats
 - View statistics from the current timing session. 
-#### Session Request Form
+### Session Request Form
 - Request a timing session from the remote device. Select a driver, car, location, and number of laps to be timed.
 
-#### Previous Sessions
+### Previous Sessions
 - View and filter previous timing session statistics
 - Delete unwanted sessions
 
-### Best Laps Comparison
+## Best Laps Comparison
 - See the fastest lap from each session, ranked from fastest to slowest
 
-### Session Comparison
+## Session Comparison
 - Create a line chart comparison of different timing sessions. Compare different sessions across drivers, cars, and loctions!
 
-### Session Notes
+## Session Notes
 - Keep and edit notes for each session. Great for tracking tuning changes, track conditions, setup notes, and more!
 
-### Application Configuration
+## Application Configuration
 Use this tab to perform the following administrative functions:
 - Add, rename, and delete Drivers
 - Add, rename, and delete Cars
@@ -209,7 +184,7 @@ Use this tab to perform the following administrative functions:
 - Change the WiFi password
 
 
-## 🛠️ Development & Contributing
+# 🛠️ Development & Contributing
 Contributions are welcome! Please follow these steps:
 - Fork the repository
 - Create a feature branch: git checkout -b feature/feature-name
@@ -217,15 +192,5 @@ Contributions are welcome! Please follow these steps:
 - Push to the branch: git push origin feature/feature-name
 - Submit a pull request
 
-
-## 📜 License
-This project is licensed under the MIT License. See the LICENSE file for details.
-🙌 Acknowledgments
-Special thanks to:
-- The RC car enthusiast community for feedback and testing
-- Icons by Icons8
-- shadcn/ui for component templates
-- Lucide React for icons
-- Recharts for visualization components
 
 # Happy Racing! 🏎️
