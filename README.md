@@ -19,8 +19,11 @@ Motion Detection mode is great for single drivers and practice sessions. UI mode
     - This includes Android and Apple tablets and phones, a Windows, Mac, or Linux computer with a webcam or USB camera.
 
 ## Setup Instructions
+
 **This application is designed to run on a Raspbery Pi Zero 2 W.**
+
 **No other Raspberry Pi models are currently supported!**
+
 Running from a Raspberry Pi Zero 2 W allows for the creation of a wi-fi network (`rc-lap-timer`) that you and all your friends can connect to. Drivers, their cars, timing session results, and configuration settings are all stored in a MySQL database on the Pi.
 These instructions will guide you through writing the RC Lap Timer image to a microSD card for use with your Raspberry Pi Zero 2 W.
 
