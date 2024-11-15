@@ -159,6 +159,7 @@ Selecting the **Time Using Motion Detection** option will enable motion detectio
 **NOTE** - Lap penalties cannot be added in Motion Detection mode!
 
 **NOTE** - The first time you use camera mode you may get a confirmation message. Select the option to allow use of your device's camera.
+
 ![camera permissions warning](/images/cameraPermissions.jpg)
 
 
