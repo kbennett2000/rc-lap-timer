@@ -28,13 +28,15 @@ These instructions will guide you through writing the RC Lap Timer image to a mi
     - This includes Android and Apple tablets and phones, a Windows, Mac, or Linux computer with a webcam or USB camera.
 - A computer with a microSD card reader
 - The RC Lap Timer image file:
-    - [Download from Google Drive](https://drive.google.com/file/d/1OfJgifu01UUm5-NBkiQAxeGV99CQwXfX/view?usp=sharing)
+    - [Download from Google Drive](https://drive.google.com/file/d/1fJDJici0xtzP4xVhj4DvLpkFYnxi1WDa/view?usp=sharing)
 - Raspberry Pi Imager software
     - [https://www.raspberrypi.com/software/](https://www.raspberrypi.com/software/)
 
 
 ## Optional but Helpful Materials
 - Mobile phone tripod
+- Raspberry Pi Zero case
+- Screen Alive (if using Android)
 
 
 ## Windows Instructions
