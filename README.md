@@ -11,6 +11,9 @@ Motion Detection mode is great for single drivers and practice sessions. UI mode
 ![RC Car](https://img.icons8.com/color/48/000000/car.png)
 
 
+[![YouTube Application Overview Video](http://img.youtube.com/vi/lfPLHotND4M/0.jpg)](http://www.youtube.com/watch?v=lfPLHotND4M "RC Lap Timer Overview")
+
+
 # 🚀 Setup Instructions
 
 **This application is designed to run on a Raspbery Pi Zero 2 W.**
