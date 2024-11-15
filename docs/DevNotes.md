@@ -10,39 +10,3 @@ mkcert localhost 127.0.0.1 192.168.1.* ::1
 ```bash
 npm run dev-https
 ```
-
-# Overview:
-What is it?
-
-How does it work?
-- Add drivers, cars, locations
-
-- Session Setup
--- Number of Laps, timing mode
-
-- Timing Modes:
--- UI
---- Penalties feature
--- MD
---- Preview Mode
---- Camera settings
---- Saving / Loading settings
--- Remote MD
-
-Session Listing
-- Search filters
-
-Session Comparison
-- Search Fileters
-
-Session Notes
-- Add notes
-- Edit notes
-
-
-How to Setup
-- Raspberry Pi Zero 2 W
-- Download image
-- Connect to rclaptimer wifi
-- go to https://rc-lap-timer
-
