@@ -12,9 +12,9 @@ Motion Detection mode is great for single drivers and practice sessions. UI mode
 
 # Feature Overview
 
-::: tip Video Walkthrough
 Watch this short video to understand how RC Lap Timer works and some of the features available. If you like what you see, follow the instructions below to get started!
-<iframe width="560" height="315" src="https://www.youtube.com/embed/lfPLHotND4M" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe> :::
+
+[![YouTube Application Overview Video](http://img.youtube.com/vi/lfPLHotND4M/0.jpg)](http://www.youtube.com/watch?v=lfPLHotND4M "RC Lap Timer Overview")
 
 
 # 🚀 Setup Instructions
