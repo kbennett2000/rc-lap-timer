@@ -29,6 +29,7 @@ import DriverCarManager from "@/components/driver-car-manager";
 import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
+import ArucoDetector from "../aruco-detector";
 
 // ****************************************
 // interface
@@ -2639,6 +2640,8 @@ export default function LapTimer() {
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
                   {/* Driver Car Manager */}
                   <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} onSessionsUpdate={setSavedSessions} />
+                  {/* ArUco Detector */}
+                  <ArucoDetector />
                 </motion.div>
               </TabsContent>
 

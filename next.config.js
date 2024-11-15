@@ -1,16 +1,3 @@
-///** @type {import('next').NextConfig} */
-//const nextConfig = {
-//  reactStrictMode: true,
-//  swcMinify: true,
-//  typescript: {
-//    ignoreBuildErrors: true,
-//  },
-//  eslint: {
-//    ignoreDuringBuilds: true,
-//  },
-//};
-//module.exports = nextConfig;
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -21,7 +8,15 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Add the headers configuration here
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+    return config;
+  },
   headers: async () => {
     return [
       {
