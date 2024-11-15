@@ -107,53 +107,55 @@ Once you've created a driver, a car for that driver, and a location you can reco
 
 ## Configuring a Timing Session
 ### Announcements
+![selecting announcement options](/images/announcements.jpg)
 When configuring a new timing session can choose to enable lap announcements and lap beeps. 
 - **Announce Lap Numbers**: The current lap number will be announced once a new lap is started.
 - **Announce Last Lap Time**: The time for the last lap will be announced once a new lap is started.
 - **Play Beeps**: Beeps will be played at the start of a session, each time a lap is recorded, when the session completes, and also when motion is detected in motion detection preview mode (see the Motion Detect Timing Mode section for more information)
-![selecting announcement options](/images/announcements.jpg)
 
 
 ### Enabling Remote Control
+![selecting remote control mode](/images/remoteControlSelection.jpg)
 If you're driving by yourself remote control can be a handy option. This option allows you to setup your camera device (phone, tablet, laptop, etc) to be used with motion detection timing. Then, from another device on the same network you can submit a timing session request. Each request contains a driver, a car, a location, and a number of laps. Once the 'Enable Remote Control' option is selected the camera device will listen for any timing session requests. When a timing session request is received the camera will be enabled and a new motion detection timing session will start. This prevents the driver from having to walk out to the camera device and back each time they want to start a new session.
 
 It is important to ensure your camera device is properly placed and configured before using this option!
 
 **NOTE** - If you're using a phone or mobile device as a camera recording device you want to make sure the screen does not timeout / lock during a session. Apps such as 'Screen Alive' for Android can be helpful as they prevent your device from timing out, turning off, or locking for extended periods of time.
-![selecting remote control mode](/images/remoteControlSelection.jpg)
 
 
 ### Driver, Car, Location, Number of Laps
-Once you've selected the timing mode you want to use for the current session, select the driver being timed, their car, the location, and the number of laps being timed. Selecting an Unlimited number of laps will require the driver or an observer to manually end the timing session. Selecting a fixed number of laps will cause the session to end automatically once the last lap has been recorded.
 ![selecting driver car location number of laps](/images/driverCarLocationLaps.jpg)
+Once you've selected the timing mode you want to use for the current session, select the driver being timed, their car, the location, and the number of laps being timed. Selecting an Unlimited number of laps will require the driver or an observer to manually end the timing session. Selecting a fixed number of laps will cause the session to end automatically once the last lap has been recorded.
 
 
 ### Timing Mode
+![selecting the timing mode](/images/timingModeSelection.jpg)
 The application supports two different timing modes, UI mode and Motion Detect mode. 
 - UI mode requires two people, a driver and a timer. 
 - The timer will use the application's user interface (UI) to begin the session, record each lap when the car being timed crosses the timing point, assign a lap penalty, and end the timing session. 
 - UI mode is the only mode that can support multiple cars on the track at the same time as each timer will only record laps for the car they're timing.
 - Selecting the timing mode will determine the controls that are displayed below the Driver, Car, Location, and Number of Laps selections.
-![selecting the timing mode](/images/timingModeSelection.jpg)
 
+
+![ui mode controls](/images/uiControls.jpg)
 Selecting the **Time Using UI** option displays four buttons:
 - **Start Lap Timer**: Click this button to start the timing session
 - **Record Lap**: Once a session has started, the timer will click this button everytime the car their timing crosses the timing point.
 - **Stop Lap Timer**: Click this button to stop the current session once the car crosses the timing point for the final time.
 - **Add Penalty**: Adds a penalty to the current lap. Penalties can be whatever you want them to be (driver crashes, leaves their lane, reverses on the track, etc). Penalties for each lap and the total number of penalties for the session are saved with the session statistics.
-![ui mode controls](/images/uiControls.jpg)
+
 
 Selecting the **Time Using Motion Detection** option will enable motion detection mode. 
 - This mode can be used by a single user as it relies on the device's camera to detect when the car has passed through the frame.
 - Selecting the 'Time Using Motion Detection' option displays camera controls and motion detection settings.
 **NOTE** - Lap penalties cannot be added in Motion Detection mode!
-![camera controls](/images/cameraControls.jpg)
 
 **NOTE** - The first time you use camera mode you may get a confirmation message. Select the option to allow use of your device's camera.
 ![camera permissions warning](/images/cameraPermissions.jpg)
 
 
 #### Camera Controls:
+![camera controls](/images/cameraControls.jpg)
 - **Preview**: Preview turns on the camera and uses the motion detection settings the user has set or loaded. Preview mode is used to test motion detection without recording a timing session. To use preview mode, begin by selecting the 'Play Beeps' option under the Annoucements section. This will play a beep each time motion is detected. You should also consider temporarily setting the Cooldown time setting low to enable more frequent detections while testing. Use preview mode to test where you setup your device, and run a few practice laps to ensure your car is being detected by the device camera each time it passes by.
 - **Cam On**: Once you're ready to start your timing session click this button to turn the camera on. Once the camera is on and the number of frames to skip has passed the camera will start looking for motion. The first time motion is detected (car drives by) the timing session will begin. 
 - **Cam Off**: This button turns the camera off and ends the current timing session. Use this button to end a timing session with an 'Unlimited' number of laps, or to end a session with a pre-defined number of laps early.
@@ -169,46 +171,50 @@ Selecting the **Time Using Motion Detection** option will enable motion detectio
 
 
 ## Recent Sessions
+![recent sessions](/images/recentSessions.jpg)
 The three most recent sessions can be viewed at the bottom of the Current Session tab. You'll see flags incating the Fastest Lap, the Slowest Lap, and the Lap with the most penalties.
 If you wish to delete a recent session, use the Delete icon and confirm the deletion.
-![recent sessions](/images/recentSessions.jpg)
+
 
 ## Navigation Tabs
-The tabs at the bottom of the screen can be used to navigate to different areas of the application. We've already looked at the Current Session tab, the rest are detailed below.
 ![bottom navigation](/images/navigation.jpg)
+The tabs at the bottom of the screen can be used to navigate to different areas of the application. We've already looked at the Current Session tab, the rest are detailed below.
+
 
 ## Session Management
 ### Current Session Stats
-- View statistics from the current timing session. 
 ![current session tab](/images/currentSession.jpg)
+- View statistics from the current timing session. 
+
 
 ### Session Request Form
-- Request a timing session from the remote device. Select a driver, car, location, and number of laps to be timed.
 ![requesting a session](/images/requestASession.jpg)
+- Request a timing session from the remote device. Select a driver, car, location, and number of laps to be timed.
 
 
 ### Previous Sessions
+![previous sessions](/images/previousSessions.jpg)
 - View and filter previous timing session statistics
 - Delete unwanted sessions
-![previous sessions](/images/previousSessions.jpg)
 
 
 ## Best Laps Comparison
-- See the fastest lap from each session, ranked from fastest to slowest
 ![best laps comparison tab](/images/bestLapsComparison.jpg)
+- See the fastest lap from each session, ranked from fastest to slowest
 
 
 ## Session Comparison
-- Create a line chart comparison of different timing sessions. Compare different sessions across drivers, cars, and loctions!
 ![session comparison tab](/images/sessionCompare.jpg)
+- Create a line chart comparison of different timing sessions. Compare different sessions across drivers, cars, and loctions!
 
 
 ## Session Notes
-- Keep and edit notes for each session. Great for tracking tuning changes, track conditions, setup notes, and more!
 ![session notes tab](/images/sessionNotes.jpg)
+- Keep and edit notes for each session. Great for tracking tuning changes, track conditions, setup notes, and more!
 
 
 ## Application Configuration
+![application configuration tab](/images/appConfig.jpg)
 Use this tab to perform the following administrative functions:
 - Add, rename, and delete Drivers
 - Add, rename, and delete Cars
@@ -218,7 +224,6 @@ Use this tab to perform the following administrative functions:
 - Change the Pi user password
 - Change the WiFi network name
 - Change the WiFi password
-![application configuration tab](/images/appConfig.jpg)
 
 
 # 🛠️ Development & Contributing
