@@ -6,8 +6,6 @@ Looking for a free, easy to use lap timing system for backyard, parking lot, or 
 
 Motion Detection mode is great for single drivers and practice sessions. UI mode allows each timer to time a different driver, and is ideal for situations where you want to have more than one car on the track. UI mode also supports "penalties", Motion Detection mode does not. 
 
-The app supports multiple drivers with multiple cars, making it easy to switch roles and compare performances. With features like session notes, best lap tracking, session comparisons, and comprehensive statistics, **RC Lap Timer** offers a robust solution for casual RC racing. Built with  a responsive design, it works seamlessly on both desktop and mobile devices.
-
 > **NOTE**: This app is designed for casual racing and fun competition. While it's great for backyard racing and practice sessions, it's not intended to replace professional transponder-based timing systems.
 
 ![RC Car](https://img.icons8.com/color/48/000000/car.png)
@@ -134,8 +132,10 @@ When configuring a new timing session can choose to enable lap announcements and
 - **Play Beeps**: Beeps will be played at the start of a session, each time a lap is recorded, when the session completes, and also when motion is detected in motion detection preview mode (see the Motion Detect Timing Mode section for more information)
 
 #### Enabling Remote Control
-If you're driving by yourself remote control can be a handy option. This option allows you to setup your camera device (phone, tablet, laptop, etc) to be used with motion detection timing. Then, from another device on the same network you can submit a timing session request. Each request contains a driver, a car, a location, and a number of laps. Once the 'Enable Remote Control' option is selected the camera device will listen for any timing session requests. Once a timing session request is received the camera will be enabled and a new motion detection timing session will start. This prevents the driver from having to walk out to the camera device and back each time they want to start a new session.
+If you're driving by yourself remote control can be a handy option. This option allows you to setup your camera device (phone, tablet, laptop, etc) to be used with motion detection timing. Then, from another device on the same network you can submit a timing session request. Each request contains a driver, a car, a location, and a number of laps. Once the 'Enable Remote Control' option is selected the camera device will listen for any timing session requests. When a timing session request is received the camera will be enabled and a new motion detection timing session will start. This prevents the driver from having to walk out to the camera device and back each time they want to start a new session.
+
 It is important to ensure your camera device is properly placed and configured before using this option!
+
 **NOTE** - If you're using a phone or mobile device as a camera recording device you want to make sure the screen does not timeout / lock during a session. Apps such as 'Screen Alive' for Android can be helpful as they prevent your device from timing out, turning off, or locking for extended periods of time.
 
 #### Driver, Car, Location, Number of Laps
