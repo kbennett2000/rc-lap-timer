@@ -1,3 +1,21 @@
+# New Upgrade Process, featuring UPGRAYEDD
+- Open up a session on the Pi
+
+- Run 
+```bash
+./upgrayedd.sh
+```
+
+- When prompted, run 
+```bash
+./serverUpgrade.sh
+``` 
+on the dev server
+
+
+
+
+# DEPRECATED!!!
 # Update a build 
 
 ## Delete the old build:

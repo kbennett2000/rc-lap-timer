@@ -57,6 +57,7 @@ cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/
 
 # Copy system files to home directory
 cp -f ~/rc-lap-timer/scripts/system/backupDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/clearDB.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade1.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade2.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/restoreDB.sh ~/
@@ -75,6 +76,7 @@ files_to_check=(
     "~/backupDB.sql"
     "~/clearDB.sql"
     "~/backupDB.sh"
+    "~/clearDB.sh"
     "~/piUpgrade1.sh"
     "~/piUpgrade2.sh"
     "~/restoreDB.sh"

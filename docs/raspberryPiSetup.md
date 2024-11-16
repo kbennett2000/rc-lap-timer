@@ -710,6 +710,32 @@ sudo chmod 440 /etc/sudoers.d/rc-lap-timer
 sudo chmod 755 /usr/local/bin/rc-config-helper.sh
 ```
 
+Copy database files to home directory:
+```bash
+cp -f ~/rc-lap-timer/scripts/database/backupDB.sql ~/
+cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/
+```
+
+Copy system files to home directory:
+```bash
+cp -f ~/rc-lap-timer/scripts/system/backupDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/clearDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/piUpgrade1.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/piUpgrade2.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/restoreDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/upgrayedd.sh ~/
+```
+
+Copy motd file to /etc:
+```bash
+sudo cp -f ~/rc-lap-timer/misc/etc/motd /etc/motd
+```
+
+Make the scripts executable
+```bash
+cd ~ && sudo chmod +x *.sh
+```
+
 Reboot:
 ```bash
 sudo reboot now

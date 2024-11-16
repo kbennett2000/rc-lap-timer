@@ -1,124 +1,123 @@
--- Backup script for rc_lap_timer database
--- This will generate INSERT statements for all tables in the correct order to maintain referential integrity
+-- Disable foreign key checks to allow for data restoration
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
 
-SET FOREIGN_KEY_CHECKS=0;
-
-SELECT 'Backing up Driver table...' as '';
+-- Get Driver data
 SELECT CONCAT(
-    'INSERT INTO Driver (id, name, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(name), ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM Driver;
+    'INSERT INTO Driver (id, name, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    REPLACE(name, '''', '\\'''), ''', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM Driver;
 
-SELECT 'Backing up Location table...' as '';
+-- Get Location data
 SELECT CONCAT(
-    'INSERT INTO Location (id, name, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(name), ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM Location;
+    'INSERT INTO Location (id, name, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    REPLACE(name, '''', '\\'''), ''', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM Location;
 
-SELECT 'Backing up Car table...' as '';
+-- Get Car data
 SELECT CONCAT(
-    'INSERT INTO Car (id, name, driverId, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(name), ', ',
-    QUOTE(driverId), ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM Car;
+    'INSERT INTO Car (id, name, driverId, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    REPLACE(name, '''', '\\'''), ''', ''',
+    driverId, ''', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM Car;
 
-SELECT 'Backing up Session table...' as '';
+-- Get Session data
 SELECT CONCAT(
-    'INSERT INTO Session (id, date, driverId, carId, locationId, driverName, carName, locationName, totalTime, totalLaps, notes, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(date), ', ',
-    QUOTE(driverId), ', ',
-    QUOTE(carId), ', ',
-    QUOTE(locationId), ', ',
-    QUOTE(driverName), ', ',
-    QUOTE(carName), ', ',
-    QUOTE(locationName), ', ',
+    'INSERT INTO Session (id, date, driverId, carId, locationId, driverName, carName, locationName, totalTime, totalLaps, notes, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    date, ''', ''',
+    driverId, ''', ''',
+    carId, ''', ''',
+    locationId, ''', ''',
+    REPLACE(driverName, '''', '\\'''), ''', ''',
+    REPLACE(carName, '''', '\\'''), ''', ''',
+    REPLACE(locationName, '''', '\\'''), ''', ',
     totalTime, ', ',
     totalLaps, ', ',
-    IFNULL(QUOTE(notes), 'NULL'), ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM Session;
+    CASE WHEN notes IS NULL THEN 'NULL' ELSE CONCAT('''', REPLACE(notes, '''', '\\'''), '''') END, ', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM Session;
 
-SELECT 'Backing up Lap table...' as '';
+-- Get Lap data
 SELECT CONCAT(
-    'INSERT INTO Lap (id, sessionId, lapNumber, lapTime, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(sessionId), ', ',
+    'INSERT INTO Lap (id, sessionId, lapNumber, lapTime, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    sessionId, ''', ',
     lapNumber, ', ',
-    lapTime, ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM Lap;
+    lapTime, ', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM Lap;
 
-SELECT 'Backing up Penalty table...' as '';
+-- Get Penalty data
 SELECT CONCAT(
-    'INSERT INTO Penalty (id, sessionId, lapNumber, count, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(sessionId), ', ',
+    'INSERT INTO Penalty (id, sessionId, lapNumber, count, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    sessionId, ''', ',
     lapNumber, ', ',
-    count, ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM Penalty;
+    count, ', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM Penalty;
 
-SELECT 'Backing up MotionSettings table...' as '';
+-- Get MotionSettings data
 SELECT CONCAT(
-    'INSERT INTO MotionSettings (id, name, sensitivity, threshold, cooldown, framesToSkip, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(name), ', ',
+    'INSERT INTO MotionSettings (id, name, sensitivity, threshold, cooldown, framesToSkip, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    REPLACE(name, '''', '\\'''), ''', ',
     sensitivity, ', ',
     threshold, ', ',
     cooldown, ', ',
-    framesToSkip, ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM MotionSettings;
+    framesToSkip, ', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM MotionSettings;
 
-SELECT 'Backing up SessionRequest table...' as '';
+-- Get SessionRequest data
 SELECT CONCAT(
-    'INSERT INTO SessionRequest (id, driverId, carId, locationId, numberOfLaps, status, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(driverId), ', ',
-    QUOTE(carId), ', ',
-    QUOTE(locationId), ', ',
-    numberOfLaps, ', ',
-    QUOTE(status), ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM SessionRequest;
+    'INSERT INTO SessionRequest (id, driverId, carId, locationId, numberOfLaps, status, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    driverId, ''', ''',
+    carId, ''', ''',
+    locationId, ''', ',
+    numberOfLaps, ', ''',
+    status, ''', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM SessionRequest;
 
-SELECT 'Backing up CurrentSession table...' as '';
+-- Get CurrentSession data
 SELECT CONCAT(
-    'INSERT INTO CurrentSession (id, driverName, carName, locationName, lapCount, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(driverName), ', ',
-    QUOTE(carName), ', ',
-    QUOTE(locationName), ', ',
-    lapCount, ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM CurrentSession;
+    'INSERT INTO CurrentSession (id, driverName, carName, locationName, lapCount, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    REPLACE(driverName, '''', '\\'''), ''', ''',
+    REPLACE(carName, '''', '\\'''), ''', ''',
+    REPLACE(locationName, '''', '\\'''), ''', ',
+    lapCount, ', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM CurrentSession;
 
-SELECT 'Backing up CurrentLap table...' as '';
+-- Get CurrentLap data
 SELECT CONCAT(
-    'INSERT INTO CurrentLap (id, sessionId, lapTime, lapNumber, penaltyCount, createdAt, updatedAt) VALUES (',
-    QUOTE(id), ', ',
-    QUOTE(sessionId), ', ',
+    'INSERT INTO CurrentLap (id, sessionId, lapTime, lapNumber, penaltyCount, createdAt, updatedAt) VALUES (''',
+    id, ''', ''',
+    sessionId, ''', ',
     lapTime, ', ',
     lapNumber, ', ',
-    penaltyCount, ', ',
-    QUOTE(createdAt), ', ',
-    QUOTE(updatedAt), ');'
-) FROM CurrentLap;
+    penaltyCount, ', ''',
+    createdAt, ''', ''',
+    updatedAt, ''');'
+) AS InsertStatement FROM CurrentLap;
 
-SET FOREIGN_KEY_CHECKS=1;
+-- Re-enable foreign key checks
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
