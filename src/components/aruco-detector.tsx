@@ -1,18 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
+import PropTypes from "prop-types";
 
-const ArucoDetector = () => {
+const ArucoDetector = ({ isScanning, onMarkersDetected }) => {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
-  const [markerId, setMarkerId] = useState(null); // State to store the detected marker ID
+  const delayRef = useRef(false);
+  const scanningRef = useRef(isScanning); // Track scanning state using a ref
 
-
-  const markerIdRef = useRef(markerId);
-  // Sync with the ref whenever it changes
   useEffect(() => {
-    markerIdRef.current = markerId;
-  }, [markerId]);
-
-
+    scanningRef.current = isScanning; // Update ref whenever isScanning changes
+  }, [isScanning]);
 
   useEffect(() => {
     const loadScript = (src, onLoad) => {
@@ -47,116 +44,104 @@ const ArucoDetector = () => {
     const detector = new window.AR.Detector();
 
     const processFrame = () => {
+      if (!scanningRef.current || delayRef.current) {
+        // Skip processing frames if scanning is disabled or delay is active
+        requestAnimationFrame(processFrame);
+        return;
+      }
+
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
         const markers = detector.detect(imageData);
 
-        drawCorners(context, markers);
         drawIds(context, markers);
       }
+
       requestAnimationFrame(processFrame);
     };
 
     processFrame();
   };
 
-  const drawCorners = (context, markers) => {
-    context.lineWidth = 3;
-    markers.forEach((marker) => {
-      const corners = marker.corners;
-      context.strokeStyle = "red";
-      context.beginPath();
-      corners.forEach((corner, index) => {
-        context.moveTo(corner.x, corner.y);
-        const nextCorner = corners[(index + 1) % corners.length];
-        context.lineTo(nextCorner.x, nextCorner.y);
-      });
-      context.stroke();
-      context.closePath();
-    });
-  };
-
-  const delayRef = useRef(false); // To track if delay is active
-
   const drawIds = async (context, markers) => {
-    if (delayRef.current) return; // Skip if delay is active
-  
-    const detectedIds = []; // Array to store detected marker IDs
-  
-    for (const marker of markers) {
+    // if (delayRef.current) return;
+
+    const detectedIds = markers.map((marker) => marker.id); // Collect all marker IDs
+
+    onMarkersDetected(detectedIds); // Pass detected IDs to parent
+
+    /*
+    if (detectedIds.length > 0) {
+      delayRef.current = true;
+
+      // Introduce a delay
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      delayRef.current = false;
+    }
+    */
+
+    /*
+    markers.forEach((marker) => {
       const corners = marker.corners;
       const x = Math.min(...corners.map((corner) => corner.x));
       const y = Math.min(...corners.map((corner) => corner.y));
-  
-      if (!detectedIds.includes(marker.id)) {
-        detectedIds.push(marker.id); // Add marker ID to the array
-      }
-  
+
       // Draw the ID on the canvas
       context.fillText(marker.id, x, y);
-    }
-  
-    if (detectedIds.length > 0) {
-      console.log("Detected Marker IDs:", detectedIds); // Log all detected IDs
-      delayRef.current = true; // Activate delay to prevent further detections
-  
-      // Introduce a delay
-      //await new Promise((resolve) => setTimeout(resolve, 5000));
-  
-      delayRef.current = false; // Deactivate delay
-    }
-  };
-  
+    });
+    */
 
-  
+  };
+
   const startVideo = async () => {
+    if (!videoRef.current) {
+      console.error("Video element is not ready yet.");
+      return;
+    }
+
     try {
       const videoStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { exact: "environment" }, // Request rear-facing camera
+          facingMode: { exact: "environment" },
         },
       });
-  
-      const video = videoRef.current;
-      video.srcObject = videoStream;
-  
-      // Wait for the video to load metadata before playing
-      video.onloadedmetadata = () => {
-        video.play().catch((error) => {
-          console.error("Error starting video playback:", error);
-        });
+
+      videoRef.current.srcObject = videoStream;
+
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current.play().catch((error) => console.error("Error playing video:", error));
       };
     } catch (error) {
       console.error("Error accessing the webcam:", error);
-  
-      // If the rear-facing camera is not available, fallback to default
+
       if (error.name === "OverconstrainedError") {
-        console.warn("Rear-facing camera not available. Using default camera.");
-        const fallbackStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        const video = videoRef.current;
-        video.srcObject = fallbackStream;
-        video.onloadedmetadata = () => {
-          video.play().catch((fallbackError) => {
-            console.error("Error starting fallback video playback:", fallbackError);
+        console.warn("Rear camera not available. Using default camera.");
+
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
           });
-        };
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream;
+            videoRef.current.onloadedmetadata = () => {
+              videoRef.current.play().catch((fallbackError) => console.error("Error playing fallback video:", fallbackError));
+            };
+          }
+        } catch (fallbackError) {
+          console.error("Error accessing fallback camera:", fallbackError);
+        }
       }
     }
   };
- 
+
   useEffect(() => {
-    startVideo();
-    return () => {
-      const videoStream = videoRef.current?.srcObject;
-      if (videoStream) {
-        const tracks = videoStream.getTracks();
-        tracks.forEach((track) => track.stop());
-      }
-    };
-  }, []);
+    if (videoRef.current) {
+      startVideo();
+    }
+  }, [videoRef]);
 
   return (
     <div style={{ fontFamily: "monospace" }}>
@@ -166,13 +151,14 @@ const ArucoDetector = () => {
         </div>
         <video ref={videoRef} id="video" width="320" height="240" style={{ display: "none" }}></video>
         <canvas ref={canvasRef} id="canvas" width="320" height="240" style={{ display: "block" }}></canvas>
-        {/* Display the detected marker ID */}
-        <div style={{ marginTop: "20px" }}>
-          <strong>Detected Marker ID:</strong> {markerId !== null ? markerId : "No marker detected"}
-        </div>
       </center>
     </div>
   );
+};
+
+ArucoDetector.propTypes = {
+  isScanning: PropTypes.bool.isRequired, // Controls whether scanning is active
+  onMarkersDetected: PropTypes.func.isRequired, // Callback for detected markers
 };
 
 export default ArucoDetector;

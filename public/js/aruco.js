@@ -15,18 +15,85 @@ AR.Detector = function(){
   this.candidates = [];
 };
 
-AR.Detector.prototype.detect = function(image){
-  CV.grayscale(image, this.grey);
-  CV.adaptiveThreshold(this.grey, this.thres, 2, 7);
-  
-  this.contours = CV.findContours(this.thres, this.binary);
+// TODO: this shit!
+/*
+Finally, I had to rewrite the function from aruco.js, so that it finds markers that are smaller than 20% of the paper (which was the default value).
 
-  this.candidates = this.findCandidates(this.contours, image.width * 0.20, 0.05, 10);
+AR.Detector.prototype.detect = function(image) {
+  CV.grayscale(image, this.grey);
+  CV.adaptiveThreshold(this.grey, this.thres, 2, 3);
+  this.contours = CV.findContours(this.thres, this.binary);
+  this.candidates = this.findCandidates(this.contours, image.width * 0.01, 0.05, 10);
   this.candidates = this.clockwiseCorners(this.candidates);
   this.candidates = this.notTooNear(this.candidates, 10);
-
   return this.findMarkers(this.grey, this.candidates, 49);
 };
+This way, js-aruco is able to find small markers on the corners of my paper sheet.
+*/
+AR.Detector.prototype.detect = function(image) {
+  // Validate input
+  if (!image || !image.width || !image.height || !image.data) {
+    throw new Error("Invalid image data provided to detect method.");
+  }
+
+  // Resize using helper (if applicable)
+  //const scaledWidth = image.width / 1;
+  //const scaledHeight = image.height / 1;
+  //const resizedImage = resizeImage(image, scaledWidth, scaledHeight);
+
+  // Initialize binary storage (ensure it's not undefined)
+  this.binary = [];
+
+  // Grayscale and process
+  //CV.grayscale(resizedImage, this.grey);
+  CV.grayscale(image, this.grey);
+
+  // CV.gaussianBlur(image, this.grey, this.grey, 3);
+
+  CV.adaptiveThreshold(this.grey, this.thres, 2, 1);
+
+  // Contours and candidates
+  this.contours = CV.findContours(this.thres, this.binary);
+  //console.log('Contours:', this.contours);
+
+  //this.candidates = this.findCandidates(this.contours, resizedImage.width * 0.02, 0.02, 2);
+  this.candidates = this.findCandidates(this.contours, image.width * 0.01, 0.01, 1);
+  //this.candidates = this.findCandidates(this.contours, resizeImage.width * 0.01, 0.01, 1);
+
+  this.candidates = this.clockwiseCorners(this.candidates);
+  this.candidates = this.notTooNear(this.candidates, 4);
+
+  // Find markers
+  const markers = this.findMarkers(this.grey, this.candidates, 128);
+  //console.log('Markers:', markers);
+
+  return markers;
+};
+
+function resizeImage(imageData, scaledWidth, scaledHeight) {
+  const canvas = document.createElement('canvas');
+  canvas.width = scaledWidth;
+  canvas.height = scaledHeight;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error("Failed to create 2D canvas context for resizing.");
+  }
+
+  // Create a new ImageData object from the source
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = imageData.width;
+  tempCanvas.height = imageData.height;
+  const tempContext = tempCanvas.getContext('2d');
+  tempContext.putImageData(imageData, 0, 0);
+
+  // Draw the scaled image onto the new canvas
+  context.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+
+  // Extract the resized image data
+  return context.getImageData(0, 0, scaledWidth, scaledHeight);
+}
+
 
 AR.Detector.prototype.findCandidates = function(contours, minSize, epsilon, minLength){
   var candidates = [], len = contours.length, contour, poly, i;

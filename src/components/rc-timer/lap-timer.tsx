@@ -845,7 +845,14 @@ export default function LapTimer() {
       if (!isRunningRef.current) {
         startTimer_MD();
       } else if (isRunningRef.current) {
+        setDetectedMarkers([]);
+        setScanning(true);
         recordLap_MD();
+        setScanning(false);
+
+        // TODO: re-enable for ArUco Marker detection
+        //console.log("Detected marker ID", detectedMarkersRef.current); // Log detected IDs
+        //sayIt("Detected markers " + detectedMarkersRef.current); // Log detected IDs
       }
     },
     [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, sessionStartTime, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
@@ -1299,6 +1306,9 @@ export default function LapTimer() {
   };
 
   const recordLap_MD = async (): Promise<void> => {
+    // TODO: re-enable for ArUco Marker detection
+    // console.log("*** detected id " + detectedMarkersRef.current);
+
     if (!isRunningRef.current) return;
 
     setLapAnimation(true);
@@ -1629,6 +1639,22 @@ export default function LapTimer() {
       throw error;
     }
   }
+
+  const [scanning, setScanning] = useState(true); // Declare the scanning state
+  const [detectedMarkers, setDetectedMarkers] = useState([]); // Declare the state for detected markers
+
+  const detectedMarkersRef = useRef(detectedMarkers);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    detectedMarkersRef.current = detectedMarkers;
+  }, [detectedMarkers]);
+
+  // TODO: re-enable for ArUco Marker detection
+  /*
+  const handleMarkersDetected = (ids) => {
+    setDetectedMarkers(ids); // Update detected markers state    
+  };
+  */
 
   // ****************************************
   // return
@@ -2052,6 +2078,11 @@ export default function LapTimer() {
                               Stop Timer
                             </Button>
                           )}
+
+                          {/* TODO: re-enable for ArUco Marker detection */}
+                          {/*
+                          <MotionDetector controlRef={motionControlRef} onMotionDetected={(changePercent) => {handleMotionDetected(changePercent);}} playBeeps={playBeepsRef.current} className="w-full" onMarkersDetected={handleMarkersDetected} />
+                          */}
 
                           <MotionDetector
                             controlRef={motionControlRef}
@@ -2640,8 +2671,6 @@ export default function LapTimer() {
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
                   {/* Driver Car Manager */}
                   <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} onSessionsUpdate={setSavedSessions} />
-                  {/* ArUco Detector */}
-                  <ArucoDetector />
                 </motion.div>
               </TabsContent>
 

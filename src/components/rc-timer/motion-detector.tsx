@@ -1,13 +1,27 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { logger } from "@/lib/logger";
 
+// TODO: re-enable for ArUco Marker detection
+/*
+interface MotionDetectorProps {
+  onMotionDetected?: (changePercent: number) => void;
+  onMarkersDetected?: (markerIds: number[]) => void;
+  className?: string;
+  // Add ref for external control
+  controlRef?: React.RefObject<{
+    stop: () => void;
+    start: () => Promise<void>;
+  }>;
+  playBeeps?: boolean;
+}
+*/
 interface MotionDetectorProps {
   onMotionDetected?: (changePercent: number) => void;
   className?: string;
   // Add ref for external control
   controlRef?: React.RefObject<{
     stop: () => void;
-    start: () => Promise<void>; 
+    start: () => Promise<void>;
   }>;
   playBeeps?: boolean;
 }
@@ -39,6 +53,8 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   enableDebugView: true,
 };
 
+// TODO: re-enable for ArUco Marker detection
+//export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, onMarkersDetected, className = "", controlRef, playBeeps }) => {
 export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef, playBeeps }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -63,15 +79,54 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [error, setError] = useState<string>("");
   const [motionEvents, setMotionEvents] = useState(0);
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
-  const [isStoppingRef] = useState({ current: false });
+  // TODO: re-enable for ArUco Marker detection
+  //const [isStoppingRef] = useState({ current: false });
   const [isLoading, setIsLoading] = useState(false);
   const [savedSettings, setSavedSettings] = useState<MotionSettings[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newSettingsName, setNewSettingsName] = useState("");
   const [saveError, setSaveError] = useState("");
 
+  // TODO: re-enable for ArUco Marker detection
+  // const [currentMarkers, setCurrentMarkers] = useState("");
+
   const isActiveRef = useRef(true);
   const isPreviewingRef = useRef(isPreviewing);
+
+  useEffect(() => {
+    loadArucoScripts();
+  }, []);
+
+  const loadArucoScripts = useCallback(() => {
+    const loadScript = (src: string) =>
+      new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = (err) => reject(err);
+        document.body.appendChild(script);
+      });
+
+    const loadAruco = async () => {
+      try {
+        await loadScript("/js/cv.js");
+        await loadScript("/js/aruco.js");
+        console.log("Aruco scripts loaded");
+      } catch (error) {
+        logger.error("Error loading Aruco scripts:", error);
+      }
+    };
+
+    loadAruco();
+  }, []);
+
+  const detectMarkers = useCallback((context: CanvasRenderingContext2D) => {
+    if (!window.AR || !context) return [];
+    const detector = new window.AR.Detector();
+    const imageData = context.getImageData(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+    const markers = detector.detect(imageData);
+    return markers.map((marker) => marker.id);
+  }, []);
 
   useEffect(() => {
     isPreviewingRef.current = isPreviewing;
@@ -143,14 +198,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     }));
   };
 
-  // Add this helper function near the top of the component
-  const cleanup = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = undefined;
-    }
-  }, []);
-
   // Audio handling
   const initAudio = useCallback(async () => {
     if (!settings.enableAudio) return;
@@ -199,11 +246,41 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         mediaStreamRef.current = null;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // TODO: set back to original?
+      /*
+            const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "environment" },
           width: { ideal: 1280 },
           height: { ideal: 720 },
+        },
+      });
+      */
+
+      // Good distance detection, can't handle motion
+      //const myWidth = 2880;
+      //const myHeight = 1620;
+
+      //const myWidth = 1920;
+      //const myHeight = 1080;
+
+      // default
+      const myWidth = 1280;
+      const myHeight = 720;
+
+      // res too low, won't detect well from far away
+      //const myWidth = 424;
+      //const myHeight = 240;
+
+      // res too low, won't detect at all from far away
+      //const myWidth = 212;
+      //const myHeight = 120;
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: myWidth },
+          height: { ideal: myHeight },
         },
       });
 
@@ -216,6 +293,8 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       throw err;
     }
   }, []);
+
+  const delayRef = useRef(false); // Prevent multiple Aruco detections in a short time
 
   // Motion detection
   // Modified motion detection to handle frame skipping
@@ -242,14 +321,16 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     ctx.drawImage(video, 0, 0);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
+    // TODO: re-enable debug view?
+    /*
     if (settingsRef.current.enableDebugView) {
       debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
     }
+    */
 
     frameCountRef.current++;
     // logger.log("Processing frame:", frameCountRef.current);
 
-    // Use settingsRef.current instead of settings
     if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
       let changedPixels = 0;
       const debugFrame = settingsRef.current.enableDebugView ? debugCtx.createImageData(canvas.width, canvas.height) : null;
@@ -261,18 +342,24 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
         if (rDiff > settingsRef.current.sensitivity || gDiff > settingsRef.current.sensitivity || bDiff > settingsRef.current.sensitivity) {
           changedPixels++;
+          // TODO: re-enable?
+          /*
           if (debugFrame) {
             debugFrame.data[i] = 255;
             debugFrame.data[i + 1] = 0;
             debugFrame.data[i + 2] = 0;
             debugFrame.data[i + 3] = 128;
           }
+          */
         }
       }
 
+      // TODO: re-enable?
+      /*
       if (settingsRef.current.enableDebugView && debugFrame) {
         debugCtx.putImageData(debugFrame, 0, 0);
       }
+      */
 
       const frameSize = currentFrame.width * currentFrame.height;
       const changePercent = (changedPixels / frameSize) * 100;
@@ -287,7 +374,36 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           setMotionEvents((prev) => prev + 1);
           if (!isPreviewingRef.current) {
             onMotionDetected?.(changePercent);
+
+            // TODO: detect marker ids
+            // TODO: re-enable for ArUco Marker detection
+            /*
+            if (!delayRef.current) {
+              delayRef.current = true;
+              setTimeout(() => {
+                delayRef.current = false;
+              }, 10); // Cooldown for Aruco detection
+            }
+            */
           }
+
+          // TODO: re-enable for ArUco Marker detection
+          // Detect markers
+          /*
+          const markerIds = detectMarkers(ctx);
+          onMarkersDetected?.(markerIds);
+          */
+
+          // TODO: re-enable for ArUco Marker detection
+          /*
+          setCurrentMarkers(markerIds);
+          if (markerIds.length > 0) {
+            console.log("motion-detector:Marker(s) Detected -- " + markerIds + " at " + now);
+          } else {
+            console.log("motion-detector:No markers detected at " + now);
+          }
+          */
+
           lastMotionTimeRef.current = now;
         }
       }
@@ -298,7 +414,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (isActiveRef.current) {
       animationFrameRef.current = requestAnimationFrame(detectMotion);
     }
-  }, [settingsRef, playBeep, onMotionDetected]);
+  }, [settingsRef, playBeep, onMotionDetected, detectMarkers]);
 
   const handleStop = useCallback(() => {
     isActiveRef.current = false;
@@ -374,11 +490,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (controlRef) {
       controlRef.current = {
         stop: handleStop,
-        start: handleStart  // Add this line
+        start: handleStart, // Add this line
       };
     }
   }, [controlRef, handleStop, handleStart]);
-  
+
   // ... (previous useEffect hooks remain the same)
   useEffect(() => {
     if (!videoRef.current) return;
@@ -435,109 +551,120 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       {error && <div className="text-red-500 bg-red-50 p-2 rounded">{error}</div>}
 
       <div className="space-y-4">
-        {/* Control Buttons */}
-        <div className="flex gap-2">
-          {/* Preview Button */}
-          <button onClick={handlePreviewToggle} className="px-4 py-2 bg-gray-500 text-white rounded disabled:bg-gray-300">
-            {isPreviewing ? "Stop Preview" : "Preview"}
-          </button>
-          {/* Cam On Button */}
-          <button
-            onClick={async () => {
-              setIsLoading(true);
-              try {
-                await handleStart();
-              } finally {
-                setIsLoading(false);
-              }
+        {/* Logging */}
+        <div className="pt-2 border-t">
+          {/* TODO: re-enable for ArUco Marker detection */}
+          {/* 
+          <h1>Current Markers:</h1>
+          <div>
+            {/* Display markers as a comma-separated string */}
+          {/*
+            {currentMarkers.length > 0 ? (
+              <p>{currentMarkers.join(", ")}</p> // Join the array with commas
+            ) : (
+              <p>No markers available</p>
+            )}
+          </div>
+          */}
+
+          {/* <div className="text-sm">Motion Events: {motionEvents}</div> */}
+          {lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
+        </div>
+      </div>
+
+      {/* Control Buttons */}
+      <div className="flex gap-2">
+        {/* Preview Button */}
+        <button onClick={handlePreviewToggle} className="px-4 py-2 bg-gray-500 text-white rounded disabled:bg-gray-300">
+          {isPreviewing ? "Stop Preview" : "Preview"}
+        </button>
+        {/* Cam On Button */}
+        <button
+          onClick={async () => {
+            setIsLoading(true);
+            try {
+              await handleStart();
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+          disabled={isRunning || isLoading || isPreviewing}
+          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+        >
+          {isLoading ? "Cam On" : "Cam On"}
+        </button>
+        {/* Cam Off Button */}
+        <button onClick={handleStop} disabled={(!isRunning && !isPreviewing) || isLoading} className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300">
+          {isLoading ? "Cam Off" : "Cam Off"}
+        </button>
+      </div>
+
+      {/* Control Settings */}
+      <div className="space-y-3 p-4 bg-gray-50 rounded">
+        {/* Sensitivity */}
+        <div>
+          <label className="block text-sm mb-1">Sensitivity ({(205 - settings.sensitivity).toFixed(0)}/200)</label>
+          <input
+            type="range"
+            min="5"
+            max="200"
+            value={205 - settings.sensitivity}
+            onChange={(e) => {
+              const displayValue = Number(e.target.value);
+              const internalValue = 205 - displayValue;
+              setSettings((prev) => ({
+                ...prev,
+                sensitivity: internalValue,
+              }));
             }}
-            disabled={isRunning || isLoading || isPreviewing}
-            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
-          >
-            {isLoading ? "Cam On" : "Cam On"}
-          </button>
-          {/* Cam Off Button */}
-          <button onClick={handleStop} disabled={(!isRunning && !isPreviewing) || isLoading} className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300">
-            {isLoading ? "Cam Off" : "Cam Off"}
-          </button>
+            className="w-full"
+          />
         </div>
 
-        {/* Control Settings */}
-        <div className="space-y-3 p-4 bg-gray-50 rounded">
-          {/* Sensitivity */}
-          <div>
-            <label className="block text-sm mb-1">Sensitivity ({settings.sensitivity})</label>
-            <input type="range" min="5" max="200" value={settings.sensitivity} onChange={(e) => setSettings((prev) => ({ ...prev, sensitivity: Number(e.target.value) }))} className="w-full" />
-          </div>
+        {/* Threshold */}
+        <div>
+          <label className="block text-sm mb-1">Threshold ({settings.threshold}%)</label>
+          <input type="range" min="0.1" max="10.0" step="0.1" value={settings.threshold} onChange={(e) => setSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))} className="w-full" />
+        </div>
 
-          {/* Threshold */}
-          <div>
-            <label className="block text-sm mb-1">Threshold ({settings.threshold}%)</label>
-            <input type="range" min="0.1" max="10.0" step="0.1" value={settings.threshold} onChange={(e) => setSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))} className="w-full" />
-          </div>
+        {/* Cooldown */}
+        <div>
+          <label className="block text-sm mb-1">Cooldown ({settings.cooldown}ms)</label>
+          <input type="range" min="100" max="25000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
+        </div>
 
-          {/* Cooldown */}
-          <div>
-            <label className="block text-sm mb-1">Cooldown ({settings.cooldown}ms)</label>
-            <input type="range" min="100" max="25000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
-          </div>
+        {/* Frames to Skip */}
+        <div>
+          <label className="block text-sm mb-1">Frames to Skip ({settings.framesToSkip})</label>
+          <input type="range" min="1" max="240" value={settings.framesToSkip} onChange={(e) => setSettings((prev) => ({ ...prev, framesToSkip: Number(e.target.value) }))} className="w-full" />
+        </div>
 
-          {/* Frames to Skip */}
-          <div>
-            <label className="block text-sm mb-1">Frames to Skip ({settings.framesToSkip})</label>
-            <input type="range" min="1" max="240" value={settings.framesToSkip} onChange={(e) => setSettings((prev) => ({ ...prev, framesToSkip: Number(e.target.value) }))} className="w-full" />
-          </div>
+        {/* Save / Load Settings */}
+        <div>Camera Settings:</div>
+        <div className="flex gap-2 pt-4">
+          <button onClick={() => setShowSaveDialog(true)} className="px-4 py-2 bg-green-500 text-white rounded">
+            Save
+          </button>
 
-          {/* Save / Load Settings */}
-          <div>Camera Settings:</div>
-          <div className="flex gap-2 pt-4">
-            <button onClick={() => setShowSaveDialog(true)} className="px-4 py-2 bg-green-500 text-white rounded">
-              Save
-            </button>
-
-            <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  const selected = savedSettings.find((s) => s.id === e.target.value);
-                  if (selected) handleLoadSettings(selected);
-                }
-              }}
-              value=""
-              className="px-4 py-2 border rounded w-[180px]"
-            >
-              <option value="" disabled>
-                Load settings...
+          <select
+            onChange={(e) => {
+              if (e.target.value) {
+                const selected = savedSettings.find((s) => s.id === e.target.value);
+                if (selected) handleLoadSettings(selected);
+              }
+            }}
+            value=""
+            className="px-4 py-2 border rounded w-[180px]"
+          >
+            <option value="" disabled>
+              Load settings...
+            </option>
+            {savedSettings.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
-              {savedSettings.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={settings.enableAudio} onChange={(e) => setSettings((prev) => ({ ...prev, enableAudio: e.target.checked }))} id="enableAudio" />
-            <label htmlFor="enableAudio" className="text-sm">
-              Enable Audio
-            </label>
-          </div>
-
-
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={settings.enableDebugView} onChange={(e) => setSettings((prev) => ({ ...prev, enableDebugView: e.target.checked }))} id="enableDebugView" />
-            <label htmlFor="enableDebugView" className="text-sm">
-              Show Debug View
-            </label>
-          </div>
-*/}
-
-          {/* Logging */}
-          <div className="pt-2 border-t">
-            {/* <div className="text-sm">Motion Events: {motionEvents}</div> */}
-            {lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
-          </div>
+            ))}
+          </select>
         </div>
 
         {/* Dialog */}
