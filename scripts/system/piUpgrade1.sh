@@ -71,6 +71,12 @@ echo "*** UpgrayeDD deleting project folder"
 rm -rf rc-lap-timer
 echo "*** UpgrayeDD deleting tar file"
 rm rc-lap-timer-build.tar.gz
+echo "*** UpgrayeDD deleting system files"
+rm backupDB.sql
+rm clearDB.sql
+rm create_rc_timer_database.sql
+rm backupDB.sh
+rm restoreDB.sh
 echo "*** UpgrayeDD deleting var/www"
 sudo rm -rf /var/www/rc-lap-timer/
 echo "*** UpgrayeDD making a new home"
