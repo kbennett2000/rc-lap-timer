@@ -1,1 +1,1 @@
-mysql -u rc_timer_user -p rc_lap_timer < backup.sql > backup_data.sql
+mysql -u rc_timer_user -p rc_lap_timer < backupDB.sql > backup_data.sql

@@ -52,17 +52,22 @@ echo "*** UpgrayeDD copying system utilities"
 #!/bin/bash
 
 # Copy database files to home directory
-cp -f ~/rc-lap-timer/database/backupDB.sql ~/
-cp -f ~/rc-lap-timer/database/clearDB.sql ~/
+cp -f ~/rc-lap-timer/scripts/database/backupDB.sql ~/
+cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/
 
 # Copy system files to home directory
-cp -f ~/rc-lap-timer/system/backupDB.sh ~/
-cp -f ~/rc-lap-timer/system/piUpgrade1.sh ~/
-cp -f ~/rc-lap-timer/system/piUpgrade2.sh ~/
-cp -f ~/rc-lap-timer/system/restoreDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/backupDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/piUpgrade1.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/piUpgrade2.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/restoreDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/upgrayedd.sh ~/
 
 # Copy motd file to /etc (requires sudo)
 sudo cp -f ~/rc-lap-timer/misc/etc/motd /etc/motd
+
+# Make the scripts executable
+cd ~
+sudo chmod +x *.sh
 
 # Verify all files were copied successfully
 echo "Verifying files..."
@@ -73,6 +78,7 @@ files_to_check=(
     "~/piUpgrade1.sh"
     "~/piUpgrade2.sh"
     "~/restoreDB.sh"
+    "~/upgrayedd.sh"
     "/etc/motd"
 )
 
