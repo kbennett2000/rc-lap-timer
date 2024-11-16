@@ -36,14 +36,62 @@ echo "*******************************"
 cd rc-lap-timer
 echo "*** UpgrayeDD untarring"
 tar xzf ../rc-lap-timer-build.tar.gz
+
 echo "*** UpgrayeDD copying files"
 sudo mkdir -p /var/www/rc-lap-timer
 sudo cp -r .next/* /var/www/rc-lap-timer/
+
 echo "*** UpgrayeDD prisma magic"
 npx prisma generate
 npx prisma db push
+
 echo "*** UpgrayeDD owning shit left and right"
 sudo chown -R pi:pi /home/pi/rc-lap-timer
+
+echo "*** UpgrayeDD copying system utilities"
+#!/bin/bash
+
+# Copy database files to home directory
+cp -f ~/rc-lap-timer/database/backupDB.sql ~/
+cp -f ~/rc-lap-timer/database/clearDB.sql ~/
+
+# Copy system files to home directory
+cp -f ~/rc-lap-timer/system/backupDB.sh ~/
+cp -f ~/rc-lap-timer/system/piUpgrade1.sh ~/
+cp -f ~/rc-lap-timer/system/piUpgrade2.sh ~/
+cp -f ~/rc-lap-timer/system/restoreDB.sh ~/
+
+# Copy motd file to /etc (requires sudo)
+sudo cp -f ~/rc-lap-timer/misc/etc/motd /etc/motd
+
+# Verify all files were copied successfully
+echo "Verifying files..."
+files_to_check=(
+    "~/backupDB.sql"
+    "~/clearDB.sql"
+    "~/backupDB.sh"
+    "~/piUpgrade1.sh"
+    "~/piUpgrade2.sh"
+    "~/restoreDB.sh"
+    "/etc/motd"
+)
+
+all_files_exist=true
+for file in "${files_to_check[@]}"; do
+    if [ ! -f "$(eval echo $file)" ]; then
+        echo "Warning: $file was not copied successfully"
+        all_files_exist=false
+    fi
+done
+
+if $all_files_exist; then
+    echo "All files were copied successfully"
+else
+    echo "Some files were not copied successfully. Please check the warnings above."
+    exit 1
+fi
+
+
 echo "*** UpgrayeDD asking what you want!"
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "--------------------------------------------------------======------------------------------------------------------"
@@ -108,6 +156,7 @@ echo "--------------=+#######*****%#-*************%@%#****#%*##%%@@@#**+*##%%*-*
 echo "--------------------==++++++*%*=************#@%%#****#@#%*@%%#+*++###%%=+***********#@%##********++++==-------------"
 echo "------------------------------=-=++++********%%%#***##+-+-**##*++*###%*=***********#@#**++++===---------------------"
 echo "-----------------------------------------====+*+*+*#=*%*%=@%*#*+++****-=+++=======-==-------------------------------"
+
 prompt_user
 read_user_input
 handle_choice
