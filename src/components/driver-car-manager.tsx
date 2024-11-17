@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle, Plus, Map, SlidersHorizontal, Users, Cog } from "lucide-react";
+import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle, Plus, Map, SlidersHorizontal, Users, Cog, Wrench } from "lucide-react";
 import { logger } from "@/lib/logger";
 import PiConfiguration from "@/components/pi-config-settings";
+import TrackMeasurer from "./track-measurer";
 
 interface MotionSettings {
   id: string;
@@ -246,40 +247,49 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="drivers">
-          <TabsList className="grid w-full h-full grid-cols-4">
-            
-            <TabsTrigger value="drivers">              
+          <TabsList className="grid w-full h-full grid-cols-5">
+            <TabsTrigger value="drivers">
               <div className="flex flex-col items-center">
-                      <Users className="h-6 w-6" />
-                      <span className="text-xs mt-1">Drivers <br />& Cars</span>
-                    </div>
-              </TabsTrigger>
-            
+                <Users className="h-6 w-6" />
+                <span className="text-xs mt-1">
+                  Drivers <br />& Cars
+                </span>
+              </div>
+            </TabsTrigger>
 
             <TabsTrigger value="locations">
-              
               <div className="flex flex-col items-center">
-                      <Map className="h-6 w-6" />
-                      <span className="text-xs mt-1">Locations</span>
-                    </div>
-              </TabsTrigger>
-            
+                <Map className="h-6 w-6" />
+                <span className="text-xs mt-1">Locations</span>
+              </div>
+            </TabsTrigger>
 
             <TabsTrigger value="motionSettings">
               <div className="flex flex-col items-center">
-                      <SlidersHorizontal className="h-6 w-6" />
-                      <span className="text-xs mt-1">Motion <br />Settings</span>
-                    </div>
-              </TabsTrigger>
+                <SlidersHorizontal className="h-6 w-6" />
+                <span className="text-xs mt-1">
+                  Motion <br />
+                  Settings
+                </span>
+              </div>
+            </TabsTrigger>
 
-              <TabsTrigger value="systemSettings">
+            <TabsTrigger value="utilities">
               <div className="flex flex-col items-center">
-                      <Cog className="h-6 w-6" />
-                      <span className="text-xs mt-1">System <br />Settings</span>
-                    </div>
-              </TabsTrigger>
+                <Wrench className="h-6 w-6" />
+                <span className="text-xs mt-1">Utilities</span>
+              </div>
+            </TabsTrigger>
 
-
+            <TabsTrigger value="systemSettings">
+              <div className="flex flex-col items-center">
+                <Cog className="h-6 w-6" />
+                <span className="text-xs mt-1">
+                  System <br />
+                  Settings
+                </span>
+              </div>
+            </TabsTrigger>
           </TabsList>
 
           {/* Drivers & Cars Tab */}
@@ -468,17 +478,21 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
             </div>
           </TabsContent>
 
+          {/* Utilities Tab */}
+          <TabsContent value="utilities" className="space-y-4">
+            <div className="space-y-2">
+              {/* Track Measurer */}
+              <TrackMeasurer />
+            </div>
+          </TabsContent>
 
           {/* System Settings Tab */}
           <TabsContent value="systemSettings" className="space-y-4">
             <div className="space-y-2">
-                  {/* Pi Configuration Settings */}
-                  <PiConfiguration />
+              {/* Pi Configuration Settings */}
+              <PiConfiguration />
             </div>
           </TabsContent>
-
-
-
         </Tabs>
 
         {/* Add/Edit Entity Dialog */}

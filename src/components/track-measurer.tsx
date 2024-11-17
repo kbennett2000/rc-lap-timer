@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { MapPin, Navigation2, AlertCircle } from "lucide-react";
+import { MapPin, Navigation2, AlertCircle, Settings2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const TrackMeasurer = () => {
+  const DEFAULT_DISTANCE = 132;
   const [startPosition, setStartPosition] = useState(null);
   const [currentPosition, setCurrentPosition] = useState(null);
   const [distance, setDistance] = useState(0);
   const [heading, setHeading] = useState(0);
   const [error, setError] = useState(null);
   const [permissionStatus, setPermissionStatus] = useState("prompt");
-  const TARGET_DISTANCE = 132; // feet
+  const [targetDistance, setTargetDistance] = useState(DEFAULT_DISTANCE);
+
+  const [distanceDialogOpen, setDistanceDialogOpen] = useState(false);
+  const [tempDistance, setTempDistance] = useState(DEFAULT_DISTANCE);
 
   // Calculate distance between two points using Haversine formula
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -152,11 +160,69 @@ const TrackMeasurer = () => {
     setError(null);
   };
 
+  const handleDistanceSubmit = (e) => {
+    e.preventDefault();
+    const newDistance = parseFloat(tempDistance);
+    if (!isNaN(newDistance) && newDistance > 0) {
+      setTargetDistance(newDistance);
+      setDialogOpen(false);
+    } else {
+      setError("Please enter a valid distance");
+    }
+  };
+
+  const handleDistanceReset = () => {
+    setTempDistance(DEFAULT_DISTANCE);
+    setTargetDistance(DEFAULT_DISTANCE);
+    setDialogOpen(false);
+  };
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>RC Track Measurer</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle>RC Track Measurer</CardTitle>
+          <AlertDialog open={distanceDialogOpen} onOpenChange={setDistanceDialogOpen}>
+            {/* Add this AlertDialogTrigger */}
+            <Button variant="ghost" size="icon" onClick={() => setDistanceDialogOpen(true)} className="h-8 w-8 p-0">
+              <Settings2 className="h-4 w-4" />
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Change Target Distance</AlertDialogTitle>
+                <AlertDialogDescription>Enter a new target distance in feet. Default is 132 feet.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="distance">Target Distance (feet)</Label>
+                  <Input id="distance" type="number" step="0.1" value={tempDistance} onChange={(e) => setTempDistance(parseFloat(e.target.value))} />
+                </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  onClick={() => {
+                    setTempDistance(DEFAULT_DISTANCE);
+                    setDistanceDialogOpen(false);
+                  }}
+                >
+                  Reset to Default
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (!isNaN(tempDistance) && tempDistance > 0) {
+                      setTargetDistance(tempDistance);
+                      setDistanceDialogOpen(false);
+                    }
+                  }}
+                >
+                  Save Changes
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </CardHeader>
+
       <CardContent>
         <div className="flex flex-col items-center gap-4">
           {error && (
@@ -186,7 +252,7 @@ const TrackMeasurer = () => {
                   <div className="space-y-2">
                     <p className="text-2xl font-bold">{distance.toFixed(1)} ft</p>
                     {currentPosition && <p className="text-sm text-gray-500">Accuracy: ±{currentPosition.accuracy.toFixed(1)}ft</p>}
-                    <p className={`text-lg ${Math.abs(distance - TARGET_DISTANCE) < 1 ? "text-green-500" : ""}`}>{distance < TARGET_DISTANCE ? `Keep walking: ${(TARGET_DISTANCE - distance).toFixed(1)} ft to go` : `Too far: ${(distance - TARGET_DISTANCE).toFixed(1)} ft past`}</p>
+                    <p className={`text-lg ${Math.abs(distance - targetDistance) < 1 ? "text-green-500" : ""}`}>{distance < targetDistance ? `Keep walking: ${(targetDistance - distance).toFixed(1)} ft to go` : `Too far: ${(distance - targetDistance).toFixed(1)} ft past`}</p>
                     <button onClick={handleReset} className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">
                       Reset
                     </button>
