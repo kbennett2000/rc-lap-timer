@@ -87,16 +87,23 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [newSettingsName, setNewSettingsName] = useState("");
   const [saveError, setSaveError] = useState("");
 
+  const [detectedMotionStats, setDetectedMotionStats] = useState("");
+
   // TODO: re-enable for ArUco Marker detection
   // const [currentMarkers, setCurrentMarkers] = useState("");
 
   const isActiveRef = useRef(true);
   const isPreviewingRef = useRef(isPreviewing);
 
+  // TODO: re-enable for ArUco Marker detection
+  /*
   useEffect(() => {
     loadArucoScripts();
   }, []);
+  */
 
+  // TODO: re-enable for ArUco Marker detection
+  /*
   const loadArucoScripts = useCallback(() => {
     const loadScript = (src: string) =>
       new Promise<void>((resolve, reject) => {
@@ -119,7 +126,10 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
     loadAruco();
   }, []);
+  */
 
+  // TODO: re-enable for ArUco Marker detection
+  /*
   const detectMarkers = useCallback((context: CanvasRenderingContext2D) => {
     if (!window.AR || !context) return [];
     const detector = new window.AR.Detector();
@@ -127,6 +137,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     const markers = detector.detect(imageData);
     return markers.map((marker) => marker.id);
   }, []);
+  */
 
   useEffect(() => {
     isPreviewingRef.current = isPreviewing;
@@ -294,7 +305,8 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     }
   }, []);
 
-  const delayRef = useRef(false); // Prevent multiple Aruco detections in a short time
+  // TODO: re-enable for ArUco Marker detection
+  //const delayRef = useRef(false); // Prevent multiple Aruco detections in a short time
 
   // Motion detection
   // Modified motion detection to handle frame skipping
@@ -369,9 +381,12 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       if (changePercent > settingsRef.current.threshold) {
         const now = Date.now();
         if (now - lastMotionTimeRef.current > settingsRef.current.cooldown) {
-          // logger.log("Motion detected!");
+          // logger.log("*** Motion detected!");          
+          setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
+
           playBeep();
           setMotionEvents((prev) => prev + 1);
+
           if (!isPreviewingRef.current) {
             onMotionDetected?.(changePercent);
 
@@ -405,7 +420,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           */
 
           lastMotionTimeRef.current = now;
-        }
+        } 
       }
     }
 
@@ -414,7 +429,9 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (isActiveRef.current) {
       animationFrameRef.current = requestAnimationFrame(detectMotion);
     }
-  }, [settingsRef, playBeep, onMotionDetected, detectMarkers]);
+    // TODO: re-enable for ArUco Marker detection
+    //}, [settingsRef, playBeep, onMotionDetected, detectMarkers]);
+  }, [settingsRef, playBeep, onMotionDetected]);
 
   const handleStop = useCallback(() => {
     isActiveRef.current = false;
@@ -567,8 +584,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           </div>
           */}
 
-          {/* <div className="text-sm">Motion Events: {motionEvents}</div> */}
-          {lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
+          {/* <div className="text-sm">Motion Events: {motionEvents}</div> */ }
+
+          {isPreviewing && (<div className="text-sm">Motion Detected Stats: {detectedMotionStats}</div>)}
+          {isPreviewing && lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
+        
         </div>
       </div>
 

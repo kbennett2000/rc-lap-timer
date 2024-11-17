@@ -67,6 +67,8 @@ echo "***** UPGREYEDD ENGAGED ******"
 echo "* With two D's for a double  *"
 echo "*   dose of that pimpin!     *"
 echo "******************************"
+echo "*** UpgrayeDD backing up your database"
+./backupDB.sh
 echo "*** UpgrayeDD deleting project folder"
 rm -rf rc-lap-timer
 echo "*** UpgrayeDD deleting tar file"
