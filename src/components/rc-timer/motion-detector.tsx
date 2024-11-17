@@ -89,6 +89,13 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
   const [detectedMotionStats, setDetectedMotionStats] = useState("");
 
+  const [saveMDImages, setSaveMDImages] = useState(false);
+  const saveMDImagesRef = useRef(saveMDImages);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    saveMDImagesRef.current = saveMDImages;
+  }, [saveMDImages]);
+
   // TODO: re-enable for ArUco Marker detection
   // const [currentMarkers, setCurrentMarkers] = useState("");
 
@@ -381,11 +388,16 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       if (changePercent > settingsRef.current.threshold) {
         const now = Date.now();
         if (now - lastMotionTimeRef.current > settingsRef.current.cooldown) {
-          // logger.log("*** Motion detected!");          
+          // logger.log("*** Motion detected!");
           setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
 
           playBeep();
           setMotionEvents((prev) => prev + 1);
+
+          if (saveMDImagesRef.current) {
+            // Save the frame to device gallery
+            saveToGallery(canvas, changePercent);
+          }
 
           if (!isPreviewingRef.current) {
             onMotionDetected?.(changePercent);
@@ -420,7 +432,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           */
 
           lastMotionTimeRef.current = now;
-        } 
+        }
       }
     }
 
@@ -432,6 +444,52 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     // TODO: re-enable for ArUco Marker detection
     //}, [settingsRef, playBeep, onMotionDetected, detectMarkers]);
   }, [settingsRef, playBeep, onMotionDetected]);
+
+  // Function to save image to device gallery
+  const saveToGallery = async (canvas: HTMLCanvasElement, changePercent: number) => {
+    try {
+      // Convert the canvas to a blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob(
+          (blob) => {
+            resolve(blob!);
+          },
+          "image/jpeg",
+          0.8
+        );
+      });
+
+      // Create timestamp for filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `rc-lap-${timestamp}-${changePercent.toFixed(1)}pct.jpg`;
+
+      // Try to use the Web Share API first (works on most mobile browsers)
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], filename, { type: "image/jpeg" });
+        try {
+          await navigator.share({
+            files: [file],
+          });
+          return;
+        } catch (error) {
+          // If share fails, fall back to download method
+          logger.error("Share failed, falling back to download:", error);
+        }
+      }
+
+      // Fallback: Create a download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      logger.error("Error saving image to gallery:", error);
+    }
+  };
 
   const handleStop = useCallback(() => {
     isActiveRef.current = false;
@@ -584,11 +642,10 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           </div>
           */}
 
-          {/* <div className="text-sm">Motion Events: {motionEvents}</div> */ }
+          {/* <div className="text-sm">Motion Events: {motionEvents}</div> */}
 
-          {isPreviewing && (<div className="text-sm">Motion Detected Stats: {detectedMotionStats}</div>)}
+          {isPreviewing && <div className="text-sm">Motion Detected Stats: {detectedMotionStats}</div>}
           {isPreviewing && lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
-        
         </div>
       </div>
 
@@ -686,6 +743,22 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
             ))}
           </select>
         </div>
+
+        {/* Save MD Images */}
+        <div className="flex gap-2 pt-4"></div>
+
+        <input
+          type="checkbox"
+          id="saveMDImagesLocally"
+          checked={saveMDImages}
+          onChange={(e) => {
+            setSaveMDImages(e.target.checked);
+          }}
+          className="h-4 w-4 rounded border-gray-300"
+        />
+        <label htmlFor="remoteControl" className="text-sm font-medium">
+          Save MD Images
+        </label>
 
         {/* Dialog */}
         {showSaveDialog && (
