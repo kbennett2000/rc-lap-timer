@@ -32,9 +32,6 @@ import { CurrentSessionDisplay } from "@/components/current-session-display";
 
 import TrackMeasurer from "../track-measurer";
 
-// TODO: re-enable for ArUco Marker detection
-//import ArucoDetector from "../aruco-detector";
-
 // ****************************************
 // interface
 // ****************************************
@@ -853,10 +850,6 @@ export default function LapTimer() {
         setScanning(true);
         recordLap_MD();
         setScanning(false);
-
-        // TODO: re-enable for ArUco Marker detection
-        //console.log("Detected marker ID", detectedMarkersRef.current); // Log detected IDs
-        //sayIt("Detected markers " + detectedMarkersRef.current); // Log detected IDs
       }
     },
     [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, sessionStartTime, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
@@ -1310,9 +1303,6 @@ export default function LapTimer() {
   };
 
   const recordLap_MD = async (): Promise<void> => {
-    // TODO: re-enable for ArUco Marker detection
-    // console.log("*** detected id " + detectedMarkersRef.current);
-
     if (!isRunningRef.current) return;
 
     setLapAnimation(true);
@@ -1652,13 +1642,6 @@ export default function LapTimer() {
   useEffect(() => {
     detectedMarkersRef.current = detectedMarkers;
   }, [detectedMarkers]);
-
-  // TODO: re-enable for ArUco Marker detection
-  /*
-  const handleMarkersDetected = (ids) => {
-    setDetectedMarkers(ids); // Update detected markers state    
-  };
-  */
 
   // ****************************************
   // return
@@ -2082,11 +2065,6 @@ export default function LapTimer() {
                               Stop Timer
                             </Button>
                           )}
-
-                          {/* TODO: re-enable for ArUco Marker detection */}
-                          {/*
-                          <MotionDetector controlRef={motionControlRef} onMotionDetected={(changePercent) => {handleMotionDetected(changePercent);}} playBeeps={playBeepsRef.current} className="w-full" onMarkersDetected={handleMarkersDetected} />
-                          */}
 
                           <MotionDetector
                             controlRef={motionControlRef}

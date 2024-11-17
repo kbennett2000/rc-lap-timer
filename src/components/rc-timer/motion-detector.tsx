@@ -1,20 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { logger } from "@/lib/logger";
 
-// TODO: re-enable for ArUco Marker detection
-/*
-interface MotionDetectorProps {
-  onMotionDetected?: (changePercent: number) => void;
-  onMarkersDetected?: (markerIds: number[]) => void;
-  className?: string;
-  // Add ref for external control
-  controlRef?: React.RefObject<{
-    stop: () => void;
-    start: () => Promise<void>;
-  }>;
-  playBeeps?: boolean;
-}
-*/
 interface MotionDetectorProps {
   onMotionDetected?: (changePercent: number) => void;
   className?: string;
@@ -53,8 +39,6 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   enableDebugView: true,
 };
 
-// TODO: re-enable for ArUco Marker detection
-//export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, onMarkersDetected, className = "", controlRef, playBeeps }) => {
 export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef, playBeeps }) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -79,8 +63,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [error, setError] = useState<string>("");
   const [motionEvents, setMotionEvents] = useState(0);
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
-  // TODO: re-enable for ArUco Marker detection
-  //const [isStoppingRef] = useState({ current: false });
   const [isLoading, setIsLoading] = useState(false);
   const [savedSettings, setSavedSettings] = useState<MotionSettings[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -96,55 +78,8 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     saveMDImagesRef.current = saveMDImages;
   }, [saveMDImages]);
 
-  // TODO: re-enable for ArUco Marker detection
-  // const [currentMarkers, setCurrentMarkers] = useState("");
-
   const isActiveRef = useRef(true);
   const isPreviewingRef = useRef(isPreviewing);
-
-  // TODO: re-enable for ArUco Marker detection
-  /*
-  useEffect(() => {
-    loadArucoScripts();
-  }, []);
-  */
-
-  // TODO: re-enable for ArUco Marker detection
-  /*
-  const loadArucoScripts = useCallback(() => {
-    const loadScript = (src: string) =>
-      new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = src;
-        script.onload = () => resolve();
-        script.onerror = (err) => reject(err);
-        document.body.appendChild(script);
-      });
-
-    const loadAruco = async () => {
-      try {
-        await loadScript("/js/cv.js");
-        await loadScript("/js/aruco.js");
-        console.log("Aruco scripts loaded");
-      } catch (error) {
-        logger.error("Error loading Aruco scripts:", error);
-      }
-    };
-
-    loadAruco();
-  }, []);
-  */
-
-  // TODO: re-enable for ArUco Marker detection
-  /*
-  const detectMarkers = useCallback((context: CanvasRenderingContext2D) => {
-    if (!window.AR || !context) return [];
-    const detector = new window.AR.Detector();
-    const imageData = context.getImageData(0, 0, canvasRef.current!.width, canvasRef.current!.height);
-    const markers = detector.detect(imageData);
-    return markers.map((marker) => marker.id);
-  }, []);
-  */
 
   useEffect(() => {
     isPreviewingRef.current = isPreviewing;
@@ -264,17 +199,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         mediaStreamRef.current = null;
       }
 
-      // TODO: set back to original?
-      /*
-            const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
-      */
-
       // Good distance detection, can't handle motion
       //const myWidth = 2880;
       //const myHeight = 1620;
@@ -312,9 +236,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     }
   }, []);
 
-  // TODO: re-enable for ArUco Marker detection
-  //const delayRef = useRef(false); // Prevent multiple Aruco detections in a short time
-
   // Motion detection
   // Modified motion detection to handle frame skipping
   const detectMotion = useCallback(() => {
@@ -340,15 +261,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     ctx.drawImage(video, 0, 0);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    // TODO: re-enable debug view?
-    /*
-    if (settingsRef.current.enableDebugView) {
-      debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
-    }
-    */
-
     frameCountRef.current++;
-    // logger.log("Processing frame:", frameCountRef.current);
 
     if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
       let changedPixels = 0;
@@ -361,34 +274,16 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
         if (rDiff > settingsRef.current.sensitivity || gDiff > settingsRef.current.sensitivity || bDiff > settingsRef.current.sensitivity) {
           changedPixels++;
-          // TODO: re-enable?
-          /*
-          if (debugFrame) {
-            debugFrame.data[i] = 255;
-            debugFrame.data[i + 1] = 0;
-            debugFrame.data[i + 2] = 0;
-            debugFrame.data[i + 3] = 128;
-          }
-          */
         }
       }
-
-      // TODO: re-enable?
-      /*
-      if (settingsRef.current.enableDebugView && debugFrame) {
-        debugCtx.putImageData(debugFrame, 0, 0);
-      }
-      */
 
       const frameSize = currentFrame.width * currentFrame.height;
       const changePercent = (changedPixels / frameSize) * 100;
       setLastChangePercent(changePercent);
-      // logger.log("Change percent:", changePercent.toFixed(2) + "%");
 
       if (changePercent > settingsRef.current.threshold) {
         const now = Date.now();
         if (now - lastMotionTimeRef.current > settingsRef.current.cooldown) {
-          // logger.log("*** Motion detected!");
           setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
 
           playBeep();
@@ -401,35 +296,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
           if (!isPreviewingRef.current) {
             onMotionDetected?.(changePercent);
-
-            // TODO: detect marker ids
-            // TODO: re-enable for ArUco Marker detection
-            /*
-            if (!delayRef.current) {
-              delayRef.current = true;
-              setTimeout(() => {
-                delayRef.current = false;
-              }, 10); // Cooldown for Aruco detection
-            }
-            */
           }
-
-          // TODO: re-enable for ArUco Marker detection
-          // Detect markers
-          /*
-          const markerIds = detectMarkers(ctx);
-          onMarkersDetected?.(markerIds);
-          */
-
-          // TODO: re-enable for ArUco Marker detection
-          /*
-          setCurrentMarkers(markerIds);
-          if (markerIds.length > 0) {
-            console.log("motion-detector:Marker(s) Detected -- " + markerIds + " at " + now);
-          } else {
-            console.log("motion-detector:No markers detected at " + now);
-          }
-          */
 
           lastMotionTimeRef.current = now;
         }
@@ -441,8 +308,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (isActiveRef.current) {
       animationFrameRef.current = requestAnimationFrame(detectMotion);
     }
-    // TODO: re-enable for ArUco Marker detection
-    //}, [settingsRef, playBeep, onMotionDetected, detectMarkers]);
   }, [settingsRef, playBeep, onMotionDetected]);
 
   // Function to save image to device gallery
@@ -628,22 +493,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       <div className="space-y-4">
         {/* Logging */}
         <div className="pt-2 border-t">
-          {/* TODO: re-enable for ArUco Marker detection */}
-          {/* 
-          <h1>Current Markers:</h1>
-          <div>
-            {/* Display markers as a comma-separated string */}
-          {/*
-            {currentMarkers.length > 0 ? (
-              <p>{currentMarkers.join(", ")}</p> // Join the array with commas
-            ) : (
-              <p>No markers available</p>
-            )}
-          </div>
-          */}
-
-          {/* <div className="text-sm">Motion Events: {motionEvents}</div> */}
-
           {isPreviewing && <div className="text-sm">Motion Detected Stats: {detectedMotionStats}</div>}
           {isPreviewing && lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
         </div>
