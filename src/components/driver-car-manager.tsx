@@ -12,6 +12,8 @@ import { logger } from "@/lib/logger";
 import PiConfiguration from "@/components/pi-config-settings";
 import TrackMeasurer from "./track-measurer";
 
+import IRDetector from "./ir-detector";
+
 interface MotionSettings {
   id: string;
   name: string;
@@ -481,6 +483,8 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
           {/* Utilities Tab */}
           <TabsContent value="utilities" className="space-y-4">
             <div className="space-y-2">
+              {/* IR Detector */}
+              <IRDetector />
               {/* Track Measurer */}
               <TrackMeasurer />
             </div>
