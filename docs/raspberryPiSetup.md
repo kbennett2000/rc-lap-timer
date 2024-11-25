@@ -408,7 +408,7 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name rc-lap-timer rc-lap-timer.local 192.168.4.1;
-    
+
     # Redirect all HTTP traffic to HTTPS
     return 301 https://$host$request_uri;
 }
@@ -420,14 +420,28 @@ server {
 
     ssl_certificate /etc/ssl/certs/rc-lap-timer.crt;
     ssl_certificate_key /etc/ssl/private/rc-lap-timer.key;
-    
+
     # SSL configuration
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
 
+    # Next.js application
     location / {
         proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # IR Detector API
+    location /api/ir/ {
+        proxy_pass http://127.0.0.1:5000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -734,6 +748,17 @@ sudo cp -f ~/rc-lap-timer/misc/etc/motd /etc/motd
 Make the scripts executable
 ```bash
 cd ~ && sudo chmod +x *.sh
+```
+
+Configure Python and components for IR Detection
+```bash
+sudo apt install -y python3-pip
+```
+```bash
+sudo apt install python3-RPi.GPIO
+```
+```bash
+pip3 install flask flask-cors --break-system-packages
 ```
 
 Reboot:
