@@ -30,6 +30,8 @@ import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
 
+import IRDetector from "../ir-detector";
+
 // ****************************************
 // interface
 // ****************************************
@@ -1641,6 +1643,16 @@ export default function LapTimer() {
     detectedMarkersRef.current = detectedMarkers;
   }, [detectedMarkers]);
 
+
+
+
+  const handleCarDetected = (carId: string, timestamp: string) => {
+    logger.log(`Car ${carId} detected at ${timestamp}`);
+    sayIt(`Car ${carId} detected`);
+    // Do something with the detection
+  };
+
+
   // ****************************************
   // return
   // ****************************************
@@ -2649,6 +2661,7 @@ export default function LapTimer() {
               {/* Driver Car Manager Tab */}
               <TabsContent value="drivercarmanager" className="space-y-4">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+                <IRDetector cooldownPeriod={5000} onCarDetected={handleCarDetected} />
                   {/* Driver Car Manager */}
                   <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} onSessionsUpdate={setSavedSessions} />
                 </motion.div>
