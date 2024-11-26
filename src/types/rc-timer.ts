@@ -7,6 +7,7 @@ export interface Driver extends PrismaDriver {
 
 export interface Car extends PrismaCar {
   driver?: Driver;
+  defaultCarNumber?: number;
 }
 
 export interface Session extends Omit<PrismaSession, "date"> {

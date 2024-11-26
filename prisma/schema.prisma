@@ -12,7 +12,7 @@ model Driver {
   name     String    @unique
   cars     Car[]
   sessions Session[]
-   sessionRequests SessionRequest[]
+  sessionRequests SessionRequest[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -22,11 +22,12 @@ model Car {
   name      String
   driver    Driver    @relation(fields: [driverId], references: [id])
   driverId  String
+  defaultCarNumber Int?
   sessions  Session[]
-   sessionRequests SessionRequest[]
+  sessionRequests SessionRequest[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-   @@unique([driverId, name])
+  @@unique([driverId, name])
 }
 
 model Session {
@@ -36,8 +37,8 @@ model Session {
   driverId      String
   car           Car       @relation(fields: [carId], references: [id])
   carId         String
-  location      Location  @relation(fields: [locationId], references: [id])  // Add this relation
-  locationId    String                                                       // Add this field
+  location      Location  @relation(fields: [locationId], references: [id])  
+  locationId    String                                                       
   driverName    String
   carName       String
   locationName  String

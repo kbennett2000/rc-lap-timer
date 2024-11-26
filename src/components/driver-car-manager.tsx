@@ -32,12 +32,18 @@ interface DriverCarManagerProps {
 type EntityType = "driver" | "car" | "location" | "motionSetting";
 type ActionType = "add" | "edit";
 
+interface CarFormState {
+  name: string;
+  defaultCarNumber?: number;
+}
+
 interface EntityDialogState {
   isOpen: boolean;
   type: EntityType | null;
   action: ActionType | null;
   entityId?: string;
   initialValue?: string;
+  initialCarNumber?: number;
 }
 
 const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations, onDriversUpdate, onLocationsUpdate, onSessionsUpdate }) => {
@@ -56,6 +62,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     action: null,
   });
   const [entityName, setEntityName] = useState("");
+  const [defaultCarNumber, setDefaultCarNumber] = useState<number | undefined>(undefined);
 
   // Delete confirmation state
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -77,15 +84,17 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     loadMotionSettings();
   }, []);
 
-  const openEntityDialog = (type: EntityType, action: ActionType, entityId?: string, initialValue: string = "") => {
+  const openEntityDialog = (type: EntityType, action: ActionType, entityId?: string, initialValue: string = "", initialCarNumber?: number) => {
     setEntityDialogState({
       isOpen: true,
       type,
       action,
       entityId,
       initialValue,
+      initialCarNumber,
     });
     setEntityName(initialValue);
+    setDefaultCarNumber(initialCarNumber);
   };
 
   const closeEntityDialog = () => {
@@ -113,11 +122,15 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
         body.type = type;
         if (type === "car") {
           body.driverId = selectedDriver;
+          body.defaultCarNumber = defaultCarNumber;
         }
       } else {
         body.type = type;
         body.id = entityId;
         body.newName = entityName.trim();
+        if (type === "car") {
+          body.defaultCarNumber = defaultCarNumber;
+        }
       }
 
       const response = await fetch(endpoint, {
@@ -317,9 +330,10 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                 </Select>
                 {selectedDriver && (
                   <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => openEntityDialog("driver", "edit", selectedDriver, currentDriver?.name)}>
+                    <Button variant="outline" size="icon" onClick={() => openEntityDialog("driver", "edit", selectedDriver, currentDriver?.name || "", undefined)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
+
                     <Button
                       variant="destructive"
                       size="icon"
@@ -337,7 +351,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                 )}
               </div>
 
-              <Button variant="outline" onClick={() => openEntityDialog("driver", "add")}>
+              <Button variant="outline" onClick={() => openEntityDialog("driver", "add", undefined, "", undefined)}>
                 <User className="mr-2 h-4 w-4" />
                 Add New Driver
               </Button>
@@ -362,7 +376,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                     </Select>
                     {selectedCar && (
                       <div className="flex gap-2">
-                        <Button variant="outline" size="icon" onClick={() => openEntityDialog("car", "edit", selectedCar, currentCar?.name)}>
+                        <Button variant="outline" size="icon" onClick={() => openEntityDialog("car", "edit", selectedCar, currentCar?.name || "", currentCar?.defaultCarNumber)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -382,7 +396,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                     )}
                   </div>
                 </div>
-                <Button variant="outline" onClick={() => openEntityDialog("car", "add")}>
+                <Button variant="outline" onClick={() => openEntityDialog("car", "add", undefined, "", undefined)}>
                   <CarIcon className="mr-2 h-4 w-4" />
                   Add New Car
                 </Button>
@@ -411,9 +425,10 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                 </Select>
                 {selectedLocation && (
                   <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => openEntityDialog("location", "edit", selectedLocation, currentLocation?.name)}>
+                    <Button variant="outline" size="icon" onClick={() => openEntityDialog("location", "edit", selectedLocation, currentLocation?.name || "", undefined)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
+
                     <Button
                       variant="destructive"
                       size="icon"
@@ -430,7 +445,8 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                   </div>
                 )}
               </div>
-              <Button variant="outline" onClick={() => openEntityDialog("location", "add")}>
+
+              <Button variant="outline" onClick={() => openEntityDialog("location", "add", undefined, "", undefined)}>
                 <Map className="mr-2 h-4 w-4" />
                 Add New Location
               </Button>
@@ -514,6 +530,34 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                   This name already exists
                   {entityDialogState.type === "car" && " for this driver"}
                 </p>
+              )}
+            </div>
+
+            <div className="py-4">
+              {/* Car Number Input for Cars */}
+              {entityDialogState.type === "car" && (
+                <div className="space-y-2">
+                  <Label>Default IR Car Number (Optional)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={defaultCarNumber || ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "") {
+                        setDefaultCarNumber(undefined);
+                      } else {
+                        const num = parseInt(value);
+                        if (num >= 1 && num <= 8) {
+                          setDefaultCarNumber(num);
+                        }
+                      }
+                    }}
+                    placeholder="Enter default car number (1-8)"
+                  />
+                  <p className="text-sm text-gray-500">Enter a number between 1-8 to set as default for IR timing</p>
+                </div>
               )}
             </div>
 

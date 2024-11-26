@@ -9,7 +9,7 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList, Annoyed } from "lucide-react";
+import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList, Annoyed, Wifi } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -94,6 +94,7 @@ export default function LapTimer() {
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
   const [timingMode, setTimingMode] = useState<TimingMode>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
+  const [showIRDetector, setShowIRDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
   const [announceLapNumber, setAnnounceLapNumber] = useState(false);
   const [announceLastLapTime, setAnnounceLastLapTime] = useState(false);
@@ -108,12 +109,23 @@ export default function LapTimer() {
     type: "driver" | "car" | "location" | null;
     action: "add" | null;
     entityName: string;
+    defaultCarNumber?: number;
   }>({
     isOpen: false,
     type: null,
     action: null,
     entityName: "",
+    defaultCarNumber: undefined,
   });
+
+  const [showIRConfig, setShowIRConfig] = useState(false);
+  const [irCarConfigs, setIRCarConfigs] = useState<
+    Array<{
+      driverId: string;
+      carId: string;
+      carNumber: string;
+    }>
+  >([...Array(8)].map(() => ({ driverId: "", carId: "", carNumber: "" })));
 
   // ****************************************
   // useRef
@@ -328,6 +340,26 @@ export default function LapTimer() {
       window.speechSynthesis.onvoiceschanged = null;
     };
   }, [speechVoice]); // Added speechVoice to dependency array to properly track its state
+
+  // useEffect for handling default car numbers
+  useEffect(() => {
+    // When a car is selected, set its default number if available
+    const updatedConfigs = [...irCarConfigs];
+    updatedConfigs.forEach((config, index) => {
+      if (config.driverId && config.carId) {
+        const driver = drivers.find((d) => d.id === config.driverId);
+        const car = driver?.cars.find((c) => c.id === config.carId);
+        if (car?.defaultCarNumber && !config.carNumber) {
+          // Only set if there's no number already assigned and the default number isn't used
+          const isDefaultNumberUsed = updatedConfigs.some((c, i) => i !== index && c.carNumber === car.defaultCarNumber?.toString());
+          if (!isDefaultNumberUsed) {
+            config.carNumber = car.defaultCarNumber.toString();
+          }
+        }
+      }
+    });
+    setIRCarConfigs(updatedConfigs);
+  }, [drivers, irCarConfigs.map((c) => c.carId).join(",")]);
 
   // TODO: move to top of file w/ rest of interfaces
   interface DatePreset {
@@ -749,6 +781,7 @@ export default function LapTimer() {
           type: "car",
           name: trimmedName,
           driverId: selectedDriver,
+          defaultCarNumber: addEditDialogState.defaultCarNumber,
         }),
       });
 
@@ -1643,15 +1676,11 @@ export default function LapTimer() {
     detectedMarkersRef.current = detectedMarkers;
   }, [detectedMarkers]);
 
-
-
-
   const handleCarDetected = (carId: string, timestamp: string) => {
     logger.log(`Car ${carId} detected at ${timestamp}`);
     sayIt(`Car ${carId} detected`);
     // Do something with the detection
   };
-
 
   // ****************************************
   // return
@@ -1877,6 +1906,30 @@ export default function LapTimer() {
                                   : ""
                               }
                             />
+
+                            {/* Default car number input for cars */}
+                            {addEditDialogState.type === "car" && (
+                              <div className="space-y-2">
+                                <Label>Default IR Car Number (Optional)</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="8"
+                                  value={addEditDialogState.defaultCarNumber || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 8)) {
+                                      setAddEditDialogState((prev) => ({
+                                        ...prev,
+                                        defaultCarNumber: value === "" ? undefined : parseInt(value),
+                                      }));
+                                    }
+                                  }}
+                                  placeholder="Enter default car number (1-8)"
+                                />
+                              </div>
+                            )}
+
                             {addEditDialogState.entityName.trim() &&
                               (addEditDialogState.type === "driver" && !isDriverNameUnique(addEditDialogState.entityName) ? (
                                 <p className="text-sm text-red-500 mt-2">This driver name already exists</p>
@@ -1981,17 +2034,26 @@ export default function LapTimer() {
                         <RadioGroup
                           value={timingMode}
                           onValueChange={(value) => {
-                            const newMode = value as "ui" | "motion";
-                            setTimingMode(newMode);
-                            if (newMode === "motion") {
-                              setShowMotionDetector(true);
-                              // Reset timer state when switching to motion mode
-                              if (isRunning) {
-                                stopTimer();
-                              }
+                            const newMode = value as "ui" | "motion" | "ir";
+                            if (newMode === "ir") {
+                              // Show config dialog first
+                              setShowIRConfig(true);
+                              // Don't update timing mode yet - we'll do that after configuration
                             } else {
-                              setShowMotionDetector(false);
-                              setIsMotionTimingActive(false);
+                              // Handle other modes as before
+                              setTimingMode(newMode);
+                              if (newMode === "motion") {
+                                setShowMotionDetector(true);
+                                setShowIRDetector(false);
+                                // Reset timer state when switching to motion mode
+                                if (isRunning) {
+                                  stopTimer();
+                                }
+                              } else if (newMode === "ui") {
+                                setShowMotionDetector(false);
+                                setShowIRDetector(false);
+                                setIsMotionTimingActive(false);
+                              }
                             }
                           }}
                         >
@@ -2007,6 +2069,14 @@ export default function LapTimer() {
                             <Label htmlFor="timing-motion" className="flex items-center">
                               <Video className="mr-2 h-4 w-4" />
                               Time Using Motion Detection
+                            </Label>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="ir" id="timing-ir" />
+                            <Label htmlFor="timing-ir" className="flex items-center">
+                              <Wifi className="mr-2 h-4 w-4" />
+                              Time Using IR Detection
                             </Label>
                           </div>
                         </RadioGroup>
@@ -2084,6 +2154,19 @@ export default function LapTimer() {
                             playBeeps={playBeepsRef.current}
                             className="w-full"
                           />
+                        </div>
+                      )}
+
+                      {/* IR Detector */}
+                      {timingMode === "ir" && (
+                        <div className="flex flex-col gap-2">
+                          {isRunning && (
+                            <Button onClick={stopTimer_MD} className="mt-4 w-full bg-red-500 hover:bg-red-600">
+                              <StopCircle className="mr-2 h-6 w-6" />
+                              Stop Timer
+                            </Button>
+                          )}
+                          <IRDetector onCarDetected={handleCarDetected} allowedCarNumbers={irCarConfigs.filter((config) => config.driverId && config.carId && config.carNumber).map((config) => config.carNumber)} />
                         </div>
                       )}
                     </CardContent>
@@ -2661,7 +2744,6 @@ export default function LapTimer() {
               {/* Driver Car Manager Tab */}
               <TabsContent value="drivercarmanager" className="space-y-4">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                <IRDetector cooldownPeriod={5000} onCarDetected={handleCarDetected} />
                   {/* Driver Car Manager */}
                   <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} onSessionsUpdate={setSavedSessions} />
                 </motion.div>
@@ -2711,6 +2793,131 @@ export default function LapTimer() {
             </Tabs>
           </motion.div>
         </AnimatePresence>
+
+        {/* IR Configuration Dialog */}
+        <AlertDialog
+          open={showIRConfig}
+          onOpenChange={(open) => {
+            if (!open) {
+              // If dialog is being closed and timing mode is ir, reset to ui
+              if (timingMode === "ir") {
+                setTimingMode("ui");
+              }
+              setShowIRConfig(false);
+            }
+          }}
+        >
+          <AlertDialogContent className="max-w-3xl overflow-y-auto max-h-[90vh]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Configure IR Car Detection</AlertDialogTitle>
+              <AlertDialogDescription>Set up car numbers for IR detection. Each car number must be unique and between 1-8.</AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="grid gap-4 py-4">
+              {irCarConfigs.map((config, index) => (
+                <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                  {/* Driver Selection */}
+                  <Select
+                    value={config.driverId}
+                    onValueChange={(value) => {
+                      const newConfigs = [...irCarConfigs];
+                      newConfigs[index].driverId = value;
+                      newConfigs[index].carId = ""; // Reset car when driver changes
+                      setIRCarConfigs(newConfigs);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Driver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drivers
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((driver) => (
+                          <SelectItem key={driver.id} value={driver.id}>
+                            {driver.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Car Selection */}
+                  <Select
+                    value={config.carId}
+                    onValueChange={(value) => {
+                      const newConfigs = [...irCarConfigs];
+                      newConfigs[index].carId = value;
+                      setIRCarConfigs(newConfigs);
+                    }}
+                    disabled={!config.driverId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Car" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drivers
+                        .find((d) => d.id === config.driverId)
+                        ?.cars.sort((a, b) => a.name.localeCompare(b.name))
+                        .map((car) => (
+                          <SelectItem key={car.id} value={car.id}>
+                            {car.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Car Number Input */}
+                  <Input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={config.carNumber}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 8)) {
+                        const newConfigs = [...irCarConfigs];
+                        newConfigs[index].carNumber = value;
+                        setIRCarConfigs(newConfigs);
+                      }
+                    }}
+                    placeholder="Car #"
+                    className={config.carNumber && irCarConfigs.filter((c) => c.carNumber === config.carNumber).length > 1 ? "border-red-500" : ""}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  // Filter out empty configs and get car numbers
+                  const validConfigs = irCarConfigs.filter((config) => config.driverId && config.carId && config.carNumber);
+                  const carNumbers = validConfigs.map((config) => config.carNumber);
+
+                  if (validConfigs.length === 0) {
+                    alert("Please configure at least one car");
+                    return;
+                  }
+
+                  // Check for duplicate numbers
+                  if (new Set(carNumbers).size !== carNumbers.length) {
+                    alert("Each car must have a unique number");
+                    return;
+                  }
+
+                  // Now we can safely set the timing mode and show the detector
+                  setTimingMode("ir");
+                  setShowIRConfig(false);
+                  setShowMotionDetector(false);
+                  setShowIRDetector(true);
+                  setIsMotionTimingActive(false);
+                }}
+              >
+                Start IR Detection
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Delete Session Dialog */}
         <AlertDialog open={!!sessionToDelete} onOpenChange={() => setSessionToDelete(null)}>

@@ -60,6 +60,7 @@ export async function POST(request: Request) {
           id: Date.now().toString(),
           name: data.name,
           driverId: data.driverId,
+          defaultCarNumber: data.defaultCarNumber || null,
         },
         include: {
           driver: true,

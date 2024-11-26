@@ -4,7 +4,28 @@ import { logger } from "@/lib/logger";
 
 export async function PATCH(request: Request) {
   try {
-    const { type, id, newName } = await request.json();
+    const data = await request.json();
+    const { type, id, newName, defaultCarNumber } = data;
+
+    if (type === "car") {
+      const updatedCar = await prisma.car.update({
+        where: { id },
+        data: {
+          name: newName,
+          defaultCarNumber: defaultCarNumber || null, 
+        },
+      });
+
+      const updatedDrivers = await prisma.driver.findMany({
+        include: { cars: true },
+      });
+
+      return NextResponse.json({
+        success: true,
+        car: updatedCar,
+        updatedDrivers,
+      });
+    }
 
     if (type === "motionSetting") {
       // Existing motion settings code

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS Car (
   id VARCHAR(191) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   driverId VARCHAR(191) NOT NULL,
+  defaultCarNumber INT NULL CHECK (defaultCarNumber >= 1 AND defaultCarNumber <= 8),
   createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updatedAt DATETIME(3) NOT NULL,
   FOREIGN KEY (driverId) REFERENCES Driver(id),
