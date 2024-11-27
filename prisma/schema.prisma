@@ -4,116 +4,209 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")  
+  url      = env("DATABASE_URL")
 }
 
 model Driver {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  cars     Car[]
-  sessions Session[]
+  id              String           @id @default(uuid())
+  name            String           @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  cars            Car[]
+  raceEntries     RaceEntry[]
+  sessions        Session[]
   sessionRequests SessionRequest[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Car {
-  id        String    @id @default(uuid())
-  name      String
-  driver    Driver    @relation(fields: [driverId], references: [id])
-  driverId  String
+  id               String           @id @default(uuid())
+  name             String
+  driverId         String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   defaultCarNumber Int?
-  sessions  Session[]
-  sessionRequests SessionRequest[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  driver           Driver           @relation(fields: [driverId], references: [id])
+  raceEntries      RaceEntry[]
+  sessions         Session[]
+  sessionRequests  SessionRequest[]
+
   @@unique([driverId, name])
 }
 
 model Session {
-  id            String    @id
-  date          DateTime
-  driver        Driver    @relation(fields: [driverId], references: [id])
-  driverId      String
-  car           Car       @relation(fields: [carId], references: [id])
-  carId         String
-  location      Location  @relation(fields: [locationId], references: [id])  
-  locationId    String                                                       
-  driverName    String
-  carName       String
-  locationName  String
-  totalTime     Int
-  totalLaps     Int
-  notes         String?   @db.Text
-  laps          Lap[]
-  penalties     Penalty[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id
+  date         DateTime
+  driverId     String
+  carId        String
+  driverName   String
+  carName      String
+  totalTime    Int
+  totalLaps    Int
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  locationId   String
+  locationName String
+  laps         Lap[]
+  penalties    Penalty[]
+  car          Car       @relation(fields: [carId], references: [id])
+  driver       Driver    @relation(fields: [driverId], references: [id])
+  location     Location  @relation(fields: [locationId], references: [id])
 
   @@index([driverId])
   @@index([carId])
-  @@index([locationId])  // Add this index
+  @@index([locationId])
 }
 
 model Lap {
   id        String   @id @default(uuid())
-  session   Session  @relation(fields: [sessionId], references: [id])
   sessionId String
   lapNumber Int
   lapTime   Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  session   Session  @relation(fields: [sessionId], references: [id])
 
   @@index([sessionId])
 }
 
 model Penalty {
   id        String   @id @default(uuid())
-  session   Session  @relation(fields: [sessionId], references: [id])
   sessionId String
   lapNumber Int
   count     Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  session   Session  @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId], map: "Penalty_sessionId_fkey")
 }
 
 model MotionSettings {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  sensitivity Int
-  threshold   Float
-  cooldown    Int
-  framesToSkip Int      @default(10)  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String   @id @default(uuid())
+  name         String   @unique
+  sensitivity  Int
+  threshold    Float
+  cooldown     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  framesToSkip Int      @default(10)
 }
 
 model Location {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  sessions  Session[]
-   sessionRequests SessionRequest[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id              String           @id @default(uuid())
+  name            String           @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  races           Race[]
+  sessions        Session[]
+  sessionRequests SessionRequest[]
 }
 
 model SessionRequest {
-  id            String   @id @default(uuid())
-  driver        Driver   @relation(fields: [driverId], references: [id])
-  driverId      String
-  car           Car      @relation(fields: [carId], references: [id])
-  carId         String
-  location      Location @relation(fields: [locationId], references: [id])
-  locationId    String
-  numberOfLaps  Int
-  status        SessionRequestStatus @default(PENDING)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String               @id @default(uuid())
+  driverId     String
+  carId        String
+  locationId   String
+  numberOfLaps Int
+  status       SessionRequestStatus @default(PENDING)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  car          Car                  @relation(fields: [carId], references: [id])
+  driver       Driver               @relation(fields: [driverId], references: [id])
+  location     Location             @relation(fields: [locationId], references: [id])
 
   @@index([driverId])
   @@index([carId])
   @@index([locationId])
   @@index([status])
+}
+
+model CurrentSession {
+  id           String       @id @default(uuid())
+  driverName   String
+  carName      String
+  locationName String
+  lapCount     Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  laps         CurrentLap[]
+}
+
+model CurrentLap {
+  id           String         @id @default(uuid())
+  sessionId    String
+  lapTime      Int
+  lapNumber    Int
+  penaltyCount Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  session      CurrentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model Race {
+  id         String      @id @default(uuid())
+  name       String
+  date       DateTime
+  locationId String
+  status     RaceStatus  @default(PENDING)
+  startDelay Int
+  totalLaps  Int?
+  startTime  DateTime?
+  endTime    DateTime?
+  notes      String?     @db.Text
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  location   Location    @relation(fields: [locationId], references: [id])
+  entries    RaceEntry[]
+
+  @@index([locationId])
+  @@index([status])
+}
+
+model RaceEntry {
+  id            String          @id @default(uuid())
+  raceId        String
+  driverId      String
+  carId         String
+  carNumber     Int
+  position      Int?
+  lapsCompleted Int             @default(0)
+  bestLapTime   Int?
+  totalTime     Int?
+  status        RaceEntryStatus @default(REGISTERED)
+  dnfReason     String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  car           Car             @relation(fields: [carId], references: [id])
+  driver        Driver          @relation(fields: [driverId], references: [id])
+  race          Race            @relation(fields: [raceId], references: [id])
+  laps          RaceLap[]
+
+  @@unique([raceId, carNumber])
+  @@unique([raceId, driverId])
+  @@index([raceId])
+  @@index([driverId])
+  @@index([carId])
+  @@index([status])
+}
+
+model RaceLap {
+  id          String    @id @default(uuid())
+  raceEntryId String
+  lapNumber   Int
+  lapTime     Int
+  position    Int
+  gap         Int
+  timestamp   DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  raceEntry   RaceEntry @relation(fields: [raceEntryId], references: [id])
+
+  @@unique([raceEntryId, lapNumber])
+  @@index([raceEntryId])
 }
 
 enum SessionRequestStatus {
@@ -123,26 +216,18 @@ enum SessionRequestStatus {
   FAILED
 }
 
-model CurrentSession {
-  id           String           @id @default(uuid())
-  driverName   String
-  carName      String
-  locationName String
-  lapCount     Int             @default(0)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  laps         CurrentLap[]    // Relation to laps
+enum RaceStatus {
+  PENDING
+  COUNTDOWN
+  RACING
+  PAUSED
+  FINISHED
+  STOPPED
 }
 
-model CurrentLap {
-  id         String        @id @default(uuid())
-  session    CurrentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  sessionId  String
-  lapTime    Int
-  lapNumber  Int
-  penaltyCount Int         @default(0)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@index([sessionId])
+enum RaceEntryStatus {
+  REGISTERED
+  RACING
+  FINISHED
+  DNF
 }

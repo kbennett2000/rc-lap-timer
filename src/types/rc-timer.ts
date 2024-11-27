@@ -31,7 +31,7 @@ export interface Session extends Omit<PrismaSession, "date"> {
 }
 
 export interface LapStats {
-  average: number;  
+  average: number;
   totalTime: number;
   bestLap: number;
   worstLap: number;
