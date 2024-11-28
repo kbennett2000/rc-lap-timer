@@ -31,6 +31,7 @@ import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
 
 import { RacingSession } from "../racing-session";
+import { RaceHistory } from "../racing-session/race-history";
 
 // ****************************************
 // interface
@@ -1659,6 +1660,7 @@ export default function LapTimer() {
                       {/* NEW */}
                       <div className="space-y-3 p-4 bg-gray-50 rounded">
                         <RacingSession />
+                        <RaceHistory />
                       </div>
                     </CardContent>
                   </Card>

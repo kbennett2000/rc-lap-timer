@@ -37,6 +37,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   // Settings
   const [playBeeps, setPlayBeeps] = useState(true);
   const [voiceAnnouncements, setVoiceAnnouncements] = useState(true);
+  const [speechVoice, setSpeechVoice] = useState<SpeechSynthesisVoice | null>(null);
 
   // Stop race
   const stopRace = async () => {
@@ -83,11 +84,15 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       });
       */
 
+      // TODO: should the first detection be ignored?
       if (!lastDetection) {
         // First detection for this car
         setLastDetectionTimes((prev) => new Map(prev).set(carId, detectionTime));
         return; // Don't count the start line crossing as a lap
       }
+
+      playBeep();
+      sayIt("Car " + carId);
 
       // Update lap count
       setLapCounts((prev) => {
@@ -246,30 +251,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   };
 
   // Fetch current race state
-  const updateRaceStateOld = async () => {
-    if (!raceId) return;
-
-    try {
-      const response = await fetch(`/api/races/${raceId}/state`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch race state");
-      }
-
-      const data = await response.json();
-
-      // Convert API response to Map
-      const positionsMap = new Map(data.entries.map((entry) => [entry.carNumber.toString(), entry.position]));
-      setCarPositions(positionsMap);
-
-      // Update other state from API response
-      const lapCountsMap = new Map(data.entries.map((entry) => [entry.carNumber.toString(), entry.lapsCompleted]));
-      setLapCounts(lapCountsMap);
-
-      setRaceStatus(data.status);
-    } catch (error) {
-      logger.error("Error fetching race state:", error);
-    }
-  };
   const updateRaceState = async () => {
     if (!raceId) return;
 
@@ -445,11 +426,102 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     position: carPositions.get(carNum) || 0,
     lapsCompleted: lapCounts.get(carNum) || 0,
     lastLapTime: lastLapTimes.get(carNum),
-    bestLapTime: bestLapTimes.get(carNum), 
+    bestLapTime: bestLapTimes.get(carNum),
     gap: calculateGapToLeader(carNum),
     status: "RACING",
   }));
-  
+
+  const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
+    if (playBeeps) {
+      return new Promise((resolve) => {
+        // Create audio context
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        // Create oscillator and gain node
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        // Configure oscillator
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+
+        // Configure gain (volume)
+        gainNode.gain.value = volume;
+
+        // Connect nodes
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Schedule the beep
+        oscillator.start();
+
+        // Schedule the end of the beep
+        setTimeout(() => {
+          oscillator.stop();
+          audioContext.close();
+          resolve();
+        }, duration);
+      });
+    }
+  };
+
+  const speechVoiceRef = useRef(speechVoice);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    speechVoiceRef.current = speechVoice;
+  }, [speechVoice]);
+
+  // Say something
+  const sayIt = useCallback(async (textToSpeak: string): Promise<boolean> => {
+    if (!voiceAnnouncements) {      
+      return false;
+    }
+
+    try {
+      // Force cancel and wait for cleanup
+      window.speechSynthesis.cancel();
+      await new Promise((resolve) => setTimeout(resolve, 500)); // <-- wait time
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+
+      // TODO: change settings?
+      utterance.rate = 1.2;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      utterance.lang = "en-US"; // Force English language
+
+      // Wait for voices to be loaded
+      const setVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        // First try to find Google US English voice
+        let preferredVoice = voices.find((voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"));
+
+        // If no Google US voice, try any English voice
+        if (!preferredVoice) {
+          preferredVoice = voices.find((voice) => voice.lang.startsWith("en"));
+        }
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+      };
+
+      // Check if voices are already loaded
+      if (window.speechSynthesis.getVoices().length) {
+        setVoice();
+      } else {
+        // Wait for voices to be loaded
+        window.speechSynthesis.onvoiceschanged = setVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   // TODO: delete
   // console.log('RacePositionBoard positions:', boardPositions);
 
