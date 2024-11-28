@@ -72,6 +72,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       const detectionTime = new Date(timestamp).getTime();
       const lastDetection = lastDetectionTimes.get(carId) || raceStartTime;
 
+      // TODO: delete
+      /*
       console.log("Car Detection:", {
         carId,
         timestamp,
@@ -79,6 +81,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
         lastDetection,
         currentLaps: lapCounts.get(carId) || 0,
       });
+      */
 
       if (!lastDetection) {
         // First detection for this car
@@ -90,7 +93,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setLapCounts((prev) => {
         const newMap = new Map(prev);
         const currentCount = newMap.get(carId) || 0;
-        console.log(`Updating lap count for car ${carId} from ${currentCount} to ${currentCount + 1}`);
+        // TODO: delete
+        // console.log(`Updating lap count for car ${carId} from ${currentCount} to ${currentCount + 1}`);
         newMap.set(carId, currentCount + 1);
         return newMap;
       });
@@ -141,25 +145,30 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   useEffect(() => {
     if (raceStatus !== "RACING" || totalLaps === "unlimited") return;
 
+    // TODO: delete
+    /*
     // Log for debugging
     console.log("Checking race completion:", {
       totalLaps,
       currentLaps: Object.fromEntries(lapCounts),
       allowedCars: allowedCarNumbers,
     });
+    */
 
     const allCarsFinished = Array.from(allowedCarNumbers).every((carNumber) => {
       const currentLaps = lapCounts.get(carNumber) || 0;
       const finished = currentLaps >= (typeof totalLaps === "number" ? totalLaps : Infinity);
 
+      // TODO: delete
       // Log individual car progress
-      console.log(`Car ${carNumber}: ${currentLaps}/${totalLaps} laps`);
+      // console.log(`Car ${carNumber}: ${currentLaps}/${totalLaps} laps`);
 
       return finished;
     });
 
     if (allCarsFinished) {
-      console.log("All cars finished, stopping race");
+      // TODO: delete
+      // console.log("All cars finished, stopping race");
       stopRace();
     }
   }, [raceStatus, totalLaps, allowedCarNumbers, lapCounts]);
@@ -221,6 +230,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setLastDetectionTimes(new Map());
       setCarPositions(new Map());
 
+      // TODO: delete
+      /*
       console.log("Maps cleared at race start:", {
         lapCounts: Object.fromEntries(emptyMap),
         lastLapTimes: Object.fromEntries(emptyMap),
@@ -228,6 +239,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
         lastDetectionTimes: Object.fromEntries(emptyMap),
         carPositions: Object.fromEntries(emptyMap),
       });
+      */
     } catch (error) {
       console.error("Error starting race:", error);
     }
@@ -236,27 +248,23 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   // Fetch current race state
   const updateRaceStateOld = async () => {
     if (!raceId) return;
-  
+
     try {
       const response = await fetch(`/api/races/${raceId}/state`);
       if (!response.ok) {
         throw new Error("Failed to fetch race state");
       }
-  
+
       const data = await response.json();
-      
+
       // Convert API response to Map
-      const positionsMap = new Map(
-        data.entries.map(entry => [entry.carNumber.toString(), entry.position])
-      );
+      const positionsMap = new Map(data.entries.map((entry) => [entry.carNumber.toString(), entry.position]));
       setCarPositions(positionsMap);
-      
+
       // Update other state from API response
-      const lapCountsMap = new Map(
-        data.entries.map(entry => [entry.carNumber.toString(), entry.lapsCompleted])
-      );
+      const lapCountsMap = new Map(data.entries.map((entry) => [entry.carNumber.toString(), entry.lapsCompleted]));
       setLapCounts(lapCountsMap);
-      
+
       setRaceStatus(data.status);
     } catch (error) {
       logger.error("Error fetching race state:", error);
@@ -264,13 +272,13 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   };
   const updateRaceState = async () => {
     if (!raceId) return;
-  
+
     try {
       const response = await fetch(`/api/races/${raceId}/state`);
       if (!response.ok) {
         throw new Error("Failed to fetch race state");
       }
-  
+
       const data = await response.json();
       // Only update race status from API, keep local lap counts
       setRaceStatus(data.status);
@@ -349,7 +357,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   );
 
   const onRaceConfigured = async (config: any) => {
-    console.log("Creating race with config:", config);
+    // TODO: delete
+    // console.log("Creating race with config:", config);
     try {
       // 1. Create race
       const response = await fetch("/api/races", {
@@ -363,7 +372,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       }
 
       const race = await response.json();
-      console.log("Race created:", race);
+      // TODO: delete
+      // console.log("Race created:", race);
 
       if (!race.id) {
         throw new Error("No race ID returned from server");
@@ -375,7 +385,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       // 3. Start countdown
       const initiateCountdown = async () => {
-        console.log("Initiating countdown with raceId:", race.id);
+        // TODO: delete
+        // console.log("Initiating countdown with raceId:", race.id);
         try {
           const countdownResponse = await fetch(`/api/races/${race.id}/countdown/start`, {
             method: "POST",
@@ -429,6 +440,19 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     }
   }, [raceStatus, isPaused]);
 
+  const boardPositions = Array.from(allowedCarNumbers).map((carNum) => ({
+    carNumber: parseInt(carNum),
+    position: carPositions.get(carNum) || 0,
+    lapsCompleted: lapCounts.get(carNum) || 0,
+    lastLapTime: lastLapTimes.get(carNum),
+    bestLapTime: bestLapTimes.get(carNum), 
+    gap: calculateGapToLeader(carNum),
+    status: "RACING",
+  }));
+  
+  // TODO: delete
+  // console.log('RacePositionBoard positions:', boardPositions);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -454,30 +478,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
           {(raceStatus === "RACING" || raceStatus === "PAUSED") && (
             <>
-              {console.log("Lap Counts Map:", Object.fromEntries(lapCounts))}
-              {console.log("Is lapCounts a Map?", lapCounts instanceof Map)}
+              <RacePositionBoard positions={boardPositions} />
 
-              <RacePositionBoard
-                positions={Array.from(allowedCarNumbers).map((carNum) => {
-                  // Ensure we're working with valid Maps
-                  const currentLapCounts = lapCounts instanceof Map ? lapCounts : new Map();
-                  const currentPositions = carPositions instanceof Map ? carPositions : new Map();
-                  const currentLastLapTimes = lastLapTimes instanceof Map ? lastLapTimes : new Map();
-                  const currentBestLapTimes = bestLapTimes instanceof Map ? bestLapTimes : new Map();
-
-                  console.log(`Car ${carNum} laps:`, currentLapCounts.get(carNum));
-
-                  return {
-                    carNumber: parseInt(carNum),
-                    position: currentPositions.get(carNum) || 0,
-                    lapsCompleted: currentLapCounts.get(carNum) || 0,
-                    lastLapTime: currentLastLapTimes.get(carNum),
-                    bestLapTime: currentBestLapTimes.get(carNum),
-                    gap: calculateGapToLeader(carNum),
-                    status: "RACING",
-                  };
-                })}
-              />
               <div className="mt-4">
                 <RaceControls isPaused={isPaused} onPauseResume={togglePause} onStop={stopRace} onDNF={markDNF} availableCarNumbers={allowedCarNumbers.map((num) => parseInt(num))} />
               </div>

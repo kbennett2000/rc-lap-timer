@@ -62,7 +62,7 @@ export const RacePositionBoard: React.FC<RacePositionBoardProps> = ({ positions 
                   </div>
                   <div className="text-sm text-gray-600">
                     Laps: {car.lapsCompleted}
-                    {car.gap && car.position > 1 && !car.status.includes("DNF") && <span className="ml-2">Gap: {formatTime(car.gap)}</span>}
+                    {car.gap !== undefined && car.position > 1 && !car.status.includes("DNF") && <span className="ml-2">Gap: {formatTime(car.gap)}</span>}
                   </div>
                 </div>
 
