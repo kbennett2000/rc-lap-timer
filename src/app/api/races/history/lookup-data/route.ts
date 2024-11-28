@@ -2,23 +2,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// TODO: delete
+console.log('Module loaded');
+
+export const dynamic = 'force-dynamic';
 export async function GET() {
-    try {
-      // Add detailed logging
-      console.log('Database config:', process.env.DATABASE_URL);
-      
-      const drivers = await prisma.driver.findMany();
-      console.log('Drivers from DB:', drivers);
-      
-      const cars = await prisma.car.findMany();
-      console.log('Cars from DB:', cars);
-      
-      const locations = await prisma.location.findMany();
-      console.log('Locations from DB:', locations);
-  
-      return NextResponse.json({ locations, drivers, cars });
-    } catch (error) {
-      console.error("Error fetching lookup data:", error);
-      return NextResponse.json({ error: "Failed to fetch lookup data" }, { status: 500 });
-    }
+  // TODO: delete
+  // console.log('Endpoint hit');
+
+  try {
+    const rawDrivers = await prisma.$queryRaw`SELECT * FROM Driver`;
+
+    // TODO: delete
+    // console.log('Raw Driver query:', rawDrivers);
+    
+    const drivers = await prisma.driver.findMany();
+    const cars = await prisma.car.findMany();
+    const locations = await prisma.location.findMany();
+
+    // TODO: delete
+    // console.log('Query results:', { drivers, cars, locations });
+
+    return NextResponse.json({ locations, drivers, cars });
+  } catch (error) {
+    console.error('Lookup data error:', error);
+    throw error;
   }
+}
