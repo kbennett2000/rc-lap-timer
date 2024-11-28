@@ -8,7 +8,6 @@ import { Trophy, Zap, Clock, Flag, AlertTriangle } from "lucide-react";
 interface RacePositionBoardProps {
   positions: Array<{
     carNumber: number;
-    driverName: string;
     position: number;
     lapsCompleted: number;
     lastLapTime?: number;
@@ -19,6 +18,11 @@ interface RacePositionBoardProps {
 }
 
 export const RacePositionBoard: React.FC<RacePositionBoardProps> = ({ positions }) => {
+  if (!Array.isArray(positions)) {
+    console.error("Invalid positions prop:", positions);
+    return null;
+  }
+
   // Sort positions by actual position number
   const sortedPositions = [...positions].sort((a, b) => a.position - b.position);
 

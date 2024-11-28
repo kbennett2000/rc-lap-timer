@@ -26,17 +26,43 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const [totalLaps, setTotalLaps] = useState<number | "unlimited">("unlimited");
 
   // IR Detection state
-  const [allowedCarNumbers, setAllowedCarNumbers] = useState<string[]>([]);
   const [carPositions, setCarPositions] = useState<Map<string, number>>(new Map());
   const [lapCounts, setLapCounts] = useState<Map<string, number>>(new Map());
   const [lastLapTimes, setLastLapTimes] = useState<Map<string, number>>(new Map());
   const [bestLapTimes, setBestLapTimes] = useState<Map<string, number>>(new Map());
   const [lastDetectionTimes, setLastDetectionTimes] = useState<Map<string, number>>(new Map());
+  const [allowedCarNumbers, setAllowedCarNumbers] = useState<string[]>([]);
   const [raceStartTime, setRaceStartTime] = useState<number | null>(null);
 
   // Settings
   const [playBeeps, setPlayBeeps] = useState(true);
   const [voiceAnnouncements, setVoiceAnnouncements] = useState(true);
+
+  // Stop race
+  const stopRace = async () => {
+    try {
+      const response = await fetch(`/api/races/${raceId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "FINISHED" }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to stop race");
+      }
+
+      setRaceStatus("FINISHED");
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+
+      onRaceComplete?.();
+    } catch (error) {
+      logger.error("Error stopping race:", error);
+    }
+  };
 
   // Handle IR detection
   const handleCarDetected = useCallback(
@@ -44,61 +70,99 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       if (raceStatus !== "RACING") return;
 
       const detectionTime = new Date(timestamp).getTime();
-
-      // Get previous detection time for this car
       const lastDetection = lastDetectionTimes.get(carId) || raceStartTime;
 
-      if (lastDetection) {
-        const lapTime = detectionTime - lastDetection;
+      console.log("Car Detection:", {
+        carId,
+        timestamp,
+        detectionTime,
+        lastDetection,
+        currentLaps: lapCounts.get(carId) || 0,
+      });
 
-        // Update last lap time
-        setLastLapTimes((prev) => new Map(prev).set(carId, lapTime));
-
-        // Update best lap time if this is the best
-        setBestLapTimes((prev) => {
-          const currentBest = prev.get(carId) || Infinity;
-          return new Map(prev).set(carId, Math.min(currentBest, lapTime));
-        });
-
-        // Update lap count
-        setLapCounts((prev) => {
-          const currentCount = prev.get(carId) || 0;
-          return new Map(prev).set(carId, currentCount + 1);
-        });
-
-        // Record detection for future lap times
-        setLastDetectionTimes((prev) => new Map(prev).set(carId, detectionTime));
-
-        try {
-          // Record lap in database
-          const response = await fetch(`/api/races/${raceId}/laps`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              carNumber: parseInt(carId),
-              timestamp: detectionTime,
-              lapTime: lapTime,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to record lap");
-          }
-
-          // Calculate new positions based on lap counts
-          calculatePositions();
-        } catch (error) {
-          logger.error("Error recording lap:", error);
-        }
-      } else {
+      if (!lastDetection) {
         // First detection for this car
         setLastDetectionTimes((prev) => new Map(prev).set(carId, detectionTime));
+        return; // Don't count the start line crossing as a lap
+      }
+
+      // Update lap count
+      setLapCounts((prev) => {
+        const newMap = new Map(prev);
+        const currentCount = newMap.get(carId) || 0;
+        console.log(`Updating lap count for car ${carId} from ${currentCount} to ${currentCount + 1}`);
+        newMap.set(carId, currentCount + 1);
+        return newMap;
+      });
+
+      // Calculate lap time
+      const lapTime = detectionTime - lastDetection;
+
+      // Update last lap time
+      setLastLapTimes((prev) => new Map(prev).set(carId, lapTime));
+
+      // Update best lap time if this is the best
+      setBestLapTimes((prev) => {
+        const currentBest = prev.get(carId) || Infinity;
+        return new Map(prev).set(carId, Math.min(currentBest, lapTime));
+      });
+
+      // Record detection for future lap times
+      setLastDetectionTimes((prev) => new Map(prev).set(carId, detectionTime));
+
+      try {
+        // Record lap in database
+        const response = await fetch(`/api/races/${raceId}/laps`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            carNumber: parseInt(carId),
+            timestamp: detectionTime,
+            lapTime: lapTime,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to record lap");
+        }
+
+        // Calculate new positions based on lap counts
+        calculatePositions();
+      } catch (error) {
+        logger.error("Error recording lap:", error);
       }
     },
     [raceId, raceStatus, raceStartTime, lastDetectionTimes]
   );
+
+  // Handle race completion
+  useEffect(() => {
+    if (raceStatus !== "RACING" || totalLaps === "unlimited") return;
+
+    // Log for debugging
+    console.log("Checking race completion:", {
+      totalLaps,
+      currentLaps: Object.fromEntries(lapCounts),
+      allowedCars: allowedCarNumbers,
+    });
+
+    const allCarsFinished = Array.from(allowedCarNumbers).every((carNumber) => {
+      const currentLaps = lapCounts.get(carNumber) || 0;
+      const finished = currentLaps >= (typeof totalLaps === "number" ? totalLaps : Infinity);
+
+      // Log individual car progress
+      console.log(`Car ${carNumber}: ${currentLaps}/${totalLaps} laps`);
+
+      return finished;
+    });
+
+    if (allCarsFinished) {
+      console.log("All cars finished, stopping race");
+      stopRace();
+    }
+  }, [raceStatus, totalLaps, allowedCarNumbers, lapCounts]);
 
   // Calculate race positions based on lap counts and detection times
   const calculatePositions = useCallback(() => {
@@ -127,54 +191,17 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     setCarPositions(newPositions);
   }, [lapCounts, lastDetectionTimes]);
 
-  // Start race countdown
-  const startCountdown = async (delay: number) => {
+  // Start the race
+  const startRace = async (raceId: string) => {
     if (!raceId) {
-      console.error("Cannot start countdown without a race ID");
+      console.error("No race ID provided to startRace");
       return;
     }
 
     try {
-      const response = await fetch(`/api/races/${raceId}/countdown/start`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ duration: delay * 1000 }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to start countdown");
-      }
-
-      setRaceStatus("COUNTDOWN");
-      setCountdownTime(delay);
-
-      let timeLeft = delay;
-      timerRef.current = setInterval(() => {
-        timeLeft -= 1;
-        setCountdownTime(timeLeft);
-
-        if (timeLeft <= 0) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          startRace();
-        }
-      }, 1000);
-    } catch (error) {
-      console.error("Error starting countdown:", error);
-      throw error;
-    }
-  };
-
-  // Start the race
-  const startRace = async () => {
-    try {
       const response = await fetch(`/api/races/${raceId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "RACING" }),
       });
 
@@ -186,29 +213,66 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setRaceStartTime(startTime);
       setRaceStatus("RACING");
 
-      // Clear any previous race data
+      // Clear previous race data and ensure we're creating new Maps
+      const emptyMap = new Map();
       setLapCounts(new Map());
       setLastLapTimes(new Map());
       setBestLapTimes(new Map());
       setLastDetectionTimes(new Map());
       setCarPositions(new Map());
+
+      console.log("Maps cleared at race start:", {
+        lapCounts: Object.fromEntries(emptyMap),
+        lastLapTimes: Object.fromEntries(emptyMap),
+        bestLapTimes: Object.fromEntries(emptyMap),
+        lastDetectionTimes: Object.fromEntries(emptyMap),
+        carPositions: Object.fromEntries(emptyMap),
+      });
     } catch (error) {
-      logger.error("Error starting race:", error);
+      console.error("Error starting race:", error);
     }
   };
 
   // Fetch current race state
-  const updateRaceState = async () => {
+  const updateRaceStateOld = async () => {
     if (!raceId) return;
-
+  
     try {
       const response = await fetch(`/api/races/${raceId}/state`);
       if (!response.ok) {
         throw new Error("Failed to fetch race state");
       }
-
+  
       const data = await response.json();
-      setPositions(data.entries);
+      
+      // Convert API response to Map
+      const positionsMap = new Map(
+        data.entries.map(entry => [entry.carNumber.toString(), entry.position])
+      );
+      setCarPositions(positionsMap);
+      
+      // Update other state from API response
+      const lapCountsMap = new Map(
+        data.entries.map(entry => [entry.carNumber.toString(), entry.lapsCompleted])
+      );
+      setLapCounts(lapCountsMap);
+      
+      setRaceStatus(data.status);
+    } catch (error) {
+      logger.error("Error fetching race state:", error);
+    }
+  };
+  const updateRaceState = async () => {
+    if (!raceId) return;
+  
+    try {
+      const response = await fetch(`/api/races/${raceId}/state`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch race state");
+      }
+  
+      const data = await response.json();
+      // Only update race status from API, keep local lap counts
       setRaceStatus(data.status);
     } catch (error) {
       logger.error("Error fetching race state:", error);
@@ -242,32 +306,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       }
     } catch (error) {
       logger.error(`Error ${isPaused ? "resuming" : "pausing"} race:`, error);
-    }
-  };
-
-  // Stop race
-  const stopRace = async () => {
-    try {
-      const response = await fetch(`/api/races/${raceId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: "FINISHED" }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to stop race");
-      }
-
-      setRaceStatus("FINISHED");
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-
-      onRaceComplete?.();
-    } catch (error) {
-      logger.error("Error stopping race:", error);
     }
   };
 
@@ -313,34 +351,35 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const onRaceConfigured = async (config: any) => {
     console.log("Creating race with config:", config);
     try {
+      // 1. Create race
       const response = await fetch("/api/races", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create race");
+        throw new Error(`Failed to create race: ${response.status}`);
       }
 
       const race = await response.json();
       console.log("Race created:", race);
 
-      // First update state
+      if (!race.id) {
+        throw new Error("No race ID returned from server");
+      }
+
+      // 2. Set race ID in state
       setRaceId(race.id);
       setAllowedCarNumbers(race.entries.map((e: any) => e.carNumber.toString()));
 
-      // Create a separate function for countdown
+      // 3. Start countdown
       const initiateCountdown = async () => {
-        console.log("Initiating countdown with raceId:", race.id); // Debug log
+        console.log("Initiating countdown with raceId:", race.id);
         try {
           const countdownResponse = await fetch(`/api/races/${race.id}/countdown/start`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ duration: config.startDelay * 1000 }),
           });
 
@@ -350,26 +389,26 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
           setRaceStatus("COUNTDOWN");
           setCountdownTime(config.startDelay);
-
           let timeLeft = config.startDelay;
+
           timerRef.current = setInterval(() => {
             timeLeft -= 1;
             setCountdownTime(timeLeft);
-
             if (timeLeft <= 0) {
               if (timerRef.current) clearInterval(timerRef.current);
-              startRace();
+              startRace(race.id); // Pass race ID explicitly
             }
           }, 1000);
         } catch (error) {
           console.error("Error in countdown initiation:", error);
+          throw error;
         }
       };
 
-      // Start countdown directly using race.id instead of relying on state
       await initiateCountdown();
     } catch (error) {
-      console.error("Error creating race:", error);
+      console.error("Error in race configuration:", error);
+      // Add user feedback here
     }
   };
 
@@ -415,16 +454,29 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
           {(raceStatus === "RACING" || raceStatus === "PAUSED") && (
             <>
+              {console.log("Lap Counts Map:", Object.fromEntries(lapCounts))}
+              {console.log("Is lapCounts a Map?", lapCounts instanceof Map)}
+
               <RacePositionBoard
-                positions={Array.from(allowedCarNumbers).map((carNum) => ({
-                  carNumber: parseInt(carNum),
-                  position: carPositions.get(carNum) || 0,
-                  lapsCompleted: lapCounts.get(carNum) || 0,
-                  lastLapTime: lastLapTimes.get(carNum),
-                  bestLapTime: bestLapTimes.get(carNum),
-                  gap: calculateGapToLeader(carNum),
-                  status: "RACING",
-                }))}
+                positions={Array.from(allowedCarNumbers).map((carNum) => {
+                  // Ensure we're working with valid Maps
+                  const currentLapCounts = lapCounts instanceof Map ? lapCounts : new Map();
+                  const currentPositions = carPositions instanceof Map ? carPositions : new Map();
+                  const currentLastLapTimes = lastLapTimes instanceof Map ? lastLapTimes : new Map();
+                  const currentBestLapTimes = bestLapTimes instanceof Map ? bestLapTimes : new Map();
+
+                  console.log(`Car ${carNum} laps:`, currentLapCounts.get(carNum));
+
+                  return {
+                    carNumber: parseInt(carNum),
+                    position: currentPositions.get(carNum) || 0,
+                    lapsCompleted: currentLapCounts.get(carNum) || 0,
+                    lastLapTime: currentLastLapTimes.get(carNum),
+                    bestLapTime: currentBestLapTimes.get(carNum),
+                    gap: calculateGapToLeader(carNum),
+                    status: "RACING",
+                  };
+                })}
               />
               <div className="mt-4">
                 <RaceControls isPaused={isPaused} onPauseResume={togglePause} onStop={stopRace} onDNF={markDNF} availableCarNumbers={allowedCarNumbers.map((num) => parseInt(num))} />
@@ -435,7 +487,17 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
           {raceStatus === "FINISHED" && (
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-4">Race Complete!</h2>
-              <RacePositionBoard positions={positions} />
+              <RacePositionBoard
+                positions={Array.from(allowedCarNumbers).map((carNum) => ({
+                  carNumber: parseInt(carNum),
+                  position: (carPositions instanceof Map ? carPositions : new Map()).get(carNum) || 0,
+                  lapsCompleted: (lapCounts instanceof Map ? lapCounts : new Map()).get(carNum) || 0,
+                  lastLapTime: (lastLapTimes instanceof Map ? lastLapTimes : new Map()).get(carNum),
+                  bestLapTime: (bestLapTimes instanceof Map ? bestLapTimes : new Map()).get(carNum),
+                  gap: calculateGapToLeader(carNum),
+                  status: "FINISHED",
+                }))}
+              />
             </div>
           )}
 
