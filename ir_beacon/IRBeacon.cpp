@@ -2,6 +2,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <IRremote.h>
+#include <EEPROM.h> // Include EEPROM library
 
 #define SCREEN_WIDTH 128    // OLED display width
 #define SCREEN_HEIGHT 32    // OLED display height
@@ -19,12 +20,12 @@ bool lastButtonState = HIGH;
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;    // Debounce time in milliseconds
 
-int carID = 1;  // Change this (1-6) for each car
+int carID;  // Car ID value
 
 void setup() {
     // Initialize OLED
-    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-      while (1); // Don't proceed if display initialization fails
+    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+        while (1); // Don't proceed if display initialization fails
     }
     display.clearDisplay();
     display.setTextSize(2);
@@ -36,6 +37,12 @@ void setup() {
     // Initialize IR sender
     IrSender.begin(IR_LED_PIN);
 
+    // Load carID from EEPROM
+    carID = EEPROM.read(0); // Read carID from EEPROM address 0
+    if (carID < 1 || carID > maxCars) {
+        carID = 1; // Default to 1 if the value is out of range
+    }
+
     updateDisplay();
 
     Serial.begin(9600);
@@ -44,43 +51,44 @@ void setup() {
 
 void loop() {
 
-  // Read button with debouncing
-  int reading = digitalRead(BUTTON_PIN);
+    // Read button with debouncing
+    int reading = digitalRead(BUTTON_PIN);
 
-  if (reading != lastButtonState) {
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading == LOW) { // Button pressed
-      carID = (carID % maxCars) + 1;  // Cycle through 1-maxCars
-      updateDisplay();
-      delay(100); // Prevent multiple triggers
+    if (reading != lastButtonState) {
+        lastDebounceTime = millis();
     }
-  }
 
-  lastButtonState = reading;
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        if (reading == LOW) { // Button pressed
+            carID = (carID % maxCars) + 1; // Cycle through 1-maxCars
+            EEPROM.update(0, carID);       // Save carID to EEPROM
+            updateDisplay();
+            delay(100); // Prevent multiple triggers
+        }
+    }
 
-  // Send long start pulse
-  tone(IR_LED_PIN, 38000);
-  delay(5);  
-  noTone(IR_LED_PIN);
-  delay(2);  
+    lastButtonState = reading;
 
-  // Send car ID number of short pulses
-  for(int i = 0; i < carID; i++) {
-      tone(IR_LED_PIN, 38000);
-      delay(1);  
-      noTone(IR_LED_PIN);
-      delay(1);  
-  }
+    // Send long start pulse
+    tone(IR_LED_PIN, 38000);
+    delay(5);
+    noTone(IR_LED_PIN);
+    delay(2);
 
-  delay(20);
+    // Send car ID number of short pulses
+    for (int i = 0; i < carID; i++) {
+        tone(IR_LED_PIN, 38000);
+        delay(1);
+        noTone(IR_LED_PIN);
+        delay(1);
+    }
+
+    delay(20);
 }
 
 void updateDisplay() {
     display.clearDisplay();
-    display.setCursor(0,10);
+    display.setCursor(0, 10);
     display.print("CAR: ");
     display.println(carID);
     display.display();
