@@ -66,12 +66,47 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
 
+  // debugging
+  useEffect(() => {
+    console.log('State values:', {
+      drivers,
+      cars,
+      locations,
+      filterDriver,
+      filterCar,
+      filterLocation,
+      races
+    });
+  }, [drivers, cars, locations, filterDriver, filterCar, filterLocation, races]);
+
+  // debugging
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/races/history/lookup-data', {
+          headers: { 'no-cache': '1' }
+        });
+        const rawResponse = await response.text();
+        console.log('Raw API Response:', rawResponse);
+        const data = JSON.parse(rawResponse);
+        setLocations(data.locations);
+        setDrivers(data.drivers);
+        setCars(data.cars);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchData();
+  }, []);
+
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/race-history/lookup-data");
+        const response = await fetch("/api/races/history/lookup-data");
+        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
         const data = await response.json();
+        console.log("Lookup data:", data);
         setLocations(data.locations);
         setDrivers(data.drivers);
         setCars(data.cars);
@@ -93,19 +128,18 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
           fromDate: dateRange.from ? dateRange.from.toISOString() : "",
           toDate: dateRange.to ? dateRange.to.toISOString() : "",
         });
-
-        const response = await fetch(`/api/race-history/results?${queryParams}`);
+        const response = await fetch(`/api/races/history/results?${queryParams}`);
+        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
         const data = await response.json();
-        setRaces(
-          data.map((race: any) => ({
-            ...race,
-            date: new Date(race.date),
-          }))
-        );
+        console.log("Race results:", data);
+        if (!Array.isArray(data)) throw new Error("Expected array of races");
+        setRaces(data.map((race: any) => ({ ...race, date: new Date(race.date) })));
       } catch (error) {
         console.error("Error fetching race results:", error);
+        setRaces([]);
       }
     };
+
     fetchRaces();
   }, [filterDriver, filterCar, filterLocation, dateRange]);
 

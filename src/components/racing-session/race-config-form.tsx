@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Car, Driver, Location } from "@prisma/client";
+import { format } from "date-fns";
 
 interface RaceConfigFormProps {
   onConfigured: (config: {
@@ -31,29 +32,21 @@ interface RaceConfigFormProps {
 }
 
 export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, startDelay, onStartDelayChange, totalLaps, onTotalLapsChange, playBeeps, onPlayBeepsChange, voiceAnnouncements, onVoiceAnnouncementsChange }) => {
-  const [raceName, setRaceName] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [locations, setLocations] = useState<Location[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [customLaps, setCustomLaps] = useState("");
   const [showCustomLaps, setShowCustomLaps] = useState(false);
+  const [usedDrivers, setUsedDrivers] = useState<Set<string>>(new Set());
 
-  // Car number assignments
   const [carAssignments, setCarAssignments] = useState<
     Array<{
       driverId: string;
       carId: string;
       carNumber: string;
     }>
-  >(
-    [...Array(8)].map(() => ({
-      driverId: "",
-      carId: "",
-      carNumber: "",
-    }))
-  );
+  >([{ driverId: "", carId: "", carNumber: "" }]);
 
-  // Load locations and drivers
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -68,49 +61,85 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
     fetchData();
   }, []);
 
-  // Get cars for a specific driver
   const getCarsForDriver = (driverId: string): Car[] => {
     const driver = drivers.find((d) => d.id === driverId);
     return driver?.cars || [];
   };
 
-  // Handle car assignment updates
+  const getDefaultCarNumber = (carId: string): string => {
+    console.log("Getting default number for car:", carId);
+    const driver = drivers.find((d) => d.cars.some((c) => c.id === carId));
+    console.log("Found driver:", driver);
+    const car = driver?.cars.find((c) => c.id === carId);
+    console.log("Found car:", car);
+
+    if (!car?.defaultCarNumber) return "";
+
+    const carNumber = car.defaultCarNumber.toString();
+    const isNumberTaken = carAssignments.some((a) => a.carNumber === carNumber);
+
+    return isNumberTaken ? "" : carNumber;
+  };
+
   const updateCarAssignment = (index: number, field: "driverId" | "carId" | "carNumber", value: string) => {
     const newAssignments = [...carAssignments];
+
+    if (field === "carId") {
+      newAssignments[index].carNumber = getDefaultCarNumber(value);
+    }
+
+    if (field === "driverId") {
+      const oldDriverId = newAssignments[index].driverId;
+      if (oldDriverId) {
+        const newUsedDrivers = new Set(usedDrivers);
+        newUsedDrivers.delete(oldDriverId);
+        setUsedDrivers(newUsedDrivers);
+      }
+      if (value) {
+        setUsedDrivers((prev) => new Set(prev).add(value));
+      }
+      newAssignments[index].carId = "";
+      newAssignments[index].carNumber = "";
+    }
+
     newAssignments[index] = {
       ...newAssignments[index],
       [field]: value,
     };
 
-    // If updating driver, reset car selection
-    if (field === "driverId") {
-      newAssignments[index].carId = "";
-    }
-
     setCarAssignments(newAssignments);
   };
 
-  // Validate form
-  const isValid = () => {
-    // Must have a race name and location
-    if (!raceName.trim() || !selectedLocation) return false;
+  const addCarAssignment = () => {
+    setCarAssignments([...carAssignments, { driverId: "", carId: "", carNumber: "" }]);
+  };
 
-    // Must have at least one valid car assignment
+  const removeCarAssignment = (index: number) => {
+    const assignment = carAssignments[index];
+    if (assignment.driverId) {
+      const newUsedDrivers = new Set(usedDrivers);
+      newUsedDrivers.delete(assignment.driverId);
+      setUsedDrivers(newUsedDrivers);
+    }
+    setCarAssignments(carAssignments.filter((_, i) => i !== index));
+  };
+
+  const generateRaceName = () => {
+    const location = locations.find((l) => l.id === selectedLocation);
+    return `${format(new Date(), "yyyyMMdd-HHmm")}-${location?.name || ""}`;
+  };
+
+  const isValid = () => {
+    if (!selectedLocation) return false;
+
     const validAssignments = carAssignments.filter((assignment) => assignment.driverId && assignment.carId && assignment.carNumber);
 
     if (validAssignments.length === 0) return false;
 
-    // Check for duplicate car numbers
     const carNumbers = validAssignments.map((a) => a.carNumber);
     const uniqueCarNumbers = new Set(carNumbers);
     if (carNumbers.length !== uniqueCarNumbers.size) return false;
 
-    // Check for duplicate drivers
-    const driverIds = validAssignments.map((a) => a.driverId);
-    const uniqueDriverIds = new Set(driverIds);
-    if (driverIds.length !== uniqueDriverIds.size) return false;
-
-    // Validate custom laps if set
     if (showCustomLaps && (!customLaps || isNaN(parseInt(customLaps)) || parseInt(customLaps) < 1)) {
       return false;
     }
@@ -118,9 +147,7 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
     return true;
   };
 
-  // Handle form submission
   const handleSubmit = () => {
-    console.log("Submitting race config"); // Debug log
     const validEntries = carAssignments
       .filter((assignment) => assignment.driverId && assignment.carId && assignment.carNumber)
       .map((assignment) => ({
@@ -130,7 +157,7 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
       }));
 
     const config = {
-      name: raceName.trim(),
+      name: generateRaceName(),
       locationId: selectedLocation,
       startDelay,
       totalLaps: showCustomLaps ? parseInt(customLaps) : undefined,
@@ -142,45 +169,44 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
 
   return (
     <div className="space-y-6">
-      {/* Race Details */}
-      <div className="space-y-4">
-        <div>
-          <Label>Race Name</Label>
-          <Input value={raceName} onChange={(e) => setRaceName(e.target.value)} placeholder="Enter race name" />
-        </div>
-
-        <div>
-          <Label>Location</Label>
-          <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select location" />
-            </SelectTrigger>
-            <SelectContent>
-              {locations.map((location) => (
-                <SelectItem key={location.id} value={location.id}>
-                  {location.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <Label>Location</Label>
+        <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select location" />
+          </SelectTrigger>
+          <SelectContent>
+            {locations.map((location) => (
+              <SelectItem key={location.id} value={location.id}>
+                {location.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Car Assignments */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Car Assignments</h3>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">Car Assignments</h3>
+          <Button onClick={addCarAssignment} size="sm" variant="outline">
+            Add Car
+          </Button>
+        </div>
+
         {carAssignments.map((assignment, index) => (
-          <div key={index} className="grid grid-cols-3 gap-4">
+          <div key={index} className="grid grid-cols-4 gap-4 items-center">
             <Select value={assignment.driverId} onValueChange={(value) => updateCarAssignment(index, "driverId", value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select driver" />
               </SelectTrigger>
               <SelectContent>
-                {drivers.map((driver) => (
-                  <SelectItem key={driver.id} value={driver.id}>
-                    {driver.name}
-                  </SelectItem>
-                ))}
+                {drivers
+                  .filter((driver) => !usedDrivers.has(driver.id) || driver.id === assignment.driverId)
+                  .map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      {driver.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -211,11 +237,14 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
               placeholder="Car #"
               className={assignment.carNumber && carAssignments.filter((a) => a.carNumber === assignment.carNumber).length > 1 ? "border-red-500" : ""}
             />
+
+            <Button onClick={() => removeCarAssignment(index)} variant="ghost" size="icon" className="text-red-500" disabled={carAssignments.length === 1}>
+              Remove
+            </Button>
           </div>
         ))}
       </div>
 
-      {/* Race Settings */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Race Settings</h3>
 
