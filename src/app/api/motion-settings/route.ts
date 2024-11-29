@@ -96,13 +96,10 @@ export async function PUT(request: Request) {
 // DELETE - Delete motion settings by ID
 export async function DELETE(request: Request) {
   try {
-    logger.log("Motion Settings DELETE - Start");
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    logger.log("Motion Settings DELETE - Attempting to delete ID:", id);
 
     if (!id) {
-      logger.log("Motion Settings DELETE - Error: No ID provided");
       return NextResponse.json({ error: "Motion settings ID is required" }, { status: 400 });
     }
 
@@ -112,7 +109,6 @@ export async function DELETE(request: Request) {
     });
 
     if (!existing) {
-      logger.log("Motion Settings DELETE - Error: ID not found:", id);
       return NextResponse.json({ error: "Motion settings not found" }, { status: 404 });
     }
 
@@ -121,7 +117,6 @@ export async function DELETE(request: Request) {
       where: { id },
     });
 
-    logger.log("Motion Settings DELETE - Successfully deleted ID:", id);
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error("Motion Settings DELETE - Error:", error);
@@ -138,14 +133,11 @@ export async function DELETE(request: Request) {
 // POST - Create new motion settings
 export async function POST(request: Request) {
   try {
-    logger.log("Motion Settings POST - Start");
     const data = await request.json();
-    logger.log("Motion Settings Received data:", data);
 
     // Validate input data
     const validationErrors = validateMotionSettings(data);
     if (validationErrors.length > 0) {
-      logger.log("Motion Settings Validation errors:", validationErrors);
       return NextResponse.json({ error: "Invalid input data", details: validationErrors }, { status: 400 });
     }
 
@@ -157,11 +149,9 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
-      logger.log("Motion Settings Name already exists:", data.name);
       return NextResponse.json({ error: "A motion setting with this name already exists" }, { status: 400 });
     }
 
-    logger.log("Creating motion settings...");
     // Create new motion settings
     const settings = await prisma.motionSettings.create({
       data: {
@@ -172,7 +162,6 @@ export async function POST(request: Request) {
         framesToSkip: data.framesToSkip,
       },
     });
-    logger.log("Created motion settings:", settings);
 
     return NextResponse.json(settings);
   } catch (error) {

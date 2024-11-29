@@ -37,7 +37,12 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   // Settings
   const [playBeeps, setPlayBeeps] = useState(true);
   const [voiceAnnouncements, setVoiceAnnouncements] = useState(true);
-  const [speechVoice, setSpeechVoice] = useState<SpeechSynthesisVoice | null>(null);
+
+  const voiceAnnouncementsRef = useRef(voiceAnnouncements);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    voiceAnnouncementsRef.current = voiceAnnouncements;
+  }, [voiceAnnouncements]);
 
   // Stop race
   const stopRace = async () => {
@@ -60,6 +65,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       }
 
       onRaceComplete?.();
+
+      playRaceFinish();
     } catch (error) {
       logger.error("Error stopping race:", error);
     }
@@ -72,17 +79,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       const detectionTime = new Date(timestamp).getTime();
       const lastDetection = lastDetectionTimes.get(carId) || raceStartTime;
-
-      // TODO: delete
-      /*
-      console.log("Car Detection:", {
-        carId,
-        timestamp,
-        detectionTime,
-        lastDetection,
-        currentLaps: lapCounts.get(carId) || 0,
-      });
-      */
 
       // TODO: should the first detection be ignored?
       if (!lastDetection) {
@@ -98,8 +94,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setLapCounts((prev) => {
         const newMap = new Map(prev);
         const currentCount = newMap.get(carId) || 0;
-        // TODO: delete
-        // console.log(`Updating lap count for car ${carId} from ${currentCount} to ${currentCount + 1}`);
         newMap.set(carId, currentCount + 1);
         return newMap;
       });
@@ -150,30 +144,14 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   useEffect(() => {
     if (raceStatus !== "RACING" || totalLaps === "unlimited") return;
 
-    // TODO: delete
-    /*
-    // Log for debugging
-    console.log("Checking race completion:", {
-      totalLaps,
-      currentLaps: Object.fromEntries(lapCounts),
-      allowedCars: allowedCarNumbers,
-    });
-    */
-
     const allCarsFinished = Array.from(allowedCarNumbers).every((carNumber) => {
       const currentLaps = lapCounts.get(carNumber) || 0;
       const finished = currentLaps >= (typeof totalLaps === "number" ? totalLaps : Infinity);
-
-      // TODO: delete
-      // Log individual car progress
-      // console.log(`Car ${carNumber}: ${currentLaps}/${totalLaps} laps`);
 
       return finished;
     });
 
     if (allCarsFinished) {
-      // TODO: delete
-      // console.log("All cars finished, stopping race");
       stopRace();
     }
   }, [raceStatus, totalLaps, allowedCarNumbers, lapCounts]);
@@ -234,17 +212,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setBestLapTimes(new Map());
       setLastDetectionTimes(new Map());
       setCarPositions(new Map());
-
-      // TODO: delete
-      /*
-      console.log("Maps cleared at race start:", {
-        lapCounts: Object.fromEntries(emptyMap),
-        lastLapTimes: Object.fromEntries(emptyMap),
-        bestLapTimes: Object.fromEntries(emptyMap),
-        lastDetectionTimes: Object.fromEntries(emptyMap),
-        carPositions: Object.fromEntries(emptyMap),
-      });
-      */
     } catch (error) {
       console.error("Error starting race:", error);
     }
@@ -338,8 +305,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   );
 
   const onRaceConfigured = async (config: any) => {
-    // TODO: delete
-    // console.log("Creating race with config:", config);
     try {
       // 1. Create race
       const response = await fetch("/api/races", {
@@ -353,8 +318,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       }
 
       const race = await response.json();
-      // TODO: delete
-      // console.log("Race created:", race);
 
       if (!race.id) {
         throw new Error("No race ID returned from server");
@@ -366,8 +329,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       // 3. Start countdown
       const initiateCountdown = async () => {
-        // TODO: delete
-        // console.log("Initiating countdown with raceId:", race.id);
         try {
           const countdownResponse = await fetch(`/api/races/${race.id}/countdown/start`, {
             method: "POST",
@@ -465,15 +426,49 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     }
   };
 
-  const speechVoiceRef = useRef(speechVoice);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    speechVoiceRef.current = speechVoice;
-  }, [speechVoice]);
+  const playRaceFinish = async (): Promise<void> => {
+    if (playBeeps) {
+      // Quick ascending beeps followed by victory tone
+      const ascendingBeeps = [
+        { frequency: 440, duration: 100 },
+        { frequency: 554, duration: 100 },
+        { frequency: 659, duration: 100 },
+        { frequency: 880, duration: 100 },
+      ];
+
+      // Play ascending beeps
+      for (const beep of ascendingBeeps) {
+        await playBeep({
+          frequency: beep.frequency,
+          duration: beep.duration,
+          volume: 0.5,
+          type: "square",
+        });
+        // Small gap between beeps
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+
+      // Victory fanfare
+      await playBeep({
+        frequency: 880,
+        duration: 150,
+        volume: 0.6,
+        type: "triangle",
+      });
+
+      // Final sustained victory note
+      await playBeep({
+        frequency: 1320,
+        duration: 400,
+        volume: 0.7,
+        type: "square",
+      });
+    }
+  };
 
   // Say something
   const sayIt = useCallback(async (textToSpeak: string): Promise<boolean> => {
-    if (!voiceAnnouncements) {      
+    if (!voiceAnnouncementsRef.current) {
       return false;
     }
 
@@ -521,9 +516,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       return false;
     }
   }, []);
-
-  // TODO: delete
-  // console.log('RacePositionBoard positions:', boardPositions);
 
   return (
     <div className="space-y-4">

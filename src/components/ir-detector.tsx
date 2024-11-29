@@ -56,17 +56,6 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     (newCarData: CarData) => {
       if (!newCarData.id || !newCarData.time) return;
 
-      // TODO: delete
-      /*
-      console.log("IR Detection:", {
-        newCarId: newCarData.id,
-        newTime: newCarData.time,
-        lastId: lastDetectedCar.id,
-        lastTime: lastDetectedCar.time,
-        inCooldown: isCarInCooldown(newCarData.id),
-      });
-      */
-
       // Always update last detected car regardless of whether it's allowed
       const isNewDetection = newCarData.id !== lastDetectedCar.id || newCarData.time !== lastDetectedCar.time;
 
@@ -93,8 +82,6 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
   const fetchCarData = useCallback(async () => {
     try {
       const response = await axios.get("/api/ir/current_car");
-      // TODO: delete
-      // console.log("IR API Response:", response.data);
       const newCarData: CarData = response.data;
 
       if (newCarData.id && newCarData.time) {
@@ -125,6 +112,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     return () => clearInterval(cleanupInterval);
   }, []);
 
+  // TODO: update interval?
   // Fetch car data frequently
   useEffect(() => {
     const intervalId = setInterval(fetchCarData, 100);

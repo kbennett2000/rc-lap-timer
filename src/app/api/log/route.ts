@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     const logData = {
       timestamp: new Date().toISOString(),
-      ...(await request.json())
+      ...(await request.json()),
     };
 
     // TODO: uncomment to restore file system logging
@@ -29,9 +29,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Logged successfully" });
   } catch (error) {
     logger.error("Logging error:", error);
-    return NextResponse.json(
-      { message: "Error logging data" }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Error logging data" }, { status: 500 });
   }
 }

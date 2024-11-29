@@ -33,6 +33,8 @@ import { CurrentSessionDisplay } from "@/components/current-session-display";
 import { RacingSession } from "../racing-session";
 import { RaceHistory } from "../racing-session/race-history";
 
+import PracticeControl from "./practice-control";
+
 // ****************************************
 // interface
 // ****************************************
@@ -43,6 +45,7 @@ interface BeepOptions {
   type?: OscillatorType;
 }
 
+// TODO: delete
 interface CurrentSession {
   id: string;
   driverName: string;
@@ -53,6 +56,7 @@ interface CurrentSession {
   updatedAt: Date;
 }
 
+// TODO: delete
 interface CurrentLap {
   id: string;
   sessionId: string;
@@ -83,6 +87,7 @@ export default function LapTimer() {
   const [penalties, setPenalties] = useState<PenaltyData[]>([]);
   const [penaltyAnimation, setPenaltyAnimation] = useState(false);
   const [activeTab, setActiveTab] = useState("current");
+  const [activeSubTab, setActiveSubTab] = useState("current");
   const [isMobile, setIsMobile] = useState(false);
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
@@ -300,20 +305,17 @@ export default function LapTimer() {
 
         if (googleUsVoice) {
           setSpeechVoice(googleUsVoice);
-          logger.log("Set default voice to Google US English");
         } else {
           // Fallback to any US English voice
           const usEnglishVoice = voices.find((voice) => voice.lang === "en-US");
 
           if (usEnglishVoice) {
             setSpeechVoice(usEnglishVoice);
-            logger.log("Fallback to US English voice:", usEnglishVoice.name);
           } else {
             // Final fallback to any English voice
             const anyEnglishVoice = englishVoices[0];
             if (anyEnglishVoice) {
               setSpeechVoice(anyEnglishVoice);
-              logger.log("Fallback to any English voice:", anyEnglishVoice.name);
             }
           }
         }
@@ -395,9 +397,6 @@ export default function LapTimer() {
   const announceRaceBegin = useCallback(async () => {
     if (announceLapNumberRef) {
       var didTTSWork = await sayIt("Timing Session Started");
-      if (!didTTSWork) {
-        logger.log("announceRaceBegin - TTS FAILED!!!");
-      }
     }
   }, []);
 
@@ -470,9 +469,6 @@ export default function LapTimer() {
     }
 
     var didTTSWork = await sayIt(announcement);
-    if (!didTTSWork) {
-      logger.log("announceRaceInfo - TTS FAILED!!!");
-    }
   }, []);
 
   const speechVoiceRef = useRef(speechVoice);
@@ -1158,7 +1154,6 @@ export default function LapTimer() {
     if (!remoteControlActive) return;
 
     try {
-      logger.log("Polling for session requests...");
       const response = await fetch("/api/session-requests/next", {
         method: "GET",
         headers: {
@@ -1173,7 +1168,6 @@ export default function LapTimer() {
       }
 
       const data = await response.json();
-      logger.log("Poll response:", data);
 
       if (data.error) {
         throw new Error(data.error);
@@ -1183,7 +1177,6 @@ export default function LapTimer() {
 
       if (data.request) {
         const request = data.request;
-        logger.log("Found request:", request);
 
         // Set up the session configuration
         setSelectedDriver(request.driverId);
@@ -1232,40 +1225,28 @@ export default function LapTimer() {
   // Add effect for polling
   // In lap-timer.tsx
   useEffect(() => {
-    logger.log("Remote control active state changed:", remoteControlActive);
-
     if (remoteControlActive) {
-      logger.log("Starting polling...");
       // Initial poll
       pollForSessionRequests();
 
       // Set up polling interval
       const interval = setInterval(() => {
-        logger.log("Polling interval triggered");
         pollForSessionRequests();
       }, 5000);
 
       remoteControlIntervalRef.current = interval;
-
-      // Log when polling starts
-      logger.log("Polling started with interval:", interval);
     } else {
-      // Log when polling stops
-      logger.log("Stopping polling...");
       if (remoteControlIntervalRef.current) {
         clearInterval(remoteControlIntervalRef.current);
         remoteControlIntervalRef.current = undefined;
-        logger.log("Polling stopped");
       }
     }
 
     // Cleanup on unmount
     return () => {
-      logger.log("Cleaning up polling effect");
       if (remoteControlIntervalRef.current) {
         clearInterval(remoteControlIntervalRef.current);
         remoteControlIntervalRef.current = undefined;
-        logger.log("Polling cleanup complete");
       }
     };
   }, [remoteControlActive, pollForSessionRequests]);
@@ -1627,7 +1608,6 @@ export default function LapTimer() {
       }
 
       if (data.success) {
-        logger.log("Successfully truncated current session tables");
         return true;
       } else {
         throw new Error("Truncate operation did not return success");
@@ -2692,6 +2672,7 @@ export default function LapTimer() {
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
                   {/* Driver Car Manager */}
                   <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} onSessionsUpdate={setSavedSessions} />
+                  <PracticeControl />
                 </motion.div>
               </TabsContent>
 

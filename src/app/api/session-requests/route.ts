@@ -16,7 +16,6 @@ export async function POST(request: Request) {
         status: true,
       },
     });
-    logger.log("State before creation:", beforeState);
 
     // Create the request with explicit PENDING status
     const newRequest = await prisma.SessionRequest.create({
@@ -28,7 +27,6 @@ export async function POST(request: Request) {
         status: SessionRequestStatus.PENDING,
       },
     });
-    logger.log("Created request:", newRequest);
 
     // Immediately verify the creation
     const afterState = await prisma.SessionRequest.findMany({
@@ -40,7 +38,6 @@ export async function POST(request: Request) {
         createdAt: "desc",
       },
     });
-    logger.log("State after creation:", afterState);
 
     // Double-check with raw SQL
     const sqlCheck = await prisma.$queryRaw`
@@ -48,7 +45,6 @@ export async function POST(request: Request) {
       FROM SessionRequest 
       WHERE id = ${newRequest.id}
     `;
-    logger.log("SQL verification:", sqlCheck);
 
     return NextResponse.json({
       request: newRequest,

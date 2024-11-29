@@ -67,11 +67,8 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
   };
 
   const getDefaultCarNumber = (carId: string): string => {
-    console.log("Getting default number for car:", carId);
     const driver = drivers.find((d) => d.cars.some((c) => c.id === carId));
-    console.log("Found driver:", driver);
     const car = driver?.cars.find((c) => c.id === carId);
-    console.log("Found car:", car);
 
     if (!car?.defaultCarNumber) return "";
 

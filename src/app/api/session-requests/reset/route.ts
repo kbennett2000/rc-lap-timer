@@ -1,9 +1,9 @@
 // src/app/api/session-requests/reset/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { convertBigIntToNumber } from '@/lib/utils';
-import { SessionRequestStatus } from '@prisma/client';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { convertBigIntToNumber } from "@/lib/utils";
+import { SessionRequestStatus } from "@prisma/client";
 
 interface StatusCount {
   status: string;
@@ -18,7 +18,6 @@ export async function POST() {
       FROM SessionRequest 
       GROUP BY status
     `;
-    logger.log("Before reset:", beforeState);
 
     // Reset all non-PENDING records
     const resetResult = await prisma.$executeRaw`
@@ -33,21 +32,17 @@ export async function POST() {
       FROM SessionRequest 
       GROUP BY status
     `;
-    logger.log("After reset:", afterState);
 
     return NextResponse.json({
       success: true,
       debug: {
         beforeState: convertBigIntToNumber(beforeState),
         resetCount: convertBigIntToNumber(resetResult),
-        afterState: convertBigIntToNumber(afterState)
-      }
+        afterState: convertBigIntToNumber(afterState),
+      },
     });
   } catch (error) {
     logger.error("Error resetting statuses:", error);
-    return NextResponse.json(
-      { error: 'Reset failed', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Reset failed", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

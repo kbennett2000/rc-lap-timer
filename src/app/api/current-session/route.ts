@@ -15,7 +15,6 @@ export async function POST(request: Request) {
       },
     });
 
-    logger.log("Created current session:", currentSession);
     return NextResponse.json({ success: true, session: currentSession });
   } catch (error) {
     logger.error("Error creating current session:", error);
@@ -42,7 +41,6 @@ export async function PUT(request: Request) {
           { status: 404 }
         );
       }
-      
 
       // Get the next lap number
       const lastLap = await prisma.currentLap.findFirst({
@@ -62,7 +60,6 @@ export async function PUT(request: Request) {
         },
       });
 
-      logger.log("Added new lap:", newLap);
       return NextResponse.json({ success: true, lap: newLap });
     }
 
@@ -90,7 +87,6 @@ export async function PUT(request: Request) {
         },
       });
 
-      logger.log("Updated lap:", updatedLap);
       return NextResponse.json({ success: true, lap: updatedLap });
     }
 
@@ -131,7 +127,6 @@ export async function DELETE(request: Request) {
       where: { id: data.sessionId },
     });
 
-    logger.log("Deleted current session:", data.sessionId);
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error("Error deleting current session:", error);

@@ -23,7 +23,6 @@ interface CurrentSession {
 }
 
 export function CurrentSessionDisplay() {
-  // logger.log("*****current-session-display.CurrentSessionDisplay");
   const [currentSession, setCurrentSession] = useState<CurrentSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +31,6 @@ export function CurrentSessionDisplay() {
   const fetchCurrentSession = async () => {
     const timestamp = new Date().getTime();
     try {
-      // logger.log("Fetching current session at:", new Date().toISOString());
-
       const response = await fetch(`/api/current-session/summary?t=${timestamp}`, {
         headers: {
           "Cache-Control": "no-cache",
@@ -41,11 +38,7 @@ export function CurrentSessionDisplay() {
         },
       });
 
-      // logger.log("Response status:", response.status);
-      // logger.log("Response headers:", Object.fromEntries(response.headers.entries()));
-
       const data = await response.json();
-      // logger.log("Response data:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to fetch current session");

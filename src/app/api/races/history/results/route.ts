@@ -1,5 +1,9 @@
+// /api/races/history/results/route.ts
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; 
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
@@ -7,49 +11,69 @@ export async function GET(request: Request) {
     const driver = searchParams.get("driver");
     const car = searchParams.get("car");
     const location = searchParams.get("location");
-    const fromDate = searchParams.get("fromDate");
-    const toDate = searchParams.get("toDate");
+
+    // TODO: delete?
+    // const races = await prisma.race.findMany({
+    //  where: {
+    //    status: "FINISHED",
+    //    entries: {
+    //      some: {
+    //        ...(driver !== "all" && { driverId: driver }),
+    //        ...(car !== "all" && { carId: car }),
+    //      },
+    //    },
+    //    ...(location !== "all" && { locationId: location }),
+    //  },
+    //  include: {
+    //    entries: {
+    //      include: { driver: true, car: true },
+    //    },
+    //  },
+    //  orderBy: { date: "desc" },
+    // });
 
     const races = await prisma.race.findMany({
-      where: {
-        status: "FINISHED",
-        ...(location !== "all" && { locationId: location }),
-        ...(fromDate && { date: { gte: new Date(fromDate) } }),
-        ...(toDate && { date: { lte: new Date(toDate) } }),
-        entries: {
-          some: {
-            ...(driver !== "all" && { driverId: driver }),
-            ...(car !== "all" && { carId: car }),
-          },
-        },
-      },
+      where: { status: "FINISHED" },
       include: {
         entries: {
-          include: {
+          select: {
             driver: true,
             car: true,
+            driverId: true,
+            carId: true,
+            carNumber: true,
+            position: true,
+            lapsCompleted: true,
+            bestLapTime: true,
+            status: true,
           },
         },
       },
+      orderBy: { date: "desc" },
     });
 
-    const formattedRaces = races.flatMap(race => 
-      race.entries.map(entry => ({
-        id: race.id,
-        date: race.date,
-        location: race.name.split('-').slice(2).join('-'),
-        driver: entry.driver.name,
-        car: entry.car.name,
-        position: entry.position,
-        bestLap: entry.bestLapTime,
-        laps: entry.lapsCompleted,
-        status: entry.status,
-      }))
+    console.log(
+      "Race entries:",
+      races.flatMap((race) => race.entries)
     );
 
-    return NextResponse.json(formattedRaces);
+    return NextResponse.json(
+      races.flatMap((race) =>
+        race.entries.map((entry) => ({
+          id: race.id,
+          date: race.date,
+          location: race.name.split("-").slice(2).join("-"),
+          driver: entry.driver.name,
+          car: entry.car.name,
+          position: entry.position,
+          bestLap: entry.bestLapTime,
+          laps: entry.lapsCompleted,
+          status: entry.status,
+        }))
+      )
+    );
   } catch (error) {
-    console.error("Error fetching race results:", error);
-    return NextResponse.json({ error: "Failed to fetch race results" }, { status: 500 });
+    console.error("Error:", error);
+    return NextResponse.json([]);
   }
 }

@@ -12,7 +12,7 @@ export async function PATCH(request: Request) {
         where: { id },
         data: {
           name: newName,
-          defaultCarNumber: defaultCarNumber || null, 
+          defaultCarNumber: defaultCarNumber || null,
         },
       });
 
@@ -208,14 +208,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  logger.log("app/manage/route.ts-Delete");
   try {
     const { type, driverId, carId, id } = await request.json();
-
-    logger.log("type: " + type);
-    logger.log("driverId: " + driverId);
-    logger.log("carId: " + carId);
-    logger.log("id: " + id);
 
     if (type === "motionSetting") {
       await prisma.motionSettings.delete({

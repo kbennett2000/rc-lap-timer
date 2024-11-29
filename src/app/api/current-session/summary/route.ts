@@ -7,16 +7,7 @@ export const dynamic = "force-dynamic"; // Disable route caching
 export const revalidate = 0; // Disable fetch caching
 
 export async function GET() {
-  // const execId = Date.now(); // Use timestamp to ensure unique execution ID
-  // logger.log(`[${execId}] Route execution started`);
-
   try {
-    // First verify we can read ANY data from the database
-    // logger.log(`[${execId}] Testing basic database read`);
-    // const dbTest = await prisma.$queryRaw`SELECT COUNT(*) as count FROM CurrentSession`;
-    // logger.log(`[${execId}] Database test result:`, dbTest);
-
-    // logger.log(`[${execId}] Fetching sessions`);
     const sessions = await prisma.currentSession.findMany({
       include: {
         laps: {
@@ -31,18 +22,6 @@ export async function GET() {
       take: 1,
     });
 
-    // logger.log(`[${execId}] Query complete. Found ${sessions.length} sessions`);
-
-    /*
-    if (sessions.length > 0) {
-      logger.log(`[${execId}] First session:`, {
-        id: sessions[0].id,
-        driverName: sessions[0].driverName,
-        createdAt: sessions[0].createdAt,
-      });
-    }
-    */
-   
     return NextResponse.json({
       success: true,
       sessions: sessions.map((session) => ({

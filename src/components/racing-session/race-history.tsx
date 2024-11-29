@@ -66,59 +66,86 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
 
-  // debugging
-  useEffect(() => {
-    console.log('State values:', {
-      drivers,
-      cars,
-      locations,
-      filterDriver,
-      filterCar,
-      filterLocation,
-      races
-    });
-  }, [drivers, cars, locations, filterDriver, filterCar, filterLocation, races]);
-
-  // debugging
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/races/history/lookup-data', {
-          headers: { 'no-cache': '1' }
-        });
-        const rawResponse = await response.text();
-        console.log('Raw API Response:', rawResponse);
-        const data = JSON.parse(rawResponse);
-        setLocations(data.locations);
-        setDrivers(data.drivers);
-        setCars(data.cars);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchData();
-  }, []);
+  const [availableCars, setAvailableCars] = useState<Car[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<Location[]>([]);
+  const [driversWithRaces, setDriversWithRaces] = useState<Driver[]>([]);
 
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/races/history/lookup-data");
-        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-        const data = await response.json();
-        console.log("Lookup data:", data);
-        setLocations(data.locations);
-        setDrivers(data.drivers);
-        setCars(data.cars);
+        const [lookupResponse, racesResponse] = await Promise.all([fetch("/api/races/history/lookup-data"), fetch("/api/races/history/results")]);
+
+        const lookupData = await lookupResponse.json();
+        const racesData = await racesResponse.json();
+
+        setDrivers(lookupData.drivers);
+        setCars(lookupData.cars);
+        setLocations(lookupData.locations);
+        setRaces(racesData.map((race) => ({ ...race, date: new Date(race.date) })));
       } catch (error) {
-        console.error("Error fetching lookup data:", error);
+        console.error("Error:", error);
       }
     };
     fetchData();
   }, []);
 
+  // Filter cars when driver changes
+  useEffect(() => {
+    if (filterDriver === "all") {
+      setAvailableCars(cars);
+      return;
+    }
+    const driverCars = cars.filter((car) => {
+      const carRaces = races.filter((race) => race.driver === drivers.find((d) => d.id === filterDriver)?.name && race.car === car.name);
+      return carRaces.length > 0;
+    });
+    setAvailableCars(driverCars);
+    if (!driverCars.some((c) => c.id === filterCar)) {
+      setFilterCar("all");
+    }
+  }, [filterDriver, cars, races]);
+
+  // Filter locations when car changes
+  useEffect(() => {
+    const filteredLocations = locations.filter((location) => {
+      return races.some((race) => {
+        const matchesDriver = filterDriver === "all" || race.driver === drivers.find((d) => d.id === filterDriver)?.name;
+        const matchesCar = filterCar === "all" || race.car === cars.find((c) => c.id === filterCar)?.name;
+        return matchesDriver && matchesCar && race.location === location.name;
+      });
+    });
+    setAvailableLocations(filteredLocations);
+    if (!filteredLocations.some((l) => l.id === filterLocation)) {
+      setFilterLocation("all");
+    }
+  }, [filterDriver, filterCar, races, locations]);
+
   // Fetch filtered race results
   useEffect(() => {
+    const fetchRaces = async () => {
+      const response = await fetch("/api/races/history/results");
+      const data = await response.json();
+      let filtered = data;
+
+      if (filterDriver !== "all") {
+        const driverName = drivers.find((d) => d.id === filterDriver)?.name;
+        filtered = filtered.filter((race) => race.driver === driverName);
+      }
+      if (filterCar !== "all") {
+        const carName = cars.find((c) => c.id === filterCar)?.name;
+        filtered = filtered.filter((race) => race.car === carName);
+      }
+      if (filterLocation !== "all") {
+        const locationName = locations.find((l) => l.id === filterLocation)?.name;
+        filtered = filtered.filter((race) => race.location === locationName);
+      }
+
+      setRaces(filtered.map((race) => ({ ...race, date: new Date(race.date) })));
+    };
+
+    // TODO: delete?
+    /*
     const fetchRaces = async () => {
       try {
         const queryParams = new URLSearchParams({
@@ -131,7 +158,6 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
         const response = await fetch(`/api/races/history/results?${queryParams}`);
         if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
         const data = await response.json();
-        console.log("Race results:", data);
         if (!Array.isArray(data)) throw new Error("Expected array of races");
         setRaces(data.map((race: any) => ({ ...race, date: new Date(race.date) })));
       } catch (error) {
@@ -139,6 +165,7 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
         setRaces([]);
       }
     };
+    */
 
     fetchRaces();
   }, [filterDriver, filterCar, filterLocation, dateRange]);
@@ -163,6 +190,7 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
                 <SelectTrigger>
                   <SelectValue placeholder="All Drivers" />
                 </SelectTrigger>
+                {/* Driver Select */}
                 <SelectContent>
                   <SelectItem value="all">All Drivers</SelectItem>
                   {drivers.map((d) => (
@@ -180,9 +208,11 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
                 <SelectTrigger>
                   <SelectValue placeholder="All Cars" />
                 </SelectTrigger>
+
+                {/* Car Select */}
                 <SelectContent>
                   <SelectItem value="all">All Cars</SelectItem>
-                  {cars.map((c) => (
+                  {availableCars.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
@@ -197,9 +227,11 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
                 <SelectTrigger>
                   <SelectValue placeholder="All Locations" />
                 </SelectTrigger>
+
+                {/* Location Select */}
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
-                  {locations.map((l) => (
+                  {availableLocations.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
                       {l.name}
                     </SelectItem>

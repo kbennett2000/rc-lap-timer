@@ -43,51 +43,45 @@ export const RaceCountdown: React.FC<RaceCountdownProps> = ({ timeLeft, playBeep
     [playBeeps]
   );
 
-// Voice announcements
-const announce = useCallback(
-  (text: string) => {
-    if (!voiceAnnouncements) return;
+  // Voice announcements
+  const announce = useCallback(
+    (text: string) => {
+      if (!voiceAnnouncements) return;
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.2;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-    utterance.lang = 'en-US'; // Force English language
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.2;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      utterance.lang = "en-US"; // Force English language
 
-    // Wait for voices to be loaded
-    const setVoice = () => {
-      const voices = window.speechSynthesis.getVoices();
-      // First try to find Google US English voice
-      let preferredVoice = voices.find(
-        voice => voice.name.includes('Google US English') || 
-                voice.name.includes('en-US')
-      );
-      
-      // If no Google US voice, try any English voice
-      if (!preferredVoice) {
-        preferredVoice = voices.find(
-          voice => voice.lang.startsWith('en')
-        );
-      }
-
-      if (preferredVoice) {
-        console.log('Selected voice:', preferredVoice.name);
-        utterance.voice = preferredVoice;
-      }
-    };
-
-    // Check if voices are already loaded
-    if (window.speechSynthesis.getVoices().length) {
-      setVoice();
-    } else {
       // Wait for voices to be loaded
-      window.speechSynthesis.onvoiceschanged = setVoice;
-    }
+      const setVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        // First try to find Google US English voice
+        let preferredVoice = voices.find((voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"));
 
-    window.speechSynthesis.speak(utterance);
-  },
-  [voiceAnnouncements]
-);
+        // If no Google US voice, try any English voice
+        if (!preferredVoice) {
+          preferredVoice = voices.find((voice) => voice.lang.startsWith("en"));
+        }
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+      };
+
+      // Check if voices are already loaded
+      if (window.speechSynthesis.getVoices().length) {
+        setVoice();
+      } else {
+        // Wait for voices to be loaded
+        window.speechSynthesis.onvoiceschanged = setVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    },
+    [voiceAnnouncements]
+  );
 
   // Handle countdown effects
   useEffect(() => {
