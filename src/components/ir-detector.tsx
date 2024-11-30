@@ -55,27 +55,21 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
   const processCarDetection = useCallback(
     (newCarData: CarData) => {
       if (!newCarData.id || !newCarData.time) return;
-
-      // Always update last detected car regardless of whether it's allowed
-      const isNewDetection = newCarData.id !== lastDetectedCar.id || newCarData.time !== lastDetectedCar.time;
-
-      if (!isNewDetection) return;
-
-      // Check if this specific car is in cooldown
-      if (isCarInCooldown(newCarData.id)) return;
-
-      // Update last detected car (we show all detections in the UI)
+  
+      const cooldownEndTime = carCooldowns[newCarData.id];
+      if (cooldownEndTime && Date.now() < cooldownEndTime) {
+        console.log(`Skipping detection - Car ${newCarData.id} in cooldown until ${new Date(cooldownEndTime).toISOString()}`);
+        return;
+      }
+  
       setLastDetectedCar(newCarData);
-
-      // Start cooldown for this specific car
       startCooldown(newCarData.id);
-
-      // Only notify parent if the car is in the allowed list
+  
       if (onCarDetected && isCarAllowed(newCarData.id)) {
         onCarDetected(newCarData.id, newCarData.time);
       }
     },
-    [lastDetectedCar, isCarInCooldown, startCooldown, onCarDetected, isCarAllowed]
+    [carCooldowns, startCooldown, onCarDetected, isCarAllowed]
   );
 
   // Function to fetch data from the server
@@ -83,6 +77,8 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     try {
       const response = await axios.get("/api/ir/current_car");
       const newCarData: CarData = response.data;
+      // TODO: delete
+      console.log('IR Data:', newCarData);
 
       if (newCarData.id && newCarData.time) {
         processCarDetection(newCarData);

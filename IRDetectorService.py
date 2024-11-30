@@ -85,10 +85,11 @@ def start_detection():
     last_detection = {1: 0, 2: 0}
     
     try:
-        print("IR Car Detector - High Speed Version")
-        print("Press Ctrl+C to exit")
+        #print("IR Car Detector - High Speed Version")
+        #print("Press Ctrl+C to exit")
         
         while True:
+            current_car = {'id': None, 'time': None}
             for detector_id, pin in [(1, IR_PIN_1), (2, IR_PIN_2)]:
                 car_id = decode_pulses(pin)
                 if car_id:
@@ -96,13 +97,14 @@ def start_detection():
                     if validated_id:
                         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         if time.time() - last_detection[detector_id] > DETECTION_INTERVAL:
-                            print(f"Car {validated_id} detected on sensor {detector_id} at {current_time}")
+                            #print(f"Car {validated_id} detected on sensor {detector_id} at {current_time}")
                             current_car = {'id': str(validated_id), 'time': current_time}
                             last_detection[detector_id] = time.time()
+
             time.sleep(LOOP_DELAY)
 
     except KeyboardInterrupt:
-        print("\nStopping...")
+        #print("\nStopping...")
         GPIO.cleanup()
 
 if __name__ == '__main__':

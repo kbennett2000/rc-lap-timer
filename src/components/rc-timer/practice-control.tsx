@@ -1610,7 +1610,7 @@ export default function PracticeControl() {
             <TabsTrigger value="previous" className="py-3">
               <div className="flex flex-col items-center">
                 <ClipboardList className="h-5 w-5" />
-                <span className="text-xs mt-1">Previous</span>
+                <span className="text-xs mt-1">Session Management</span>
               </div>
             </TabsTrigger>
             <TabsTrigger value="best" className="py-3">
@@ -1628,7 +1628,7 @@ export default function PracticeControl() {
             <TabsTrigger value="notes" className="py-3">
               <div className="flex flex-col items-center">
                 <NotebookPen className="h-5 w-5" />
-                <span className="text-xs mt-1">Best</span>
+                <span className="text-xs mt-1">Notes</span>
               </div>
             </TabsTrigger>
           </TabsList>
