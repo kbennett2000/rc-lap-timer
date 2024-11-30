@@ -15,7 +15,7 @@ START_PULSE_MIN = 0.003
 PULSE_COUNT_WINDOW = 0.02  # Increased for higher car IDs
 DETECTION_INTERVAL = 0.02
 # Decreate readings?
-VALIDATION_READINGS = 6
+VALIDATION_READINGS = 3
 
 START_PULSE_MAX_MS = START_PULSE_MAX * 1000
 START_PULSE_MIN_MS = START_PULSE_MIN * 1000
@@ -60,18 +60,29 @@ def decode_pulses(pin):
     return pulses if 1 <= pulses <= MAX_CARS else None
 
 def validate_car_id(detector_id, car_id):
-    global recent_readings
-    if detector_id not in recent_readings:
-        recent_readings[detector_id] = []
-        
-    readings = recent_readings[detector_id]
-    readings.append(car_id)
-    if len(readings) > VALIDATION_READINGS:
-        readings.pop(0)
-        
-    if len(readings) == VALIDATION_READINGS and readings.count(car_id) >= (VALIDATION_READINGS - 1):
-        return car_id
-    return None
+   global recent_readings
+   current_time = time.time()
+
+   # Initialize car readings if needed
+   if car_id not in recent_readings:
+       recent_readings[car_id] = {
+           'readings': [],
+           'last_time': current_time
+       }
+
+   # Clear old readings if more than 1 second has passed
+   if current_time - recent_readings[car_id]['last_time'] > 1.0:
+       recent_readings[car_id]['readings'].clear()
+
+   # Update time and add reading
+   recent_readings[car_id]['last_time'] = current_time
+   recent_readings[car_id]['readings'].append(detector_id)
+
+   # Check for VALIDATION_READINGS valid readings from any detector combination
+   if len(recent_readings[car_id]['readings']) >= VALIDATION_READINGS:
+       return car_id
+   
+   return None
 
 # Flask route to get the current car data
 @app.route('/current_car')
