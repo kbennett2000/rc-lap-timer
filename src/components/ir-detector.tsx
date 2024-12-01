@@ -30,6 +30,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     [allowedCarNumbers]
   );
 
+  // TODO: delete?
   // Check if a car is in cooldown
   const isCarInCooldown = useCallback(
     (carId: string): boolean => {
@@ -52,6 +53,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
   );
 
   // Process new car detection
+  /*
   const processCarDetection = useCallback(
     (newCarData: CarData) => {
       if (!newCarData.id || !newCarData.time) return;
@@ -71,6 +73,71 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     },
     [carCooldowns, startCooldown, onCarDetected, isCarAllowed]
   );
+  */
+
+  // GROK
+  // A new state to keep track of when each car was last processed
+  const [carDebounce, setCarDebounce] = useState<CooldownMap>({});
+
+  // GROK
+  // Function to set a debounce time for each car
+  const startDebounce = useCallback((carId: string) => {
+    setCarDebounce((prev) => ({
+      ...prev,
+      [carId]: Date.now() + 1000, // 1000ms debounce time, adjust as needed
+    }));
+  }, []);
+
+  // GROK
+   // Cleanup function for both cooldowns and debounces
+   const cleanupExpiredEntries = useCallback(() => {
+    const now = Date.now();
+    setCarCooldowns((prev) => Object.fromEntries(
+      Object.entries(prev).filter(([carId, endTime]) => endTime > now)
+    ));
+    
+    setCarDebounce((prev) => Object.fromEntries(
+      Object.entries(prev).filter(([carId, endTime]) => endTime > now)
+    ));
+  }, []);
+
+  // GROK
+  // Use effect to set up periodic cleanup of expired cooldowns and debounces
+  useEffect(() => {
+    const cleanupInterval = setInterval(cleanupExpiredEntries, 1000); // Check every second
+
+    // Cleanup function to clear the interval on component unmount or when cleanupExpiredEntries changes
+    return () => clearInterval(cleanupInterval);
+  }, [cleanupExpiredEntries]);
+
+
+  // GROK
+  const processCarDetection = useCallback(
+    (newCarData: CarData) => {
+      if (!newCarData.id || !newCarData.time) return;
+
+      const cooldownEndTime = carCooldowns[newCarData.id];
+      if (cooldownEndTime && Date.now() < cooldownEndTime) {
+        // TODO: delete
+        // console.log(`Skipping detection - Car ${newCarData.id} in cooldown until ${new Date(cooldownEndTime).toISOString()}`);
+        return;
+      }
+
+      // Implement per-car debounce
+      if (!carDebounce[newCarData.id] || Date.now() > carDebounce[newCarData.id]) {
+        setLastDetectedCar(newCarData);
+        startCooldown(newCarData.id);
+        startDebounce(newCarData.id); // Start the debounce for this car
+
+        if (onCarDetected && isCarAllowed(newCarData.id)) {
+          onCarDetected(newCarData.id, newCarData.time);
+        }
+      //} else {
+      //  console.log(`Debounce skipping detection for Car ${newCarData.id}`);
+      }
+    },
+    [carCooldowns, carDebounce, startCooldown, onCarDetected, isCarAllowed]
+  );
 
   // Function to fetch data from the server
   const fetchCarData = useCallback(async () => {
@@ -78,7 +145,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
       const response = await axios.get("/api/ir/current_car");
       const newCarData: CarData = response.data;
       // TODO: delete
-      console.log('IR Data:', newCarData);
+      // console.log("IR Data:", newCarData);
 
       if (newCarData.id && newCarData.time) {
         processCarDetection(newCarData);
@@ -89,6 +156,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
   }, [processCarDetection]);
 
   // Clean up expired cooldowns periodically
+  /*
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       const now = Date.now();
@@ -107,11 +175,12 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
 
     return () => clearInterval(cleanupInterval);
   }, []);
+  */
 
   // TODO: update interval?
   // Fetch car data frequently
   useEffect(() => {
-    const intervalId = setInterval(fetchCarData, 100);
+    const intervalId = setInterval(fetchCarData, 50);
     return () => clearInterval(intervalId);
   }, [fetchCarData]);
 
