@@ -1601,30 +1601,39 @@ export default function PracticeControl() {
         <Tabs defaultValue="current" className="h-full" value={activeTab} onValueChange={setActiveTab}>
           {/* Navigation */}
           <TabsList className="grid w-full h-full grid-cols-5">
+            {/* Current Session */}
             <TabsTrigger value="current" className="py-3">
               <div className="flex flex-col items-center">
                 <CarIcon className="h-5 w-5" />
                 <span className="text-xs mt-1">Current</span>
               </div>
             </TabsTrigger>
+
+            {/* Previous Sessions */}
             <TabsTrigger value="previous" className="py-3">
               <div className="flex flex-col items-center">
                 <ClipboardList className="h-5 w-5" />
                 <span className="text-xs mt-1">Session Management</span>
               </div>
             </TabsTrigger>
+
+            {/* Best Laps Comparison */}
             <TabsTrigger value="best" className="py-3">
               <div className="flex flex-col items-center">
                 <Trophy className="h-5 w-5" />
                 <span className="text-xs mt-1">Best</span>
               </div>
             </TabsTrigger>
+
+            {/* Session Comparison */}
             <TabsTrigger value="compare" className="py-3">
               <div className="flex flex-col items-center">
                 <ChartArea className="h-5 w-5" />
                 <span className="text-xs mt-1">Compare</span>
               </div>
             </TabsTrigger>
+
+            {/* Session Notes */}
             <TabsTrigger value="notes" className="py-3">
               <div className="flex flex-col items-center">
                 <NotebookPen className="h-5 w-5" />
@@ -2647,8 +2656,9 @@ export default function PracticeControl() {
           </TabsContent>
 
           {/* Session Notes Tab */}
-          <TabsContent value="notes" className="space-y-4">
+          <TabsContent value="notes" className="px-4 space-y-4 h-full overflow-y-auto">
             <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+              <a>THIS IS NOTES!</a>
               <SessionNotes sessions={savedSessions} />
             </motion.div>
           </TabsContent>

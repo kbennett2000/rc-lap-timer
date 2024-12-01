@@ -52,11 +52,6 @@ export async function GET(request: Request) {
       orderBy: { date: "desc" },
     });
 
-    console.log(
-      "Race entries:",
-      races.flatMap((race) => race.entries)
-    );
-
     return NextResponse.json(
       races.flatMap((race) =>
         race.entries.map((entry) => ({
