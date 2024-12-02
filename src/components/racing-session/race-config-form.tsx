@@ -165,11 +165,11 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full px-4 md:px-6">
       <div>
         <Label>Location</Label>
         <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select location" />
           </SelectTrigger>
           <SelectContent>
@@ -183,7 +183,7 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
       </div>
 
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h3 className="text-lg font-semibold">Car Assignments</h3>
           <Button onClick={addCarAssignment} size="sm" variant="outline">
             Add Car
@@ -191,8 +191,8 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
         </div>
 
         {carAssignments.map((assignment, index) => (
-          <div key={index} className="grid grid-cols-4 gap-4 items-center">
-            <Select value={assignment.driverId} onValueChange={(value) => updateCarAssignment(index, "driverId", value)}>
+          <div key={index} className="flex flex-col sm:grid sm:grid-cols-4 gap-4">
+            <Select value={assignment.driverId} onValueChange={(value) => updateCarAssignment(index, "driverId", value)} className="w-full">
               <SelectTrigger>
                 <SelectValue placeholder="Select driver" />
               </SelectTrigger>
@@ -207,7 +207,7 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
               </SelectContent>
             </Select>
 
-            <Select value={assignment.carId} onValueChange={(value) => updateCarAssignment(index, "carId", value)} disabled={!assignment.driverId}>
+            <Select value={assignment.carId} onValueChange={(value) => updateCarAssignment(index, "carId", value)} disabled={!assignment.driverId} className="w-full">
               <SelectTrigger>
                 <SelectValue placeholder="Select car" />
               </SelectTrigger>
@@ -220,24 +220,26 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
               </SelectContent>
             </Select>
 
-            <Input
-              type="number"
-              min="1"
-              max="8"
-              value={assignment.carNumber}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 8)) {
-                  updateCarAssignment(index, "carNumber", value);
-                }
-              }}
-              placeholder="Car #"
-              className={assignment.carNumber && carAssignments.filter((a) => a.carNumber === assignment.carNumber).length > 1 ? "border-red-500" : ""}
-            />
+            <div className="flex gap-4">
+              <Input
+                type="number"
+                min="1"
+                max="8"
+                value={assignment.carNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 8)) {
+                    updateCarAssignment(index, "carNumber", value);
+                  }
+                }}
+                placeholder="Car #"
+                className={`flex-1 ${assignment.carNumber && carAssignments.filter((a) => a.carNumber === assignment.carNumber).length > 1 ? "border-red-500" : ""}`}
+              />
 
-            <Button onClick={() => removeCarAssignment(index)} variant="ghost" size="icon" className="text-red-500" disabled={carAssignments.length === 1}>
-              Remove
-            </Button>
+              <Button onClick={() => removeCarAssignment(index)} variant="ghost" size="icon" className="text-red-500" disabled={carAssignments.length === 1}>
+                Remove
+              </Button>
+            </div>
           </div>
         ))}
       </div>
@@ -245,57 +247,60 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Race Settings</h3>
 
-        <div>
-          <Label>Start Delay (seconds)</Label>
-          <Input type="number" min="3" max="30" value={startDelay} onChange={(e) => onStartDelayChange(parseInt(e.target.value))} />
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label>Start Delay (seconds)</Label>
+            <Input type="number" min="3" max="30" value={startDelay} onChange={(e) => onStartDelayChange(parseInt(e.target.value))} className="w-full" />
+          </div>
 
-        <div>
-          <Label>Number of Laps</Label>
-          <RadioGroup
-            value={showCustomLaps ? "custom" : "unlimited"}
-            onValueChange={(value) => {
-              setShowCustomLaps(value === "custom");
-              if (value !== "custom") {
-                onTotalLapsChange("unlimited");
-              }
-            }}
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="unlimited" id="unlimited" />
-              <Label htmlFor="unlimited">Unlimited</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="custom" id="custom" />
-              <Label htmlFor="custom">Custom</Label>
-            </div>
-          </RadioGroup>
-
-          {showCustomLaps && (
-            <Input
-              type="number"
-              min="1"
-              value={customLaps}
-              onChange={(e) => {
-                setCustomLaps(e.target.value);
-                const value = parseInt(e.target.value);
-                if (!isNaN(value) && value > 0) {
-                  onTotalLapsChange(value);
+          <div>
+            <Label>Number of Laps</Label>
+            <RadioGroup
+              value={showCustomLaps ? "custom" : "unlimited"}
+              onValueChange={(value) => {
+                setShowCustomLaps(value === "custom");
+                if (value !== "custom") {
+                  onTotalLapsChange("unlimited");
                 }
               }}
-              placeholder="Enter number of laps"
-              className="mt-2"
-            />
-          )}
+              className="space-y-2"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="unlimited" id="unlimited" />
+                <Label htmlFor="unlimited">Unlimited</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="custom" id="custom" />
+                <Label htmlFor="custom">Custom</Label>
+              </div>
+            </RadioGroup>
+
+            {showCustomLaps && (
+              <Input
+                type="number"
+                min="1"
+                value={customLaps}
+                onChange={(e) => {
+                  setCustomLaps(e.target.value);
+                  const value = parseInt(e.target.value);
+                  if (!isNaN(value) && value > 0) {
+                    onTotalLapsChange(value);
+                  }
+                }}
+                placeholder="Enter number of laps"
+                className="mt-2 w-full"
+              />
+            )}
+          </div>
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <Label htmlFor="play-beeps">Play Sound Effects</Label>
             <Switch id="play-beeps" checked={playBeeps} onCheckedChange={onPlayBeepsChange} />
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <Label htmlFor="voice-announcements">Voice Announcements</Label>
             <Switch id="voice-announcements" checked={voiceAnnouncements} onCheckedChange={onVoiceAnnouncementsChange} />
           </div>

@@ -1613,7 +1613,10 @@ export default function PracticeControl() {
             <TabsTrigger value="previous" className="py-3">
               <div className="flex flex-col items-center">
                 <ClipboardList className="h-5 w-5" />
-                <span className="text-xs mt-1">Session Management</span>
+                <span className="text-xs mt-1">
+                  Session
+                  <br /> Mgmt
+                </span>
               </div>
             </TabsTrigger>
 
@@ -2260,384 +2263,377 @@ export default function PracticeControl() {
           {/* Previous Sessions Tab */}
           <TabsContent value="previous" className="px-4 space-y-4 h-full overflow-y-auto">
             <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-              <Card>
-                <CardHeader>
-                  <div className="text-2xl font-extrabold">Session Management</div>
-                </CardHeader>
-                <CardContent>
-                  {savedSessions.length === 0 ? (
-                    <>
+              {savedSessions.length === 0 ? (
+                <>
+                  {/* Current Session Display */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle>Current Session</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
                       {/* Current Session Display */}
-                      <Card>
-                        <CardHeader>
-                          <div className="flex justify-between items-center">
-                            <CardTitle>Current Session</CardTitle>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {/* Current Session Display */}
-                          <CurrentSessionDisplay />
-                        </CardContent>
+                      <CurrentSessionDisplay />
+                    </CardContent>
 
-                        {/* Request Session Form */}
-                        <Card>
-                          <CardHeader>
-                            <div className="flex justify-between items-center">
-                              <CardTitle>Request a Session</CardTitle>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {/* Session Request Form */}
-                            <SessionRequestForm drivers={drivers} locations={locations} />
-                          </CardContent>
-                        </Card>
-                      </Card>
+                    {/* Request Session Form */}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex justify-between items-center">
+                          <CardTitle>Request a Session</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {/* Session Request Form */}
+                        <SessionRequestForm drivers={drivers} locations={locations} />
+                      </CardContent>
+                    </Card>
+                  </Card>
 
-                      {/* No Records to Display Message */}
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="text-center py-12">
-                            <ListX className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                            <h3 className="mt-4 text-lg font-semibold">No Sessions Recorded</h3>
-                            <p className="mt-2 text-sm text-muted-foreground">Record your first timing session to see it appear here.</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </>
-                  ) : (
-                    <>
+                  {/* No Records to Display Message */}
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center py-12">
+                        <ListX className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                        <h3 className="mt-4 text-lg font-semibold">No Sessions Recorded</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">Record your first timing session to see it appear here.</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <>
+                  {/* Current Session Display */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle>Current Session</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
                       {/* Current Session Display */}
-                      <Card>
-                        <CardHeader>
-                          <div className="flex justify-between items-center">
-                            <CardTitle>Current Session</CardTitle>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {/* Current Session Display */}
-                          <CurrentSessionDisplay />
-                        </CardContent>
-                      </Card>
+                      <CurrentSessionDisplay />
+                    </CardContent>
+                  </Card>
 
-                      {/* Request Session Form */}
-                      <Card>
-                        <CardHeader>
-                          <div className="flex justify-between items-center">
-                            <CardTitle>Request a Session</CardTitle>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {/* Session Request Form */}
-                          <SessionRequestForm drivers={drivers} locations={locations} />
-                        </CardContent>
-                      </Card>
+                  {/* Request Session Form */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle>Request a Session</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Session Request Form */}
+                      <SessionRequestForm drivers={drivers} locations={locations} />
+                    </CardContent>
+                  </Card>
 
-                      {/* Previous Sessions Display */}
-                      <Card>
-                        <CardHeader>
-                          <div className="flex justify-between items-center">
-                            <CardTitle>Previous Sessions</CardTitle>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {/* Driver and Car Filters */}
-                          <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div className="space-y-2">
-                              <Label>Filter by Driver</Label>
-                              <Select
-                                value={filterDriver}
-                                onValueChange={(value) => {
-                                  setFilterDriver(value);
-                                  setFilterCar("all"); // Reset car filter when driver changes
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="All Drivers" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All Drivers</SelectItem>
-                                  {/* Get unique drivers from sessions */}
-                                  {Array.from(new Set(savedSessions.map((session) => session.driverName)))
-                                    .filter((name) => name && name.trim() !== "")
-                                    .sort((a, b) => a.localeCompare(b))
-                                    .map((driver) => (
-                                      <SelectItem key={driver} value={driver}>
-                                        {driver}
-                                      </SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                  {/* Previous Sessions Display */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle>Previous Sessions</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Driver and Car Filters */}
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="space-y-2">
+                          <Label>Filter by Driver</Label>
+                          <Select
+                            value={filterDriver}
+                            onValueChange={(value) => {
+                              setFilterDriver(value);
+                              setFilterCar("all"); // Reset car filter when driver changes
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Drivers" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Drivers</SelectItem>
+                              {/* Get unique drivers from sessions */}
+                              {Array.from(new Set(savedSessions.map((session) => session.driverName)))
+                                .filter((name) => name && name.trim() !== "")
+                                .sort((a, b) => a.localeCompare(b))
+                                .map((driver) => (
+                                  <SelectItem key={driver} value={driver}>
+                                    {driver}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                            <div className="space-y-2">
-                              <Label>Filter by Car</Label>
-                              <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
-                                <SelectTrigger disabled={filterDriver === "all"}>
-                                  <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All Cars</SelectItem>
-                                  {filterDriver !== "all" &&
-                                    Array.from(new Set(savedSessions.filter((session) => session.driverName === filterDriver).map((session) => session.carName)))
-                                      .filter((name) => name && name.trim() !== "")
-                                      .sort((a, b) => a.localeCompare(b))
-                                      .map((car) => (
-                                        <SelectItem key={car} value={car}>
-                                          {car}
-                                        </SelectItem>
-                                      ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                        <div className="space-y-2">
+                          <Label>Filter by Car</Label>
+                          <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
+                            <SelectTrigger disabled={filterDriver === "all"}>
+                              <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Cars</SelectItem>
+                              {filterDriver !== "all" &&
+                                Array.from(new Set(savedSessions.filter((session) => session.driverName === filterDriver).map((session) => session.carName)))
+                                  .filter((name) => name && name.trim() !== "")
+                                  .sort((a, b) => a.localeCompare(b))
+                                  .map((car) => (
+                                    <SelectItem key={car} value={car}>
+                                      {car}
+                                    </SelectItem>
+                                  ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                            <div className="space-y-2">
-                              <Label>Filter by Location</Label>
-                              <Select
-                                value={filterLocation}
-                                onValueChange={(value) => {
-                                  setFilterLocation(value);
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="All Locations" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="all">All Locations</SelectItem>
-                                  {/* Get unique locations from sessions */}
-                                  {Array.from(new Set(savedSessions.map((session) => session.locationName)))
-                                    .filter((name) => name && name.trim() !== "")
-                                    .sort((a, b) => a.localeCompare(b))
-                                    .map((location) => (
-                                      <SelectItem key={location} value={location}>
-                                        {location}
-                                      </SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
+                        <div className="space-y-2">
+                          <Label>Filter by Location</Label>
+                          <Select
+                            value={filterLocation}
+                            onValueChange={(value) => {
+                              setFilterLocation(value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All Locations" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Locations</SelectItem>
+                              {/* Get unique locations from sessions */}
+                              {Array.from(new Set(savedSessions.map((session) => session.locationName)))
+                                .filter((name) => name && name.trim() !== "")
+                                .sort((a, b) => a.localeCompare(b))
+                                .map((location) => (
+                                  <SelectItem key={location} value={location}>
+                                    {location}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-                          {/* Date Range Filter */}
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <Label>Filter by Date Range</Label>
-                            </div>
+                      {/* Date Range Filter */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label>Filter by Date Range</Label>
+                        </div>
 
-                            {/* Preset Buttons */}
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {DATE_PRESETS.map((preset) => {
-                                const presetDates = getPresetDates(preset);
-                                const isActive =
-                                  previousSessionsDateRange.from && previousSessionsDateRange.to && format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+                        {/* Preset Buttons */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {DATE_PRESETS.map((preset) => {
+                            const presetDates = getPresetDates(preset);
+                            const isActive =
+                              previousSessionsDateRange.from && previousSessionsDateRange.to && format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
 
-                                return (
-                                  <Button
-                                    key={preset.label}
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
-                                    onClick={() => {
-                                      const { from, to } = getPresetDates(preset);
-                                      setPreviousSessionsDateRange({ from, to });
-                                    }}
-                                  >
-                                    {preset.label}
-                                  </Button>
-                                );
-                              })}
-                            </div>
-
-                            {/* Custom Date Range Selectors */}
-                            <div className="flex flex-col sm:flex-row gap-2">
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.from && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {previousSessionsDateRange.from ? format(previousSessionsDateRange.from, "PPP") : "Select start date"}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={previousSessionsDateRange.from}
-                                    onSelect={(date) =>
-                                      setPreviousSessionsDateRange((prev) => ({
-                                        ...prev,
-                                        from: date,
-                                      }))
-                                    }
-                                    initialFocus
-                                  />
-                                </PopoverContent>
-                              </Popover>
-
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.to && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {previousSessionsDateRange.to ? format(previousSessionsDateRange.to, "PPP") : "Select end date"}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={previousSessionsDateRange.to}
-                                    onSelect={(date) =>
-                                      setPreviousSessionsDateRange((prev) => ({
-                                        ...prev,
-                                        to: date,
-                                      }))
-                                    }
-                                    disabled={(date) => (previousSessionsDateRange.from ? isBefore(date, previousSessionsDateRange.from) : false)}
-                                    initialFocus
-                                  />
-                                </PopoverContent>
-                              </Popover>
-
+                            return (
                               <Button
+                                key={preset.label}
                                 variant="outline"
-                                onClick={() =>
-                                  setPreviousSessionsDateRange({
-                                    from: undefined,
-                                    to: undefined,
-                                  })
-                                }
-                                className="w-full sm:w-auto"
+                                size="sm"
+                                className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                                onClick={() => {
+                                  const { from, to } = getPresetDates(preset);
+                                  setPreviousSessionsDateRange({ from, to });
+                                }}
                               >
-                                Reset Dates
+                                {preset.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Custom Date Range Selectors */}
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.from && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {previousSessionsDateRange.from ? format(previousSessionsDateRange.from, "PPP") : "Select start date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={previousSessionsDateRange.from}
+                                onSelect={(date) =>
+                                  setPreviousSessionsDateRange((prev) => ({
+                                    ...prev,
+                                    from: date,
+                                  }))
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.to && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {previousSessionsDateRange.to ? format(previousSessionsDateRange.to, "PPP") : "Select end date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={previousSessionsDateRange.to}
+                                onSelect={(date) =>
+                                  setPreviousSessionsDateRange((prev) => ({
+                                    ...prev,
+                                    to: date,
+                                  }))
+                                }
+                                disabled={(date) => (previousSessionsDateRange.from ? isBefore(date, previousSessionsDateRange.from) : false)}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setPreviousSessionsDateRange({
+                                from: undefined,
+                                to: undefined,
+                              })
+                            }
+                            className="w-full sm:w-auto"
+                          >
+                            Reset Dates
+                          </Button>
+                        </div>
+
+                        {/* Date Range Summary */}
+                        {(previousSessionsDateRange.from || previousSessionsDateRange.to) && (
+                          <div className="text-sm text-muted-foreground">
+                            {previousSessionsDateRange.from &&
+                            previousSessionsDateRange.to &&
+                            format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") &&
+                            format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                              "Showing sessions from today"
+                            ) : (
+                              <>
+                                Showing sessions
+                                {previousSessionsDateRange.from && !previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")}`}
+                                {!previousSessionsDateRange.from && previousSessionsDateRange.to && ` until ${format(previousSessionsDateRange.to, "PPP")}`}
+                                {previousSessionsDateRange.from && previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")} to ${format(previousSessionsDateRange.to, "PPP")}`}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sessions List */}
+                      <div className="space-y-6">
+                        {sortSessionsByDate(
+                          savedSessions
+                            .filter((session) => (currentSession ? session.id !== currentSession.id : true))
+                            .filter((session) => isWithinPreviousSessionsDateRange(session.date))
+                            .filter((session) => filterDriver === "all" || session.driverName === filterDriver)
+                            .filter((session) => filterCar === "all" || session.carName === filterCar)
+                            .filter((session) => filterLocation === "all" || session.locationName === filterLocation)
+                        ).map((session) => (
+                          <div key={session.id} className="border-t pt-4 first:border-t-0 first:pt-0">
+                            <div className="flex justify-between items-center mb-2">
+                              <div>
+                                <h3 className="font-semibold">{formatDateTime(session.date)}</h3>
+                                <div className="text-sm text-muted-foreground">
+                                  Driver: {session.driverName} - Car: {session.carName} - Location: {session.locationName}
+                                </div>
+                              </div>
+                              <Button onClick={() => setSessionToDelete(session)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
 
-                            {/* Date Range Summary */}
-                            {(previousSessionsDateRange.from || previousSessionsDateRange.to) && (
-                              <div className="text-sm text-muted-foreground">
-                                {previousSessionsDateRange.from &&
-                                previousSessionsDateRange.to &&
-                                format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") &&
-                                format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
-                                  "Showing sessions from today"
-                                ) : (
-                                  <>
-                                    Showing sessions
-                                    {previousSessionsDateRange.from && !previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")}`}
-                                    {!previousSessionsDateRange.from && previousSessionsDateRange.to && ` until ${format(previousSessionsDateRange.to, "PPP")}`}
-                                    {previousSessionsDateRange.from && previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")} to ${format(previousSessionsDateRange.to, "PPP")}`}
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Lap Times Section */}
+                              <div>
+                                <h4 className="font-semibold mb-2">Lap Times:</h4>
+                                {/* Sort laps by lap number before displaying */}
+                                {[...session.laps]
+                                  .sort((a, b) => a.lapNumber - b.lapNumber)
+                                  .map((lap) => {
+                                    const bestLap = Math.min(...session.laps.map((l) => l.lapTime));
+                                    const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
+                                    const isBestLap = lap.lapTime === bestLap;
+                                    const isWorstLap = lap.lapTime === worstLap;
+                                    const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
+                                    // Safely check for max penalties
+                                    const hasMaxPenalties = Boolean(session.stats?.maxPenaltyLap === lap.lapNumber && session.stats.maxPenaltyCount > 0);
 
-                          {/* Sessions List */}
-                          <div className="space-y-6">
-                            {sortSessionsByDate(
-                              savedSessions
-                                .filter((session) => (currentSession ? session.id !== currentSession.id : true))
-                                .filter((session) => isWithinPreviousSessionsDateRange(session.date))
-                                .filter((session) => filterDriver === "all" || session.driverName === filterDriver)
-                                .filter((session) => filterCar === "all" || session.carName === filterCar)
-                                .filter((session) => filterLocation === "all" || session.locationName === filterLocation)
-                            ).map((session) => (
-                              <div key={session.id} className="border-t pt-4 first:border-t-0 first:pt-0">
-                                <div className="flex justify-between items-center mb-2">
-                                  <div>
-                                    <h3 className="font-semibold">{formatDateTime(session.date)}</h3>
-                                    <div className="text-sm text-muted-foreground">
-                                      Driver: {session.driverName} - Car: {session.carName} - Location: {session.locationName}
-                                    </div>
-                                  </div>
-                                  <Button onClick={() => setSessionToDelete(session)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                    return (
+                                      <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
+                                        <span className="min-w-[100px]">
+                                          Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
+                                        </span>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  {/* Lap Times Section */}
-                                  <div>
-                                    <h4 className="font-semibold mb-2">Lap Times:</h4>
-                                    {/* Sort laps by lap number before displaying */}
-                                    {[...session.laps]
-                                      .sort((a, b) => a.lapNumber - b.lapNumber)
-                                      .map((lap) => {
-                                        const bestLap = Math.min(...session.laps.map((l) => l.lapTime));
-                                        const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
-                                        const isBestLap = lap.lapTime === bestLap;
-                                        const isWorstLap = lap.lapTime === worstLap;
-                                        const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
-                                        // Safely check for max penalties
-                                        const hasMaxPenalties = Boolean(session.stats?.maxPenaltyLap === lap.lapNumber && session.stats.maxPenaltyCount > 0);
-
-                                        return (
-                                          <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
-                                            <span className="min-w-[100px]">
-                                              Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
-                                            </span>
-
-                                            {/* Flags row - will wrap on mobile */}
-                                            {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
-                                              <div className="flex flex-wrap gap-1 mt-1 ml-4">
-                                                {/* Best Lap */}
-                                                {isBestLap && (
-                                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                                    <Zap className="h-3 w-3 mr-1" />
-                                                  </span>
-                                                )}
-                                                {/* Slowest Lap */}
-                                                {isWorstLap && (
-                                                  <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
-                                                    <Turtle className="h-3 w-3 mr-1" />
-                                                  </span>
-                                                )}
-                                                {lapPenalties > 0 && (
-                                                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
-                                                    {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
-                                                  </span>
-                                                )}
-                                                {/* Most Penalties Lap */}
-                                                {hasMaxPenalties && (
-                                                  <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
-                                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                                  </span>
-                                                )}
-                                              </div>
+                                        {/* Flags row - will wrap on mobile */}
+                                        {(isBestLap || isWorstLap || lapPenalties > 0 || hasMaxPenalties) && (
+                                          <div className="flex flex-wrap gap-1 mt-1 ml-4">
+                                            {/* Best Lap */}
+                                            {isBestLap && (
+                                              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                                <Zap className="h-3 w-3 mr-1" />
+                                              </span>
                                             )}
-
-                                            {/* Add divider between laps */}
-                                            <div className="my-2" />
+                                            {/* Slowest Lap */}
+                                            {isWorstLap && (
+                                              <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                                                <Turtle className="h-3 w-3 mr-1" />
+                                              </span>
+                                            )}
+                                            {lapPenalties > 0 && (
+                                              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                                                {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
+                                              </span>
+                                            )}
+                                            {/* Most Penalties Lap */}
+                                            {hasMaxPenalties && (
+                                              <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
+                                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                              </span>
+                                            )}
                                           </div>
-                                        );
-                                      })}
-                                  </div>
+                                        )}
 
-                                  {/* Statistics Section */}
-                                  <div className="border-t md:border-t-0 pt-4 md:pt-0 mt-4 md:mt-0">
-                                    <h4 className="font-semibold mb-2">Statistics:</h4>
-                                    <div className="space-y-2">
-                                      {session.stats && (
-                                        <>
-                                          <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
-                                          <div className="space-y-1 mt-2">
-                                            {typeof session.stats.bestLap === "number" && <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>}
-                                            {typeof session.stats.worstLap === "number" && <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>}
-                                            <div className="font-mono mt-2">Total Penalties: {session.stats.totalPenalties || 0}</div>
-                                          </div>
-                                          <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
+                                        {/* Add divider between laps */}
+                                        <div className="my-2" />
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+
+                              {/* Statistics Section */}
+                              <div className="border-t md:border-t-0 pt-4 md:pt-0 mt-4 md:mt-0">
+                                <h4 className="font-semibold mb-2">Statistics:</h4>
+                                <div className="space-y-2">
+                                  {session.stats && (
+                                    <>
+                                      <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
+                                      <div className="space-y-1 mt-2">
+                                        {typeof session.stats.bestLap === "number" && <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>}
+                                        {typeof session.stats.worstLap === "number" && <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>}
+                                        <div className="font-mono mt-2">Total Penalties: {session.stats.totalPenalties || 0}</div>
+                                      </div>
+                                      <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
+                                    </>
+                                  )}
                                 </div>
                               </div>
-                            ))}
+                            </div>
                           </div>
+                        ))}
+                      </div>
 
-                          {savedSessions.filter((session) => isWithinDateRange(session.date)).length === 0 && <div className="text-center py-8 text-muted-foreground">No sessions found for the selected date range.</div>}
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                      {savedSessions.filter((session) => isWithinDateRange(session.date)).length === 0 && <div className="text-center py-8 text-muted-foreground">No sessions found for the selected date range.</div>}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </motion.div>
           </TabsContent>
 
@@ -2658,7 +2654,6 @@ export default function PracticeControl() {
           {/* Session Notes Tab */}
           <TabsContent value="notes" className="px-4 space-y-4 h-full overflow-y-auto">
             <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-              <a>THIS IS NOTES!</a>
               <SessionNotes sessions={savedSessions} />
             </motion.div>
           </TabsContent>

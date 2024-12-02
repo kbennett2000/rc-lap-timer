@@ -169,34 +169,15 @@ export default function LapTimer() {
               {/* Practice Tab */}
               <TabsContent value="practice" className="px-4 space-y-4 h-full overflow-y-auto">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  {/* Practice Tab */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Practice</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <PracticeControl />
-                    </CardContent>
-                  </Card>
+                  <PracticeControl />
                 </motion.div>
               </TabsContent>
 
               {/* Race Session Tab */}
               <TabsContent value="race" className="px-4 space-y-4 h-full overflow-y-auto">
                 <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-                  {/* Session Configuration Card */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Race Session</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* NEW */}
-                      <div className="space-y-3 p-4 bg-gray-50 rounded">
-                        <RacingSession />
-                        <RaceHistory />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <RacingSession />
+                  <RaceHistory />
                 </motion.div>
               </TabsContent>
 

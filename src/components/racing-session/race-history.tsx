@@ -182,145 +182,141 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
         <CardHeader>
           <CardTitle>Race History</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <Label>Driver</Label>
-              <Select value={filterDriver} onValueChange={setFilterDriver}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Drivers" />
-                </SelectTrigger>
-                {/* Driver Select */}
-                <SelectContent>
-                  <SelectItem value="all">All Drivers</SelectItem>
-                  {drivers.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <CardContent className="px-2 sm:px-6">
+          <div className="flex flex-col space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="w-full">
+                <Label>Driver</Label>
+                <Select value={filterDriver} onValueChange={setFilterDriver}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Drivers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Drivers</SelectItem>
+                    {drivers.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full">
+                <Label>Car</Label>
+                <Select value={filterCar} onValueChange={setFilterCar}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Cars" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Cars</SelectItem>
+                    {availableCars.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full">
+                <Label>Location</Label>
+                <Select value={filterLocation} onValueChange={setFilterLocation}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {availableLocations.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div>
-              <Label>Car</Label>
-              <Select value={filterCar} onValueChange={setFilterCar}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Cars" />
-                </SelectTrigger>
-
-                {/* Car Select */}
-                <SelectContent>
-                  <SelectItem value="all">All Cars</SelectItem>
-                  {availableCars.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Location</Label>
-              <Select value={filterLocation} onValueChange={setFilterLocation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Locations" />
-                </SelectTrigger>
-
-                {/* Location Select */}
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {availableLocations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Date Range Presets */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {DATE_PRESETS.map((preset) => (
-              <Button
-                key={preset.label}
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "hover:bg-muted",
-                  dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(preset).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(preset).to, "yyyy-MM-dd") ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
-                )}
-                onClick={() => setDateRange(getPresetDates(preset))}
-              >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
-
-          {/* Custom Date Range */}
-          <div className="flex gap-4 mb-6">
-            <div>
-              <Label>From</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div>
-              <Label>To</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          {/* Results Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Driver</TableHead>
-                <TableHead>Car</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Best Lap</TableHead>
-                <TableHead>Laps</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {races.map((race) => (
-                <TableRow key={race.id}>
-                  <TableCell>{format(race.date, "PPP")}</TableCell>
-                  <TableCell>{race.location}</TableCell>
-                  <TableCell>{race.driver}</TableCell>
-                  <TableCell>{race.car}</TableCell>
-                  <TableCell>{race.position}</TableCell>
-                  <TableCell>{formatTime(race.bestLap)}</TableCell>
-                  <TableCell>{race.laps}</TableCell>
-                  <TableCell>{race.status}</TableCell>
-                </TableRow>
+            <div className="flex flex-wrap gap-2">
+              {DATE_PRESETS.map((preset) => (
+                <Button
+                  key={preset.label}
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "hover:bg-muted text-sm",
+                    dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(preset).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(preset).to, "yyyy-MM-dd") ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+                  )}
+                  onClick={() => setDateRange(getPresetDates(preset))}
+                >
+                  {preset.label}
+                </Button>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="w-full sm:w-auto">
+                <Label>From</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="w-full sm:w-auto">
+                <Label>To</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto mt-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">Date</TableHead>
+                  <TableHead className="whitespace-nowrap">Location</TableHead>
+                  <TableHead className="whitespace-nowrap">Driver</TableHead>
+                  <TableHead className="whitespace-nowrap">Car</TableHead>
+                  <TableHead className="whitespace-nowrap">Position</TableHead>
+                  <TableHead className="whitespace-nowrap">Best Lap</TableHead>
+                  <TableHead className="whitespace-nowrap">Laps</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {races.map((race) => (
+                  <TableRow key={race.id}>
+                    <TableCell className="whitespace-nowrap">{format(race.date, "PPP")}</TableCell>
+                    <TableCell className="whitespace-nowrap">{race.location}</TableCell>
+                    <TableCell className="whitespace-nowrap">{race.driver}</TableCell>
+                    <TableCell className="whitespace-nowrap">{race.car}</TableCell>
+                    <TableCell className="whitespace-nowrap">{race.position}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatTime(race.bestLap)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{race.laps}</TableCell>
+                    <TableCell className="whitespace-nowrap">{race.status}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
