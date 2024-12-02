@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Start the timer
+start_time=$(date +%s)
+
 # Function to prompt the user
 prompt_user() {
   echo "UpgrayeDD wants to know, do you want to reboot or shutdown? (r for reboot / s for shutdown) - A pimp's gotta choose!"
@@ -137,6 +140,16 @@ else
 fi
 
 
+# End the timer
+end_time=$(date +%s)
+
+# Calculate the time difference
+time_diff=$((end_time - start_time))
+
+# Convert to minutes and seconds for readability
+minutes=$((time_diff / 60))
+seconds=$((time_diff % 60))
+
 echo "*** UpgrayeDD asking what you want!"
 echo "######******++*##%@@@@@@@@@%%%##%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%%%%%%%####%@@%#*++=++=*##"
 echo "###*****++*#%%@@@@@@%%##**###%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%%%%%%###**%@%#++===*++*#"
@@ -200,6 +213,7 @@ echo "+##+#%@@@@@@@@@@@@#***%#--==-::::::::::::-*@@@%%%*%%*@@%=*##+-**-**=**+*==
 echo "+*%*#%@@@@@@@@@@@@@@@%=-=+-::::::::::::::-+%@@#*#%+#*:-++#%%*=-=*@*+##%%@@%%%%@%#%+-=*+-+@#%%%#%%@@+:-=-::-==+***#"
 echo "**###%@@@@@@@@%%##%%+-=+=:::::::::::::::::-*@@%@@@#+##%#%@@+=*###+*#%#*+++*####**#--=*+--%%@@@@%%@@%=:-=-::-==++**"
 echo "#**%%%%@@@@@@@@%%#+==+=:::::::::::::::::::-+%@@@@@@#+##*==+*%@@%#****+===*%*==++#=--=**=-*@#%%@@@@@@#-:-=-::-==+++"
+echo "UpgrayeDD took $minutes minutes and $seconds seconds"
 
 prompt_user
 read_user_input

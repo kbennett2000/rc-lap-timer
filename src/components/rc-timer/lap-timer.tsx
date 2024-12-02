@@ -7,11 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { Driver, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import DriverCarManager from "@/components/driver-car-manager";
-
 import { RacingSession } from "../racing-session";
 import { RaceHistory } from "../racing-session/race-history";
-
 import PracticeControl from "./practice-control";
+import { logger } from "@/lib/logger";
 
 export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("practice");

@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# Start the timer
+start_time=$(date +%s)
+
 clear
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "--------------------------------------------------------======------------------------------------------------------"
@@ -89,5 +94,16 @@ cat > .env << 'EOF'
 DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
 EOF
 
+# End the timer
+end_time=$(date +%s)
+
+# Calculate the time difference
+time_diff=$((end_time - start_time))
+
+# Convert to minutes and seconds for readability
+minutes=$((time_diff / 60))
+seconds=$((time_diff % 60))
+
 echo "*** UpgrayeDD done"
+echo "*** UpgrayeDD took $minutes minutes and $seconds seconds"
 echo "*** UpgrayeDD says run ./serverUpgrade.sh on your build box!"
