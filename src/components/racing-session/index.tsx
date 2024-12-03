@@ -627,7 +627,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     await flashPresets.greenFlash(500);
     await flashPresets.redFlash(500);
     await flashPresets.greenFlash(500);
-    await setLedBlue(100);
+    await setLedBlue(25);
   };
 
   return (

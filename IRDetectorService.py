@@ -133,7 +133,7 @@ def start_detection():
     set_led_color(0, 100, 0)
     time.sleep(1)
     # Blue Status
-    set_led_color(0, 0, 100)
+    set_led_color(0, 0, 25)
     
     try:
         while True:
