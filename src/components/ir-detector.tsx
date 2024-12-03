@@ -82,8 +82,6 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     try {
       const response = await axios.get("/api/ir/current_car");
       const newCarData: CarData = response.data;
-      // TODO: delete
-      console.log("IR Data:", newCarData);
 
       if (newCarData.id && newCarData.time) {
         processCarDetection(newCarData);
@@ -116,7 +114,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
   // TODO: update interval?
   // Fetch car data frequently
   useEffect(() => {
-    const intervalId = setInterval(fetchCarData, 50);
+    const intervalId = setInterval(fetchCarData, 20);
     return () => clearInterval(intervalId);
   }, [fetchCarData]);
 

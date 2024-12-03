@@ -422,6 +422,11 @@ address=/rc-lap-timer/192.168.4.1
 address=/rc-lap-timer.local/192.168.4.1
 ```
 
+interfaces.d needs to be created:
+```bash
+sudo mkdir /etc/network/interfaces.d
+```
+
 Configure network interface:
 ```bash
 sudo nano /etc/network/interfaces.d/access-point

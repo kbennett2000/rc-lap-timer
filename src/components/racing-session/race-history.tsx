@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
 
 const DATE_PRESETS = [
+  { label: "Today", days: 1 },
   { label: "Last 7 Days", days: 7 },
   { label: "Last 30 Days", days: 30 },
   { label: "Last 3 Months", days: 90 },
@@ -127,7 +128,7 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
       const response = await fetch("/api/races/history/results");
       const data = await response.json();
       let filtered = data;
-
+    
       if (filterDriver !== "all") {
         const driverName = drivers.find((d) => d.id === filterDriver)?.name;
         filtered = filtered.filter((race) => race.driver === driverName);
@@ -140,32 +141,26 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
         const locationName = locations.find((l) => l.id === filterLocation)?.name;
         filtered = filtered.filter((race) => race.location === locationName);
       }
-
+      
+      // Add date range filtering
+      if (dateRange.from || dateRange.to) {
+        filtered = filtered.filter((race) => {
+          const raceDate = new Date(race.date);
+          if (dateRange.from && dateRange.to) {
+            return raceDate >= dateRange.from && raceDate <= dateRange.to;
+          }
+          if (dateRange.from) {
+            return raceDate >= dateRange.from;
+          }
+          if (dateRange.to) {
+            return raceDate <= dateRange.to;
+          }
+          return true;
+        });
+      }
+    
       setRaces(filtered.map((race) => ({ ...race, date: new Date(race.date) })));
     };
-
-    // TODO: delete?
-    /*
-    const fetchRaces = async () => {
-      try {
-        const queryParams = new URLSearchParams({
-          driver: filterDriver,
-          car: filterCar,
-          location: filterLocation,
-          fromDate: dateRange.from ? dateRange.from.toISOString() : "",
-          toDate: dateRange.to ? dateRange.to.toISOString() : "",
-        });
-        const response = await fetch(`/api/races/history/results?${queryParams}`);
-        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-        const data = await response.json();
-        if (!Array.isArray(data)) throw new Error("Expected array of races");
-        setRaces(data.map((race: any) => ({ ...race, date: new Date(race.date) })));
-      } catch (error) {
-        console.error("Error fetching race results:", error);
-        setRaces([]);
-      }
-    };
-    */
 
     fetchRaces();
   }, [filterDriver, filterCar, filterLocation, dateRange]);
