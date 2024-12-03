@@ -1447,6 +1447,176 @@
 				)
 			)
 		)
+		(symbol "Device:R_US"
+			(pin_numbers hide)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "R"
+				(at 2.54 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "R_US"
+				(at -2.54 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 1.016 -0.254 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Resistor, US symbol"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "R res resistor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "R_US_0_1"
+				(polyline
+					(pts
+						(xy 0 -2.286) (xy 0 -2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.286) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 -0.762) (xy 1.016 -1.143) (xy 0 -1.524) (xy -1.016 -1.905) (xy 0 -2.286)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0.762) (xy 1.016 0.381) (xy 0 0) (xy -1.016 -0.381) (xy 0 -0.762)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.286) (xy 1.016 1.905) (xy 0 1.524) (xy -1.016 1.143) (xy 0 0.762)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "R_US_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 1.27)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 1.27)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
 		(symbol "Interface_Optical:TSOP45xx"
 			(pin_names
 				(offset 1.016)
@@ -1944,7 +2114,7 @@
 	)
 	(wire
 		(pts
-			(xy 102.87 105.41) (xy 102.87 130.81)
+			(xy 99.06 105.41) (xy 99.06 107.95)
 		)
 		(stroke
 			(width 0)
@@ -1955,7 +2125,7 @@
 	)
 	(wire
 		(pts
-			(xy 153.67 149.86) (xy 97.79 149.86)
+			(xy 153.67 149.86) (xy 125.73 149.86)
 		)
 		(stroke
 			(width 0)
@@ -2029,7 +2199,7 @@
 	)
 	(wire
 		(pts
-			(xy 93.98 130.81) (xy 102.87 130.81)
+			(xy 93.98 130.81) (xy 99.06 130.81)
 		)
 		(stroke
 			(width 0)
@@ -2048,6 +2218,17 @@
 			(color 255 0 9 1)
 		)
 		(uuid "3eee3d13-350f-4788-b523-c967252ce73d")
+	)
+	(wire
+		(pts
+			(xy 100.33 142.24) (xy 100.33 152.4)
+		)
+		(stroke
+			(width 0)
+			(type default)
+			(color 255 0 11 1)
+		)
+		(uuid "404da1ea-2bc9-40f7-afa2-2506f0e328a9")
 	)
 	(wire
 		(pts
@@ -2201,7 +2382,7 @@
 	)
 	(wire
 		(pts
-			(xy 106.68 105.41) (xy 102.87 105.41)
+			(xy 106.68 105.41) (xy 99.06 105.41)
 		)
 		(stroke
 			(width 0)
@@ -2251,6 +2432,17 @@
 			(color 0 0 0 1)
 		)
 		(uuid "c219e88b-bb96-4518-b6f7-b1ddb97766de")
+	)
+	(wire
+		(pts
+			(xy 99.06 115.57) (xy 99.06 130.81)
+		)
+		(stroke
+			(width 0)
+			(type default)
+			(color 0 22 255 1)
+		)
+		(uuid "c9389d8b-ec81-4279-89e4-0d7524af6dc4")
 	)
 	(wire
 		(pts
@@ -2308,7 +2500,17 @@
 	)
 	(wire
 		(pts
-			(xy 100.33 120.65) (xy 100.33 152.4)
+			(xy 118.11 149.86) (xy 97.79 149.86)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dffd5c03-b32a-497e-be6d-9c3f228f9076")
+	)
+	(wire
+		(pts
+			(xy 100.33 120.65) (xy 100.33 134.62)
 		)
 		(stroke
 			(width 0)
@@ -2390,6 +2592,76 @@
 			)
 		)
 		(uuid "fd859bae-5ca4-4097-92e5-fed0fd4cefe1")
+	)
+	(symbol
+		(lib_id "Device:R_US")
+		(at 100.33 138.43 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "14b27ac2-a1a0-416e-8a86-d4993c3d566d")
+		(property "Reference" "R3"
+			(at 102.87 137.1599 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "150Ω"
+			(at 102.87 139.6999 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 101.346 138.684 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 100.33 138.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor, US symbol"
+			(at 100.33 138.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "0b975aba-7e36-4557-8d87-87fc9b5b3aaf")
+		)
+		(pin "2"
+			(uuid "dbfb5120-6cbc-4383-b9bf-57a7c90f1072")
+		)
+		(instances
+			(project "IR_Detector"
+				(path "/b27da0ba-d4c6-4bb1-a63c-5c17a72f8f7b"
+					(reference "R3")
+					(unit 1)
+				)
+			)
+		)
 	)
 	(symbol
 		(lib_id "Interface_Optical:TSOP45xx")
@@ -2677,6 +2949,76 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R_US")
+		(at 99.06 111.76 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7c8c3af7-1f14-4306-987d-4e771a63ebe4")
+		(property "Reference" "R1"
+			(at 101.6 110.4899 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100Ω"
+			(at 101.6 113.0299 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 100.076 112.014 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 99.06 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor, US symbol"
+			(at 99.06 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b73e4a04-a45c-4176-a0a6-5a181e9b7b38")
+		)
+		(pin "2"
+			(uuid "e3a2af4d-c213-4939-a712-17938079e80d")
+		)
+		(instances
+			(project ""
+				(path "/b27da0ba-d4c6-4bb1-a63c-5c17a72f8f7b"
+					(reference "R1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connector:Raspberry_Pi_2_3")
 		(at 127 110.49 0)
 		(unit 1)
@@ -2924,6 +3266,74 @@
 			(project "IR_Detector"
 				(path "/b27da0ba-d4c6-4bb1-a63c-5c17a72f8f7b"
 					(reference "C2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R_US")
+		(at 121.92 149.86 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "be2a4259-3a9c-4d4e-ad84-a4627bbd8c34")
+		(property "Reference" "R2"
+			(at 121.92 143.51 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "100Ω"
+			(at 121.92 146.05 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 122.174 148.844 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 121.92 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor, US symbol"
+			(at 121.92 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "4b83ba62-d07e-4726-96cd-d87022a57df2")
+		)
+		(pin "2"
+			(uuid "e583f5c6-632d-4b8c-8b52-8672b5fa9771")
+		)
+		(instances
+			(project "IR_Detector"
+				(path "/b27da0ba-d4c6-4bb1-a63c-5c17a72f8f7b"
+					(reference "R2")
 					(unit 1)
 				)
 			)
