@@ -32,6 +32,9 @@ handle_choice() {
   esac
 }
 
+# Green LED
+curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
+
 clear
 echo "................................................................................................................"
 echo "................................................................................................................"
@@ -149,6 +152,9 @@ time_diff=$((end_time - start_time))
 # Convert to minutes and seconds for readability
 minutes=$((time_diff / 60))
 seconds=$((time_diff % 60))
+
+# Red LED
+curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
 
 echo "*** UpgrayeDD asking what you want!"
 echo "######******++*##%@@@@@@@@@%%%##%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%%%%%%%####%@@%#*++=++=*##"

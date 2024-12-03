@@ -72,7 +72,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [detectedMotionStats, setDetectedMotionStats] = useState("");
 
   const [saveMDImages, setSaveMDImages] = useState(false);
-  const saveMDImagesRef = useRef(saveMDImages);
+  const saveMDImagesRef = useRef(saveMDImages);  
   // Sync with the ref whenever it changes
   useEffect(() => {
     saveMDImagesRef.current = saveMDImages;

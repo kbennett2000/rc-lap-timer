@@ -8,6 +8,7 @@ import { RaceCountdown } from "./race-countdown";
 import IRDetector from "@/components/ir-detector";
 import { RaceStatus, RaceEntryStatus } from "@/types/race-timer";
 import { logger } from "@/lib/logger";
+import axios from "axios";
 
 interface RacingSessionProps {
   onRaceComplete?: () => void;
@@ -67,6 +68,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       onRaceComplete?.();
 
       playRaceFinish();
+      flashEnd();
     } catch (error) {
       logger.error("Error stopping race:", error);
     }
@@ -133,6 +135,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
         // Calculate new positions based on lap counts
         calculatePositions();
+
+        flashLap();
       } catch (error) {
         logger.error("Error recording lap:", error);
       }
@@ -212,6 +216,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setBestLapTimes(new Map());
       setLastDetectionTimes(new Map());
       setCarPositions(new Map());
+
+      setLedGreen(100);
     } catch (error) {
       console.error("Error starting race:", error);
     }
@@ -516,6 +522,113 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       return false;
     }
   }, []);
+
+  // *****************************************************************************
+  // *****************************************************************************
+  // *                               LED CONTROLS                                *
+  // *****************************************************************************
+  // *****************************************************************************
+
+  interface LedColor {
+    red: number;
+    green: number;
+    blue: number;
+  }
+
+  const flashLed = async (color: LedColor, duration: number): Promise<void> => {
+    try {
+      // Turn on the LED with specified color
+      await setLedColor(color);
+
+      // Wait for the specified duration
+      await new Promise((resolve) => setTimeout(resolve, duration));
+
+      // Turn off the LED
+      await setLedOff();
+    } catch (error) {
+      console.error("Error flashing LED:", error);
+      throw error;
+    }
+  };
+
+  const flashPresets = {
+    redFlash: (duration: number) => flashLed({ red: 100, green: 0, blue: 0 }, duration),
+    greenFlash: (duration: number) => flashLed({ red: 0, green: 100, blue: 0 }, duration),
+    blueFlash: (duration: number) => flashLed({ red: 0, green: 0, blue: 100 }, duration),
+    yellowFlash: (duration: number) => flashLed({ red: 100, green: 30, blue: 0 }, duration),
+  };
+
+  const setLedColor = async (color: LedColor): Promise<void> => {
+    const { red, green, blue } = color;
+
+    // Ensure values are between 0 and 100
+    const validRed = Math.max(0, Math.min(100, red));
+    const validGreen = Math.max(0, Math.min(100, green));
+    const validBlue = Math.max(0, Math.min(100, blue));
+
+    try {
+      const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
+    } catch (error) {
+      console.error("Error setting LED color:", error);
+      throw error;
+    }
+  };
+
+  const setLedRed = async (level: number): Promise<void> => {
+    try {
+      const response = await axios.get(`/api/ir/led/${level}/0/0`);
+    } catch (error) {
+      console.error("Error setting LED RED:", error);
+      throw error;
+    }
+  };
+
+  const setLedGreen = async (level: number): Promise<void> => {
+    try {
+      const response = await axios.get(`/api/ir/led/0/${level}/0`);
+    } catch (error) {
+      console.error("Error setting LED GREEN:", error);
+      throw error;
+    }
+  };
+
+  const setLedBlue = async (level: number): Promise<void> => {
+    try {
+      const response = await axios.get(`/api/ir/led/0/0/${level}`);
+    } catch (error) {
+      console.error("Error setting LED BLUE:", error);
+      throw error;
+    }
+  };
+
+  const setLedOff = async (): Promise<void> => {
+    try {
+      const response = await axios.get(`/api/ir/led/0/0/0`);
+    } catch (error) {
+      console.error("Error setting LED color:", error);
+      throw error;
+    }
+  };
+
+  const flashLap = async (): Promise<void> => {
+    await flashPresets.redFlash(1000);
+    setLedGreen(100);
+  };
+
+  const flashPenalty = async (): Promise<void> => {
+    await flashPresets.yellowFlash(1000);
+    setLedGreen(100);
+  };
+
+  const flashEnd = async (): Promise<void> => {
+    await flashPresets.redFlash(500);
+    await flashPresets.greenFlash(500);
+    await flashPresets.redFlash(500);
+    await flashPresets.greenFlash(500);
+    await flashPresets.redFlash(500);
+    await flashPresets.greenFlash(500);
+    await setLedBlue(100);
+  };
 
   return (
     <div className="space-y-4">

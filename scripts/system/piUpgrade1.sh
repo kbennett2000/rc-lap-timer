@@ -3,6 +3,9 @@
 # Start the timer
 start_time=$(date +%s)
 
+# Green LED
+curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
+
 clear
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "--------------------------------------------------------======------------------------------------------------------"
@@ -73,7 +76,11 @@ echo "* With two D's for a double  *"
 echo "*   dose of that pimpin!     *"
 echo "******************************"
 echo "*** UpgrayeDD backing up your database"
+# Red LED
+curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
 ./backupDB.sh
+# Green LED
+curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
 echo "*** UpgrayeDD deleting project folder"
 rm -rf rc-lap-timer
 echo "*** UpgrayeDD deleting tar file"
@@ -103,6 +110,9 @@ time_diff=$((end_time - start_time))
 # Convert to minutes and seconds for readability
 minutes=$((time_diff / 60))
 seconds=$((time_diff % 60))
+
+# Red LED
+curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
 
 echo "*** UpgrayeDD done"
 echo "*** UpgrayeDD took $minutes minutes and $seconds seconds"
