@@ -1,11 +1,9 @@
-//src/components/ir-detector.tsx
-
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 
-interface CarData {
-  id: string | null;
-  time: string | null;
+interface CarDetection {
+  id: string;
+  time: string;
 }
 
 interface CooldownMap {
@@ -13,22 +11,17 @@ interface CooldownMap {
 }
 
 interface IRDetectorProps {
-  allowedCarNumbers: string[]; // Array of allowed car numbers
+  allowedCarNumbers: string[];
   onCarDetected?: (carId: string, timestamp: string) => void;
 }
 
 const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetected }) => {
-  const [lastDetectedCar, setLastDetectedCar] = useState<CarData>({ id: null, time: null });
+  const [lastDetectedCars, setLastDetectedCars] = useState<CarDetection[]>([]);
   const [carCooldowns, setCarCooldowns] = useState<CooldownMap>({});
-  const [cooldownPeriod, setCooldownPeriod] = useState(5000);
-
-  // cooldownRef provides immediate access to cooldown values, while carCooldowns state is for rendering UI
-  // When checking/setting cooldowns, we use the ref instead of state to ensure we have the latest values
-  // We still update carCooldowns state for UI rendering, but critical logic uses the ref
-  // This prevents multiple detections that could occur while state updates are pending.
+  const [cooldownPeriod] = useState(5000);
   const cooldownRef = useRef<CooldownMap>({});
+  const previousCarsRef = useRef<Set<string>>(new Set());
 
-  // Check if a car number is allowed
   const isCarAllowed = useCallback(
     (carId: string): boolean => {
       return allowedCarNumbers.includes(carId);
@@ -36,18 +29,6 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     [allowedCarNumbers]
   );
 
-  // TODO: delete?
-  // Check if a car is in cooldown
-  const isCarInCooldown = useCallback(
-    (carId: string): boolean => {
-      const cooldownEndTime = carCooldowns[carId];
-      if (!cooldownEndTime) return false;
-      return Date.now() < cooldownEndTime;
-    },
-    [carCooldowns]
-  );
-
-  // Start cooldown for a car
   const startCooldown = useCallback(
     (carId: string) => {
       const newCooldowns = {
@@ -59,39 +40,45 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     },
     [cooldownPeriod]
   );
-  // Process new car detection
-  const processCarDetection = useCallback(
-    (newCarData: CarData) => {
-      if (!newCarData.id || !newCarData.time) return;
 
-      const cooldownEndTime = cooldownRef.current[newCarData.id];
-      if (cooldownEndTime && Date.now() < cooldownEndTime) return;
+  const processNewDetections = useCallback(
+    (cars: CarDetection[]) => {
+      const currentCarIds = new Set(cars.map((car) => car.id));
+      const previousCarIds = previousCarsRef.current;
 
-      setLastDetectedCar(newCarData);
-      startCooldown(newCarData.id);
+      // Find newly detected cars
+      cars.forEach((car) => {
+        if (!previousCarIds.has(car.id)) {
+          const cooldownEndTime = cooldownRef.current[car.id];
+          if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
+            if (isCarAllowed(car.id)) {
+              onCarDetected?.(car.id, car.time);
+              startCooldown(car.id);
+            }
+          }
+        }
+      });
 
-      if (onCarDetected && isCarAllowed(newCarData.id)) {
-        onCarDetected(newCarData.id, newCarData.time);
-      }
+      previousCarsRef.current = currentCarIds;
+      setLastDetectedCars(cars);
     },
-    [startCooldown, onCarDetected, isCarAllowed]
+    [isCarAllowed, onCarDetected, startCooldown]
   );
 
-  // Function to fetch data from the server
   const fetchCarData = useCallback(async () => {
     try {
-      const response = await axios.get("/api/ir/current_car");
-      const newCarData: CarData = response.data;
-
-      if (newCarData.id && newCarData.time) {
-        processCarDetection(newCarData);
-      }
+      const response = await axios.get("/api/ir/current_cars");
+      processNewDetections(response.data);
     } catch (error) {
       console.error("Error fetching car data:", error);
     }
-  }, [processCarDetection]);
+  }, [processNewDetections]);
 
-  // Clean up expired cooldowns periodically
+  useEffect(() => {
+    const intervalId = setInterval(fetchCarData, 50);
+    return () => clearInterval(intervalId);
+  }, [fetchCarData]);
+
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       const now = Date.now();
@@ -111,24 +98,10 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     return () => clearInterval(cleanupInterval);
   }, []);
 
-  // TODO: update interval?
-  // Fetch car data frequently
-  useEffect(() => {
-    const intervalId = setInterval(fetchCarData, 20);
-    return () => clearInterval(intervalId);
-  }, [fetchCarData]);
-
-  // Handle cooldown period change
-  const handleCooldownChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(event.target.value) * 1000;
-    setCooldownPeriod(newValue);
-  };
-
   return (
     <div className="text-center p-4 bg-white rounded-lg shadow-md">
       <h1 className="text-2xl font-bold mb-4">Car Detector</h1>
 
-      {/* Allowed Cars Display */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
         <h3 className="text-lg font-semibold mb-2 text-gray-800">Monitoring Cars:</h3>
         <div className="flex flex-wrap gap-2 justify-center">
@@ -140,26 +113,18 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
         </div>
       </div>
 
-      {/* Cooldown Period Control */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Cooldown Period: {cooldownPeriod / 1000} seconds</label>
-        <input type="range" min="1" max="30" value={cooldownPeriod / 1000} onChange={handleCooldownChange} className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer" />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>1s</span>
-          <span>30s</span>
-        </div>
+        <h2 className="text-xl mb-2 text-gray-800">Last Detected Cars:</h2>
+        {lastDetectedCars.map((car) => (
+          <div key={car.id} className="mb-2">
+            Car {car.id}
+            {!isCarAllowed(car.id) && <span className="ml-2 text-sm text-red-500">(not monitored)</span>}
+            <p className="text-gray-600">Detected at: {car.time}</p>
+          </div>
+        ))}
+        {lastDetectedCars.length === 0 && <p className="text-gray-600">No cars detected</p>}
       </div>
 
-      {/* Last Detection Display */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h2 className="text-xl mb-2 text-gray-800">
-          Last Detected: {lastDetectedCar.id ? `Car ${lastDetectedCar.id}` : "None"}
-          {lastDetectedCar.id && !isCarAllowed(lastDetectedCar.id) && <span className="ml-2 text-sm text-red-500">(not monitored)</span>}
-        </h2>
-        <p className="text-gray-600">Detected at: {lastDetectedCar.time ? lastDetectedCar.time : "None"}</p>
-      </div>
-
-      {/* Cooldown Status */}
       <div className="p-4 bg-gray-50 rounded-lg">
         <h3 className="text-lg font-semibold mb-2 text-gray-800">Cars in Cooldown:</h3>
         <ul className="list-none">

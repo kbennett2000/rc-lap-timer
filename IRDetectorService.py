@@ -3,6 +3,9 @@ import time
 from datetime import datetime
 from flask import Flask, jsonify
 from flask_cors import CORS
+from typing import Dict, List
+from dataclasses import dataclass
+from threading import Lock
 
 # Configuration
 IR_PIN_1 = 17
@@ -27,6 +30,42 @@ INTER_PULSE_DELAY = 0.0002
 POST_START_DELAY = 0.001
 LOOP_DELAY = 0.0001
 
+@dataclass
+class CarDetection:
+    id: str
+    time: str
+    expiry: float
+
+class DetectionManager:
+    def __init__(self, detection_ttl: float = 1.0):
+        self.detections: Dict[str, CarDetection] = {}
+        self.ttl = detection_ttl
+        self.lock = Lock()
+
+    def add_detection(self, car_id: str) -> None:
+        current_time = datetime.now()
+        with self.lock:
+            self.detections[car_id] = CarDetection(
+                id=car_id,
+                time=current_time.strftime("%Y-%m-%d %H:%M:%S"),
+                expiry=time.time() + self.ttl
+            )
+
+    def get_current_detections(self) -> List[Dict]:
+        current_time = time.time()
+        with self.lock:
+            # Clean expired detections
+            self.detections = {
+                car_id: detection 
+                for car_id, detection in self.detections.items()
+                if detection.expiry > current_time
+            }
+            # Return active detections
+            return [
+                {'id': d.id, 'time': d.time}
+                for d in self.detections.values()
+            ]
+
 # Set up the Flask app and enable CORS
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -46,8 +85,7 @@ pwm_red.start(0)
 pwm_green.start(0)
 pwm_blue.start(0)
 
-# Global variable to store current car detection details
-current_car = {'id': None, 'time': None}
+detection_manager = DetectionManager()
 
 def set_led_color(red, green, blue):
     """
@@ -124,12 +162,12 @@ def validate_car_id(detector_id, car_id):
    
     return None
 
-# Flask route to get the current car data
-@app.route('/current_car')
-def current_car_data():
-    return jsonify(current_car)
+# Flask route to get all current cars data
+@app.route('/current_cars')
+def current_cars_data():
+    return jsonify(detection_manager.get_current_detections())
 
-# New route to control LED color
+# Route to control LED color
 @app.route('/led/<int:red>/<int:green>/<int:blue>')
 def set_led(red, green, blue):
     # Ensure values are between 0 and 100
@@ -140,9 +178,8 @@ def set_led(red, green, blue):
     set_led_color(red, green, blue)
     return jsonify({'status': 'success', 'color': {'red': red, 'green': green, 'blue': blue}})
 
-# Main detection loop
 def start_detection():
-    global current_car, recent_readings, last_detection
+    global recent_readings, last_detection
     recent_readings = {}
     last_detection = {1: 0, 2: 0}
 
@@ -158,15 +195,13 @@ def start_detection():
     
     try:
         while True:
-            current_car = {'id': None, 'time': None}
             for detector_id, pin in [(1, IR_PIN_1), (2, IR_PIN_2)]:
                 car_id = decode_pulses(pin)
                 if car_id:
                     validated_id = validate_car_id(detector_id, car_id)
                     if validated_id:
-                        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         if time.time() - last_detection[detector_id] > DETECTION_INTERVAL:
-                            current_car = {'id': str(validated_id), 'time': current_time}
+                            detection_manager.add_detection(str(validated_id))
                             last_detection[detector_id] = time.time()
 
             time.sleep(LOOP_DELAY)
