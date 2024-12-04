@@ -18,7 +18,7 @@ START_PULSE_MAX = 0.008
 START_PULSE_MIN = 0.003
 PULSE_COUNT_WINDOW = 0.02
 DETECTION_INTERVAL = 0.02
-VALIDATION_READINGS = 2
+VALIDATION_READINGS = 4
 FIRST_LOOP = 0
 
 START_PULSE_MAX_MS = START_PULSE_MAX * 1000
@@ -57,6 +57,19 @@ def set_led_color(red, green, blue):
     pwm_green.ChangeDutyCycle(green)
     pwm_blue.ChangeDutyCycle(blue)
 
+def count_subsequent_pulses(pin):
+    pulses = 0
+    pulse_start = time.time()
+    
+    while time.time() - pulse_start < PULSE_COUNT_WINDOW:
+        if not GPIO.input(pin):
+            pulses += 1
+            while not GPIO.input(pin) and (time.time() - pulse_start < PULSE_COUNT_WINDOW):
+                pass
+            time.sleep(INTER_PULSE_DELAY)
+    
+    return pulses
+
 def decode_pulses(pin):
     if GPIO.input(pin):
         return None
@@ -65,22 +78,30 @@ def decode_pulses(pin):
     while not GPIO.input(pin) and (time.time() - start < START_PULSE_MAX):
         pass
     
-    pulse_len = (time.time() - start) * 1000
+    pulse_len = (time.time() - start) * 1000  # milliseconds
     if not (START_PULSE_MIN_MS <= pulse_len <= START_PULSE_MAX_MS):
         return None
         
-    time.sleep(POST_START_DELAY)
+    time.sleep(0.005)  # 5ms gap
     
-    pulses = 0
-    pulse_start = time.time()
-    while time.time() - pulse_start < PULSE_COUNT_WINDOW:
-        if not GPIO.input(pin):
-            pulses += 1
-            while not GPIO.input(pin) and (time.time() - pulse_start < PULSE_COUNT_WINDOW):
-                pass
-            time.sleep(INTER_PULSE_DELAY)
+    # Measure ID pulse in milliseconds
+    id_start = time.time()
+    while not GPIO.input(pin):
+        if time.time() - id_start > 0.01:  # 10ms timeout
+            return None
+    id_len = (time.time() - id_start) * 1000
     
-    return pulses if 1 <= pulses <= MAX_CARS else None
+    # Map 8ms->1 to 1->8 car IDs
+    estimated_id = 9 - int(round(id_len))
+    if not (1 <= estimated_id <= MAX_CARS):
+        return None
+        
+    # Verify with pulse count
+    pulses = count_subsequent_pulses(pin)
+    if pulses != estimated_id:
+        return None
+        
+    return estimated_id
 
 def validate_car_id(detector_id, car_id):
     global recent_readings

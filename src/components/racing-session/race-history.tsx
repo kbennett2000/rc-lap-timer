@@ -66,10 +66,8 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
-
   const [availableCars, setAvailableCars] = useState<Car[]>([]);
   const [availableLocations, setAvailableLocations] = useState<Location[]>([]);
-  const [driversWithRaces, setDriversWithRaces] = useState<Driver[]>([]);
 
   // Fetch initial data
   useEffect(() => {
@@ -128,7 +126,7 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
       const response = await fetch("/api/races/history/results");
       const data = await response.json();
       let filtered = data;
-    
+
       if (filterDriver !== "all") {
         const driverName = drivers.find((d) => d.id === filterDriver)?.name;
         filtered = filtered.filter((race) => race.driver === driverName);
@@ -141,7 +139,7 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
         const locationName = locations.find((l) => l.id === filterLocation)?.name;
         filtered = filtered.filter((race) => race.location === locationName);
       }
-      
+
       // Add date range filtering
       if (dateRange.from || dateRange.to) {
         filtered = filtered.filter((race) => {
@@ -158,7 +156,7 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
           return true;
         });
       }
-    
+
       setRaces(filtered.map((race) => ({ ...race, date: new Date(race.date) })));
     };
 

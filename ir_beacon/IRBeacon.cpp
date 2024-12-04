@@ -68,17 +68,25 @@ void loop()
     tone(IR_LED_PIN, 38000);
     delay(5);
     noTone(IR_LED_PIN);
-    delay(2);
+    delay(5);
 
-    for (int i = 0; i < carID; i++)
-    {
+    // ID pulse
+    tone(IR_LED_PIN, 38000);
+    delay(9 - carID);
+    noTone(IR_LED_PIN);
+    delay(5);
+
+    // Verify pattern
+    for (int i = 0; i < carID; i++) {
         tone(IR_LED_PIN, 38000);
         delay(1);
         noTone(IR_LED_PIN);
         delay(1);
     }
 
-    delay(20);
+    // Staggered delay based on car ID
+    delay((9 - carID) * 5);
+
 }
 
 void updateDisplay()
