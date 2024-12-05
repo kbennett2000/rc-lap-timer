@@ -261,6 +261,7 @@ void setupWiFi() {
   WiFi.mode(WIFI_STA);  // Set as station, not access point
   
   while (WiFi.status() != WL_CONNECTED) {
+    setLEDColors(0, 0, 0);
     display.clearDisplay();
     display.setCursor(0,0);
     display.setTextSize(2);
@@ -285,19 +286,19 @@ void setupWiFi() {
     
     if (WiFi.status() == WL_CONNECTED) {
       setLEDColors(0, 0, 25);
-
       display.clearDisplay();
       display.setCursor(0,0);
       display.setTextSize(2);
       display.println("  RC  Lap    Timer");
       display.setTextSize(1);
       display.println("");
-      display.println("Connected with IP:");
+      display.println("Connected with IP:");      
       display.println(WiFi.localIP().toString());
       display.display();
       Serial.println("\nConnected to WiFi");
       Serial.println("IP: " + WiFi.localIP().toString());
     } else {
+      setLEDColors(50, 0, 0);
       display.clearDisplay();
       display.setCursor(0,0);
       display.setTextSize(2);
