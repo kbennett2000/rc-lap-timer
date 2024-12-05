@@ -29,7 +29,10 @@ import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
 import axios from "axios";
-import { off } from "process";
+
+
+import { LEDDeviceService } from "@/services/ledDevice";
+
 
 // ****************************************
 // interface
@@ -95,6 +98,8 @@ export default function PracticeControl() {
     entityName: "",
     defaultCarNumber: undefined,
   });
+
+  const [ledDevice] = useState(() => new LEDDeviceService());
 
   // ****************************************
   // useRef
@@ -1371,6 +1376,7 @@ export default function PracticeControl() {
 
     // flashPresets.greenFlash(1000);
     setLedGreen(100);
+    ledDevice.displayMessage("Race Start", "startTimer Message");
   };
 
   const startTimer_MD = async (): Promise<void> => {
@@ -1390,6 +1396,7 @@ export default function PracticeControl() {
 
     //flashPresets.greenFlash(1000);
     setLedGreen(100);
+    ledDevice.displayMessage("Race Start", "startTimer_MD Message");
   };
 
   const stopTimer = (): void => {
@@ -1657,6 +1664,11 @@ export default function PracticeControl() {
 
     try {
       const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
+      
+      const scaledRed = 2.55 * validRed;
+      const scaledGreen = 2.55 * validGreen;
+      const scaledBlue = 2.55 * validBlue;      
+      ledDevice.setColor(scaledRed, scaledGreen, scaledBlue);
     } catch (error) {
       console.error("Error setting LED color:", error);
       throw error;
@@ -1666,6 +1678,10 @@ export default function PracticeControl() {
   const setLedRed = async (level: number): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/${level}/0/0`);
+
+      const scaledRed = 2.55 * level;
+      ledDevice.setColor(scaledRed, 0, 0);
+
     } catch (error) {
       console.error("Error setting LED RED:", error);
       throw error;
@@ -1675,6 +1691,10 @@ export default function PracticeControl() {
   const setLedGreen = async (level: number): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/0/${level}/0`);
+
+      const scaledGreen = 2.55 * level;
+      ledDevice.setColor(0, scaledGreen, 0);
+
     } catch (error) {
       console.error("Error setting LED GREEN:", error);
       throw error;
@@ -1684,6 +1704,10 @@ export default function PracticeControl() {
   const setLedBlue = async (level: number): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/0/0/${level}`);
+
+      const scaledBlue = 2.55 * level;
+      ledDevice.setColor(0, 0, scaledBlue);
+
     } catch (error) {
       console.error("Error setting LED BLUE:", error);
       throw error;
@@ -1693,6 +1717,9 @@ export default function PracticeControl() {
   const setLedOff = async (): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/0/0/0`);
+
+      ledDevice.setColor(0, 0, 0);
+
     } catch (error) {
       console.error("Error setting LED color:", error);
       throw error;
@@ -1702,11 +1729,13 @@ export default function PracticeControl() {
   const flashLap = async (): Promise<void> => {
     await flashPresets.redFlash(1000);
     setLedGreen(100);
+    ledDevice.displayMessage("flashLap", "flashLap Message");
   };
 
   const flashPenalty = async (): Promise<void> => {
     await flashPresets.yellowFlash(1000);
     setLedGreen(100);
+    ledDevice.displayMessage("flashPenalty", "flashPenalty Message");
   };
 
   const flashEnd = async (): Promise<void> => {
@@ -1717,6 +1746,7 @@ export default function PracticeControl() {
     await flashPresets.redFlash(500);
     await flashPresets.greenFlash(500);
     await setLedBlue(25);    
+    ledDevice.displayMessage("Ready...", "flashEnd Message");
   };
 
   // ****************************************
