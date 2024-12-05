@@ -22,7 +22,14 @@
 - 1x 10mm RGB Multicolor LED Common Cathode 4 pin
 
 
+## Remote LED
+- NodeMCU ESP8266 Development Board with 0.96 Inch OLED Display, CH340 Driver, ESP-12E
+- 2x 100Ω 1/4w resistors
+- 1x 150Ω 1/4w resistor
+- 1x 10mm RGB Multicolor LED Common Cathode 4 pin
+
+
 ## Connectors:
-- 2x JST PH pair (4 pin)
+- 4x JST PH pair (4 pin)
 - 4x JST 2 pin pair
 - 4x servo extension
