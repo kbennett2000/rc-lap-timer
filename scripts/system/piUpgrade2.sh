@@ -7,6 +7,7 @@ start_time=$(date +%s)
 prompt_user() {
   echo "UpgrayeDD wants to know, do you want to reboot or shutdown? (r for reboot / s for shutdown) - A pimp's gotta choose!"
   echo "You have 15 seconds to choose, otherwise UpgrayeDD will reboot your ass..."
+  curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=reboot%20or%20shutdown" 2>/dev/null
 }
 
 # Set a timeout for the user's input
@@ -19,14 +20,20 @@ handle_choice() {
   case $choice in
     r|R)
       echo "UpgrayeDD is rebooting the system..."
+      curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=0&b=0" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=rebooting" 2>/dev/null
       sudo reboot now
       ;;
     s|S)
       echo "UpgrayeDD is shutting down the system..."
+      curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=0&b=0" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=shutting%20down" 2>/dev/null
       sudo shutdown now
       ;;
     *)
       echo "UpgrayeDD didn't hear shit from you. Rebooting by default..."
+      curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=0&b=0" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=tired%20of%20waitig%20rebooting" 2>/dev/null
       sudo reboot now
       ;;
   esac
@@ -34,6 +41,8 @@ handle_choice() {
 
 # Green LED
 curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=255&b=0" 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=UpgrayeDD%20resuming" 2>/dev/null
 
 clear
 echo "................................................................................................................"
@@ -77,23 +86,31 @@ echo "*******************************"
 echo "***** UPGREYEDD RESUMING ******"
 echo "*******************************"
 cd rc-lap-timer
+
 echo "*** UpgrayeDD untarring"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=untarring" 2>/dev/null
 tar xzf ../rc-lap-timer-build.tar.gz
 
 echo "*** UpgrayeDD copying files"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=copying%20files" 2>/dev/null
 sudo mkdir -p /var/www/rc-lap-timer
 sudo cp -r .next/* /var/www/rc-lap-timer/
 
-echo "*** UpgrayeDD prisma magic"
+echo "*** UpgrayeDD npx prisma generate"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=prisma%20generate" 2>/dev/null
 npx prisma generate
+
+echo "*** UpgrayeDD npx prisma db push"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=prisma%20db%20push" 2>/dev/null
 npx prisma db push
 
 echo "*** UpgrayeDD owning shit left and right"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=owning%20shit" 2>/dev/null
 sudo chown -R pi:pi /home/pi/rc-lap-timer
 
 echo "*** UpgrayeDD copying system utilities"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=copying%20utilities" 2>/dev/null
 #!/bin/bash
-
 # Copy database files to home directory
 cp -f ~/rc-lap-timer/scripts/database/backupDB.sql ~/
 cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/
@@ -115,6 +132,7 @@ sudo chmod +x *.sh
 
 # Verify all files were copied successfully
 echo "Verifying files..."
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=verifying%20files" 2>/dev/null
 files_to_check=(
     "~/backupDB.sql"
     "~/clearDB.sql"
@@ -137,8 +155,10 @@ done
 
 if $all_files_exist; then
     echo "All files were copied successfully"
+    curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=all%20files%20copied" 2>/dev/null
 else
     echo "Some files were not copied successfully. Please check the warnings above."
+    curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=shit%20broke" 2>/dev/null
     exit 1
 fi
 
@@ -155,6 +175,9 @@ seconds=$((time_diff % 60))
 
 # Red LED
 curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/rgb?r=255&g=0&b=0" 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD%20Done&message=Time%20to%20choose" 2>/dev/null
+
 
 echo "*** UpgrayeDD asking what you want!"
 echo "######******++*##%@@@@@@@@@%%%##%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%%%%%%%####%@@%#*++=++=*##"
