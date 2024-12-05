@@ -9,6 +9,7 @@ import IRDetector from "@/components/ir-detector";
 import { RaceStatus, RaceEntryStatus } from "@/types/race-timer";
 import { logger } from "@/lib/logger";
 import axios from "axios";
+import { LEDDeviceService } from "@/services/ledDevice";
 
 interface RacingSessionProps {
   onRaceComplete?: () => void;
@@ -34,7 +35,9 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const [lastDetectionTimes, setLastDetectionTimes] = useState<Map<string, number>>(new Map());
   const [allowedCarNumbers, setAllowedCarNumbers] = useState<string[]>([]);
   const [raceStartTime, setRaceStartTime] = useState<number | null>(null);
-
+  // Remote LED
+  const [ledDevice] = useState(() => new LEDDeviceService());
+  
   // Settings
   const [playBeeps, setPlayBeeps] = useState(true);
   const [voiceAnnouncements, setVoiceAnnouncements] = useState(true);
@@ -568,6 +571,11 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
     try {
       const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
+      
+      const scaledRed = 2.55 * validRed;
+      const scaledGreen = 2.55 * validGreen;
+      const scaledBlue = 2.55 * validBlue;      
+      ledDevice.setColor(scaledRed, scaledGreen, scaledBlue);
     } catch (error) {
       console.error("Error setting LED color:", error);
       throw error;
@@ -577,6 +585,10 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const setLedRed = async (level: number): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/${level}/0/0`);
+
+      const scaledRed = 2.55 * level;
+      ledDevice.setColor(scaledRed, 0, 0);
+
     } catch (error) {
       console.error("Error setting LED RED:", error);
       throw error;
@@ -586,6 +598,10 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const setLedGreen = async (level: number): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/0/${level}/0`);
+
+      const scaledGreen = 2.55 * level;
+      ledDevice.setColor(0, scaledGreen, 0);
+
     } catch (error) {
       console.error("Error setting LED GREEN:", error);
       throw error;
@@ -595,6 +611,10 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const setLedBlue = async (level: number): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/0/0/${level}`);
+
+      const scaledBlue = 2.55 * level;
+      ledDevice.setColor(0, 0, scaledBlue);
+
     } catch (error) {
       console.error("Error setting LED BLUE:", error);
       throw error;
@@ -604,6 +624,9 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const setLedOff = async (): Promise<void> => {
     try {
       const response = await axios.get(`/api/ir/led/0/0/0`);
+
+      ledDevice.setColor(0, 0, 0);
+
     } catch (error) {
       console.error("Error setting LED color:", error);
       throw error;
@@ -613,11 +636,13 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const flashLap = async (): Promise<void> => {
     await flashPresets.redFlash(1000);
     setLedGreen(100);
+    ledDevice.displayMessage("flashLap", "flashLap Message");
   };
 
   const flashPenalty = async (): Promise<void> => {
     await flashPresets.yellowFlash(1000);
     setLedGreen(100);
+    ledDevice.displayMessage("flashPenalty", "flashPenalty Message");
   };
 
   const flashEnd = async (): Promise<void> => {
@@ -627,8 +652,10 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     await flashPresets.greenFlash(500);
     await flashPresets.redFlash(500);
     await flashPresets.greenFlash(500);
-    await setLedBlue(25);
+    await setLedBlue(25);    
+    ledDevice.displayMessage("Ready...", "flashEnd Message");
   };
+
 
   return (
     <div className="space-y-4">

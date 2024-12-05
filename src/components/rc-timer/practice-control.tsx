@@ -29,8 +29,6 @@ import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
 import axios from "axios";
-
-
 import { LEDDeviceService } from "@/services/ledDevice";
 
 
@@ -355,6 +353,8 @@ export default function PracticeControl() {
       }
       return [...prev, { lapNumber: currentLapNumber, count: 1 }];
     });
+
+    ledDevice.displayMessage("Penalty   Recorded", `Penalty recorded on  lap number ${currentLapNumber}`);
     flashPenalty();
   };
 
@@ -899,7 +899,8 @@ export default function PracticeControl() {
       setPenalties([]);
       await loadSavedData();
 
-      await flashEnd();
+      ledDevice.displayMessage("Session   Finished", "All laps complete!");
+      flashEnd();
     } catch (error) {
       logger.error("Error saving session:", error);
       alert("Failed to save session. Please try again.");
@@ -1268,6 +1269,7 @@ export default function PracticeControl() {
     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
 
     //flashPresets.redFlash(1000);
+    ledDevice.displayMessage(`Lap ${(laps.length + 1)}`, `${(currentLapTime / 1000)} seconds`);
     flashLap();
   };
 
@@ -1299,6 +1301,7 @@ export default function PracticeControl() {
     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
 
     //flashPresets.redFlash(1000);
+    ledDevice.displayMessage(`Lap ${(laps.length + 1)}`, `${(currentLapTime / 1000)} seconds`);
     flashLap();
   };
 
@@ -1376,7 +1379,7 @@ export default function PracticeControl() {
 
     // flashPresets.greenFlash(1000);
     setLedGreen(100);
-    ledDevice.displayMessage("Race Start", "startTimer Message");
+    ledDevice.displayMessage("Session    Start", `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`);
   };
 
   const startTimer_MD = async (): Promise<void> => {
@@ -1396,7 +1399,7 @@ export default function PracticeControl() {
 
     //flashPresets.greenFlash(1000);
     setLedGreen(100);
-    ledDevice.displayMessage("Race Start", "startTimer_MD Message");
+    ledDevice.displayMessage("Session    Start", `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`);
   };
 
   const stopTimer = (): void => {
@@ -1728,14 +1731,12 @@ export default function PracticeControl() {
 
   const flashLap = async (): Promise<void> => {
     await flashPresets.redFlash(1000);
-    setLedGreen(100);
-    ledDevice.displayMessage("flashLap", "flashLap Message");
+    setLedGreen(100);    
   };
 
   const flashPenalty = async (): Promise<void> => {
     await flashPresets.yellowFlash(1000);
     setLedGreen(100);
-    ledDevice.displayMessage("flashPenalty", "flashPenalty Message");
   };
 
   const flashEnd = async (): Promise<void> => {
@@ -1745,8 +1746,7 @@ export default function PracticeControl() {
     await flashPresets.greenFlash(500);
     await flashPresets.redFlash(500);
     await flashPresets.greenFlash(500);
-    await setLedBlue(25);    
-    ledDevice.displayMessage("Ready...", "flashEnd Message");
+    await setLedBlue(25);
   };
 
   // ****************************************
