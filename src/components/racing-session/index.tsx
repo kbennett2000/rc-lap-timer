@@ -37,7 +37,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const [raceStartTime, setRaceStartTime] = useState<number | null>(null);
   // Remote LED
   const [ledDevice] = useState(() => new LEDDeviceService());
-  
+
   // Settings
   const [playBeeps, setPlayBeeps] = useState(true);
   const [voiceAnnouncements, setVoiceAnnouncements] = useState(true);
@@ -571,10 +571,10 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
     try {
       const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
-      
+
       const scaledRed = 2.55 * validRed;
       const scaledGreen = 2.55 * validGreen;
-      const scaledBlue = 2.55 * validBlue;      
+      const scaledBlue = 2.55 * validBlue;
       ledDevice.setColor(scaledRed, scaledGreen, scaledBlue);
     } catch (error) {
       console.error("Error setting LED color:", error);
@@ -588,7 +588,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       const scaledRed = 2.55 * level;
       ledDevice.setColor(scaledRed, 0, 0);
-
     } catch (error) {
       console.error("Error setting LED RED:", error);
       throw error;
@@ -601,7 +600,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       const scaledGreen = 2.55 * level;
       ledDevice.setColor(0, scaledGreen, 0);
-
     } catch (error) {
       console.error("Error setting LED GREEN:", error);
       throw error;
@@ -614,7 +612,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       const scaledBlue = 2.55 * level;
       ledDevice.setColor(0, 0, scaledBlue);
-
     } catch (error) {
       console.error("Error setting LED BLUE:", error);
       throw error;
@@ -626,7 +623,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       const response = await axios.get(`/api/ir/led/0/0/0`);
 
       ledDevice.setColor(0, 0, 0);
-
     } catch (error) {
       console.error("Error setting LED color:", error);
       throw error;
@@ -636,13 +632,11 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   const flashLap = async (): Promise<void> => {
     await flashPresets.redFlash(1000);
     setLedGreen(100);
-    ledDevice.displayMessage("flashLap", "flashLap Message");
   };
 
   const flashPenalty = async (): Promise<void> => {
     await flashPresets.yellowFlash(1000);
     setLedGreen(100);
-    ledDevice.displayMessage("flashPenalty", "flashPenalty Message");
   };
 
   const flashEnd = async (): Promise<void> => {
@@ -652,10 +646,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     await flashPresets.greenFlash(500);
     await flashPresets.redFlash(500);
     await flashPresets.greenFlash(500);
-    await setLedBlue(25);    
-    ledDevice.displayMessage("Ready...", "flashEnd Message");
+    await setLedBlue(25);
   };
-
 
   return (
     <div className="space-y-4">
