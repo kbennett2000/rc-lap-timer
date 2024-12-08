@@ -7,6 +7,8 @@ start_time=$(date +%s)
 curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
 curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=255&b=0" 2>/dev/null
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Starting%20UpgrayeDD" 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/pattern?name=upgrayedd" 2>/dev/null
+
 
 clear
 echo "--------------------------------------------------------------------------------------------------------------------"
@@ -77,18 +79,17 @@ echo "***** UPGREYEDD ENGAGED ******"
 echo "* With two D's for a double  *"
 echo "*   dose of that pimpin!     *"
 echo "******************************"
+sleep 2
+
 echo "*** UpgrayeDD backing up your database"
 # Red LED
 curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
 curl -s -o /dev/null "http://192.168.4.99/rgb?r=255&g=0&b=0" 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Waiting%20for%20backup" 2>/dev/null
-
-./backupDB.sh
-
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Waiting%20for%20db%20cycle" 2>/dev/null
+./dbCycle.sh
 # Green LED
 curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
 curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=255&b=0" 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Deleting%20and%making%20new%home" 2>/dev/null
 
 echo "*** UpgrayeDD deleting project folder"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20project%20%20%20%20%20folder" 2>/dev/null
@@ -102,9 +103,13 @@ echo "*** UpgrayeDD deleting system files"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20system%20files" 2>/dev/null
 rm backupDB.sql
 rm clearDB.sql
-rm create_rc_timer_database.sql
+rm createDB.sql
+rm dbCycle.sql
+rm dropDB.sql
 rm backupDB.sh
+rm dbCycle.sh
 rm restoreDB.sh
+rm recreateDB.sh
 
 echo "*** UpgrayeDD deleting var/www"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20var%20www" 2>/dev/null

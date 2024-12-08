@@ -3,6 +3,10 @@
 # Start the timer
 start_time=$(date +%s)
 
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/rgb?r=0&g=255&b=0" 2>/dev/null
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=Number%205%20alive" 2>/dev/null
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/pattern?name=johnny5" 2>/dev/null
+
 clear
 echo "*******************************************"
 echo "***** Johnny 5's Server UpgrayeDD!!! ******"
@@ -49,23 +53,35 @@ echo "............................::::::::::--=+*****######%%%@####%---++*###%##
 echo ".................................:::::::::::::------===++*#%%%%**#*++==----::::::::::.............................."
 echo "............................................::::::::::::::::--::::::::::::::......................................."
 sleep 2
+
 echo "*** UpgrayeDD Prisma Generate!"
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=prisma%20generate" 2>/dev/null
 npx prisma generate
 sleep 2
+
 echo "*** UpgrayeDD deleted files!"
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=deleted%20files" 2>/dev/null
 rm -rf .next
 rm rc-lap-timer-build.tar.gz
 sleep 2
+
 echo "*** UpgrayeDD build!"
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=npm%20run%20build" 2>/dev/null
 npm run build
 sleep 2
+
 echo "*** UpgrayeDD Prisma Generate!"
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=prisma%20generate%20again" 2>/dev/null
 npx prisma generate
 sleep 2
+
 echo "*** UpgrayeDD tar!"
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=tarring" 2>/dev/null
 sleep 2
 tar -czf rc-lap-timer-build.tar.gz * .next package.json package-lock.json node_modules public
+
 echo "*** UpgrayeDD pi file!"
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=sending%20to%20Pi" 2>/dev/null
 sleep 2
 sshpass -p 'rclaptimer' scp rc-lap-timer-build.tar.gz pi@rclaptimer.local:~
 sleep 2
@@ -114,6 +130,8 @@ echo "----------------+=--+=++++====++++++++++*##%@@@%%%%%@@@%%%%%@@@@@@@@@@@@%+
 echo "--------------=====-+++=+#@@#**+=--=#-----*@@@@@%%%%@@@%%%%@@@@@@#*####%%%*%@@@@@@@@@%%@@@@%@@*=-------------------"
 echo "-------------+++=+-=+#==+%#==+=+%*-------+%@@%##@@%%@@@@%%@%@@@@%%%%###@##########@@@%%@@@@@@%%+-------------------"
 echo "*** Tell UpgrayeDD the server UpgrayyeDD is done!"
-echo "(run ./piUpgrade2.sh on your Pi or just press a key to resume...)"
 echo "UpgrayeDD took $minutes minutes and $seconds seconds."
 echo "     -- Love Johnny5"
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=Server%20UpgrayeDD%20%20%20%20%20Complete" 2>/dev/null
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/pattern?name=johnny5" 2>/dev/null
+curl -k -s -o /dev/null "https://rclaptimer.local/api/led/rgb?r=255&g=0&b=0" 2>/dev/null

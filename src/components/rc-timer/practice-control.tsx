@@ -9,7 +9,7 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList } from "lucide-react";
+import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList, CirclePlay } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,6 @@ import { CurrentSessionDisplay } from "@/components/current-session-display";
 import axios from "axios";
 import { LEDDeviceService } from "@/services/ledDevice";
 
-
 // ****************************************
 // interface
 // ****************************************
@@ -41,6 +40,16 @@ interface BeepOptions {
   volume?: number;
   type?: OscillatorType;
 }
+
+interface CarDetection {
+  id: string;
+  time: string;
+}
+
+interface CooldownMap {
+  [carId: string]: number;
+}
+
 
 export default function PracticeControl() {
   // ****************************************
@@ -83,6 +92,9 @@ export default function PracticeControl() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [remoteControlActive, setRemoteControlActive] = useState(false);
+
+  const [allowedCarNumbers, setAllowedCarNumbers] = useState<string[]>([]);
+
   const [addEditDialogState, setAddEditDialogState] = useState<{
     isOpen: boolean;
     type: "driver" | "car" | "location" | null;
@@ -820,21 +832,26 @@ export default function PracticeControl() {
     }
   };
 
+
   const handleMotionDetected = useCallback(
     (changePercent: number) => {
       if (!isRunningRef.current) {
         startTimer_MD();
       } else if (isRunningRef.current) {
-        setDetectedMarkers([]);
-        setScanning(true);
         recordLap_MD();
-        setScanning(false);
       }
     },
     [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, sessionStartTime, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
   );
 
+  const driversRef = useRef(drivers);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    driversRef.current = drivers;
+  }, [drivers]);
+
   const handleSessionCompletion = async (completedLaps: number[]): Promise<void> => {
+    console.log(`handleSessionCompletion`);
     setIsRunning(false);
     setStartTime(null);
     setCurrentTime(0);
@@ -842,14 +859,18 @@ export default function PracticeControl() {
       clearInterval(timerRef.current);
     }
 
-    const driver = drivers.find((d) => d.id === selectedDriverRef.current);
+    //const driver = drivers.find((d) => d.id === selectedDriverRef.current);
+    const driver = driversRef.current.find((d) => d.id === selectedDriverRef.current);
     const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
+    console.log(`handleSessionCompletion - selectedDriverRef.current is ${selectedDriverRef.current} in selectedCarRef.current ${selectedCarRef.current}`);
+    console.log(`handleSessionCompletion - driver is ${driver?.name} in car ${car?.name}`);
     if (!driver || !car) {
       return;
     }
 
     // Calculate total time
     const totalTime = completedLaps.reduce((sum, lap) => sum + lap, 0);
+    console.log(`handleSessionCompletion - totalTime is ${totalTime}`);
 
     // Calculate stats using the raw lap times
     const stats = calculateStats(completedLaps);
@@ -866,12 +887,12 @@ export default function PracticeControl() {
     const newSession: Partial<Session> = {
       id: sessionId,
       date: sessionStartTime ?? new Date().toISOString(),
-      driverId: selectedDriver,
+      driverId: selectedDriverRef.current,
       driverName: driver.name,
-      carId: selectedCar,
+      carId: selectedCarRef.current,
       carName: car.name,
-      locationId: selectedLocation,
-      locationName: locations.find((l) => l.id === selectedLocation)?.name || "",
+      locationId: selectedLocationRef.current,
+      locationName: locations.find((l) => l.id === selectedLocationRef.current)?.name || "",
       laps: formattedLaps,
       penalties,
       totalLaps: selectedLapCount === "unlimited" ? completedLaps.length : selectedLapCount,
@@ -879,6 +900,7 @@ export default function PracticeControl() {
     };
 
     try {
+      console.log(`handleSessionCompletion - posting`);
       const response = await fetch("/api/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1269,7 +1291,7 @@ export default function PracticeControl() {
     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
 
     //flashPresets.redFlash(1000);
-    ledDevice.displayMessage(`Lap ${(laps.length + 1)}`, `${(currentLapTime / 1000)} seconds`);
+    ledDevice.displayMessage(`Lap ${laps.length + 1}`, `${currentLapTime / 1000} seconds`);
     flashLap();
   };
 
@@ -1301,7 +1323,7 @@ export default function PracticeControl() {
     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
 
     //flashPresets.redFlash(1000);
-    ledDevice.displayMessage(`Lap ${(laps.length + 1)}`, `${(currentLapTime / 1000)} seconds`);
+    ledDevice.displayMessage(`Lap ${laps.length + 1}`, `${currentLapTime / 1000} seconds`);
     flashLap();
   };
 
@@ -1435,6 +1457,7 @@ export default function PracticeControl() {
     const num = parseInt(value, 10);
     return !isNaN(num) && num > 0 && num <= 999;
   };
+
 
   // ******************************************************************************************
   // ******************************************************************************************
@@ -1667,10 +1690,10 @@ export default function PracticeControl() {
 
     try {
       const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
-      
-      const scaledRed = 2.55 * validRed;
-      const scaledGreen = 2.55 * validGreen;
-      const scaledBlue = 2.55 * validBlue;      
+
+      const scaledRed = Math.round(2.55 * validRed);
+      const scaledGreen = Math.round(2.55 * validGreen);
+      const scaledBlue = Math.round(2.55 * validBlue);
       ledDevice.setColor(scaledRed, scaledGreen, scaledBlue);
     } catch (error) {
       console.error("Error setting LED color:", error);
@@ -1682,9 +1705,8 @@ export default function PracticeControl() {
     try {
       const response = await axios.get(`/api/ir/led/${level}/0/0`);
 
-      const scaledRed = 2.55 * level;
+      const scaledRed = Math.round(2.55 * level);
       ledDevice.setColor(scaledRed, 0, 0);
-
     } catch (error) {
       console.error("Error setting LED RED:", error);
       throw error;
@@ -1695,9 +1717,8 @@ export default function PracticeControl() {
     try {
       const response = await axios.get(`/api/ir/led/0/${level}/0`);
 
-      const scaledGreen = 2.55 * level;
+      const scaledGreen = Math.round(2.55 * level);
       ledDevice.setColor(0, scaledGreen, 0);
-
     } catch (error) {
       console.error("Error setting LED GREEN:", error);
       throw error;
@@ -1708,9 +1729,8 @@ export default function PracticeControl() {
     try {
       const response = await axios.get(`/api/ir/led/0/0/${level}`);
 
-      const scaledBlue = 2.55 * level;
+      const scaledBlue = Math.round(2.55 * level);
       ledDevice.setColor(0, 0, scaledBlue);
-
     } catch (error) {
       console.error("Error setting LED BLUE:", error);
       throw error;
@@ -1722,7 +1742,6 @@ export default function PracticeControl() {
       const response = await axios.get(`/api/ir/led/0/0/0`);
 
       ledDevice.setColor(0, 0, 0);
-
     } catch (error) {
       console.error("Error setting LED color:", error);
       throw error;
@@ -1731,7 +1750,7 @@ export default function PracticeControl() {
 
   const flashLap = async (): Promise<void> => {
     await flashPresets.redFlash(1000);
-    setLedGreen(100);    
+    setLedGreen(100);
   };
 
   const flashPenalty = async (): Promise<void> => {
@@ -1748,6 +1767,223 @@ export default function PracticeControl() {
     await flashPresets.greenFlash(500);
     await setLedBlue(25);
   };
+
+
+  // ************************************************************************************************************************************************************************************************************************************************
+  // ************************************************************************************************************************************************************************************************************************************************
+  // ************************************************************************************************************************************************************************************************************************************************
+  // ************************************************************************************************************************************************************************************************************************************************
+  // ************************************************************************************************************************************************************************************************************************************************
+
+
+  const handleCarDetected = useCallback((carId: string, timestamp: string) => {    
+    if (!isRunningRef.current) {
+      startTimer_IR();
+    } else if (isRunningRef.current) {
+      recordLap_IR();
+    }
+  }, [isRunningRef]); 
+
+
+
+  const startTimer_IR = async (): Promise<void> => {
+    if (!selectedDriverRef.current || !selectedCarRef.current || !selectedLocationRef.current) {
+      alert("Please select a driver and car before starting the timer");
+      return;
+    }
+
+    playStartBeep();
+    announceRaceBegin();
+
+    setStartAnimation(true);
+    setTimeout(() => setStartAnimation(false), 500);
+    
+    setStartTime(Date.now());
+    setIsRunning(true);    
+    setLaps([]);
+    logCurrentSessionStart();
+    setLedGreen(100);
+    ledDevice.displayMessage("Session    Start", `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`);
+
+    console.log("startTimer_IR");
+  };
+  
+
+
+
+
+
+
+
+
+
+
+
+  const recordLap_IR = () => {
+    if (!isRunningRef.current) return;
+    const lastLapEndTime = lapsRef.current.reduce((sum, lap) => sum + lap, 0);
+    const currentLapTime = currentTimeRef.current - lastLapEndTime;
+    setLaps((prev) => [...prev, currentLapTime]);
+    if (selectedLapCountRef.current !== "unlimited" && lapsRef.current.length + 1 >= selectedLapCountRef.current) {
+      playRaceFinish();
+      announceRaceInfo(lapsRef.current.length, currentLapTime, true);
+      handleSessionCompletion([...lapsRef.current, currentLapTime]);
+    } else {
+      playBeep();
+      announceRaceInfo(lapsRef.current.length + 2, currentLapTime);
+    }
+    logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
+    ledDevice.displayMessage(`Lap ${laps.length + 1}`, `${currentLapTime / 1000} seconds`);
+    flashLap();
+  };
+    
+     const renderIRDetector = useCallback(() => {    
+        if (timingMode !== "ir") return null;
+    
+        const currentCarNumber = getCurrentDriverCars().find(
+          (c) => c.id === selectedCar
+        )?.defaultCarNumber?.toString();
+
+        return (
+          <div className="flex flex-col gap-2">
+            {isRunning && (
+              <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
+                <StopCircle className="mr-2 h-6 w-6" />
+                Stop Timer
+              </Button>
+            )}
+            <p>IR Detection Mode</p>
+          </div>
+        );
+      
+    }, [timingMode, selectedDriver, selectedCar, isRunning, handleCarDetected]);
+
+
+    // Run every 2 seconds
+    useEffect(() => {
+      let timeoutId: NodeJS.Timeout;
+
+      console.log(`useEffect - selectedDriver is ${selectedDriver} and selectedCar is ${selectedCar}`);
+      console.log(`useEffect - selectedDriverRef.current is ${selectedDriverRef.current} and selectedCarRef.current is ${selectedCarRef.current}`);
+
+      const driver = drivers.find((d) => d.id === selectedDriverRef.current);
+      const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
+      console.log(`useEffect - driver is ${driver?.name} in car ${car?.name}`);
+
+      const timerJob = () => {
+        if (timingMode == "ir") {
+          fetchCarData();
+        }        
+        timeoutId = setTimeout(timerJob, 2000);
+      };
+    
+      timerJob(); // Start the first run
+    
+      // Cleanup function
+      return () => clearTimeout(timeoutId);
+    }, [timingMode, selectedDriver, selectedCar, drivers]);
+
+
+    // Clean up detected car numbers
+    useEffect(() => {
+      const cleanupInterval = setInterval(() => {
+        const now = Date.now();
+        setCarCooldowns((prev) => {
+          const updated = { ...prev };
+          let hasChanges = false;
+          Object.entries(updated).forEach(([carId, endTime]) => {
+            if (endTime < now) {
+              delete updated[carId];
+              hasChanges = true;
+            }
+          });
+          return hasChanges ? updated : prev;
+        });
+      }, 1000);
+  
+      return () => clearInterval(cleanupInterval);
+    }, []);
+  
+
+
+
+
+
+
+
+
+    const [lastDetectedCars, setLastDetectedCars] = useState<CarDetection[]>([]);
+    const [carCooldowns, setCarCooldowns] = useState<CooldownMap>({});
+    const [cooldownPeriod] = useState(5000);
+    const cooldownRef = useRef<CooldownMap>({});
+    const previousCarsRef = useRef<Set<string>>(new Set());
+  
+  
+    const startCooldown = useCallback(
+      (carId: string) => {
+        //console.log(`**startCooldown`);
+        const newCooldowns = {
+          ...cooldownRef.current,
+          [carId]: Date.now() + cooldownPeriod,
+        };
+        cooldownRef.current = newCooldowns;
+        setCarCooldowns(newCooldowns);
+      },
+      [cooldownPeriod]
+    );
+  
+    const processNewDetections = useCallback(    
+      (cars: CarDetection[]) => {
+        console.log(`processNewDetections`);
+        const currentCarIds = new Set(cars.map((car) => car.id));
+        const previousCarIds = previousCarsRef.current;
+
+        // Find newly detected cars
+        cars.forEach((car) => {
+          console.log(`processNewDetections - car.id: ${car.id}`);
+          if (!previousCarIds.has(car.id)) {
+            console.log(`processNewDetections - processing`);
+            const cooldownEndTime = cooldownRef.current[car.id];
+            if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
+              console.log(`processNewDetections - not in cooldown`);
+              handleCarDetected(car.id, car.time);
+              startCooldown(car.id);
+            }
+          }
+        });
+  
+        previousCarsRef.current = currentCarIds;
+        setLastDetectedCars(cars);
+      },
+      [handleCarDetected, startCooldown]
+    );
+  
+    const fetchCarData = useCallback(async () => {
+      console.log(`**fetchCarData`);      
+      try {
+        const response = await axios.get("/api/ir/current_cars");
+        processNewDetections(response.data);
+      } catch (error) {
+        console.error("Error fetching car data:", error);
+      }
+    }, [processNewDetections]);
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // ****************************************
   // return
@@ -2147,7 +2383,7 @@ export default function PracticeControl() {
                     <RadioGroup
                       value={timingMode}
                       onValueChange={(value) => {
-                        const newMode = value as "ui" | "motion";
+                        const newMode = value as "ui" | "motion" | "ir";
                         // Handle other modes as before
                         setTimingMode(newMode);
                         if (newMode === "motion") {
@@ -2157,6 +2393,9 @@ export default function PracticeControl() {
                             stopTimer();
                           }
                         } else if (newMode === "ui") {
+                          setShowMotionDetector(false);
+                          setIsMotionTimingActive(false);
+                        } else if (newMode === "ir") {
                           setShowMotionDetector(false);
                           setIsMotionTimingActive(false);
                         }
@@ -2174,6 +2413,13 @@ export default function PracticeControl() {
                         <Label htmlFor="timing-motion" className="flex items-center">
                           <Video className="mr-2 h-4 w-4" />
                           Time Using Motion Detection
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="ir" id="timing-ir" />
+                        <Label htmlFor="timing-ir" className="flex items-center">
+                          <PlayCircle className="mr-2 h-4 w-4" />
+                          Time Using IR
                         </Label>
                       </div>
                     </RadioGroup>
@@ -2253,6 +2499,9 @@ export default function PracticeControl() {
                       />
                     </div>
                   )}
+
+                  {/* IR Detector */}
+                  {timingMode === "ir" && renderIRDetector()}
                 </CardContent>
               </Card>
 

@@ -12,7 +12,6 @@
 - 2x 0.1µF capacitor
 
 
-
 ## IR Detector:
 - Raspberry Pi Zero 2 WH
 - 2x TSOP4838

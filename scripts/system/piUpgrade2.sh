@@ -20,20 +20,23 @@ handle_choice() {
   case $choice in
     r|R)
       echo "UpgrayeDD is rebooting the system..."
-      curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=0&b=0" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/rgb?r=25&g=25&b=25" 2>/dev/null
       curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=rebooting" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/pattern?name=upgrayedd" 2>/dev/null
       sudo reboot now
       ;;
     s|S)
       echo "UpgrayeDD is shutting down the system..."
-      curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=0&b=0" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/rgb?r=25&g=25&b=25" 2>/dev/null
       curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=shutting%20down" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/pattern?name=upgrayedd" 2>/dev/null
       sudo shutdown now
       ;;
     *)
       echo "UpgrayeDD didn't hear shit from you. Rebooting by default..."
-      curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=0&b=0" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/rgb?r=25&g=25&b=25" 2>/dev/null
       curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=tired%20of%20waitig%20rebooting" 2>/dev/null
+      curl -s -o /dev/null "http://192.168.4.99/pattern?name=upgrayedd" 2>/dev/null
       sudo reboot now
       ;;
   esac
@@ -114,12 +117,17 @@ curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=copying%2
 # Copy database files to home directory
 cp -f ~/rc-lap-timer/scripts/database/backupDB.sql ~/
 cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/
+cp -f ~/rc-lap-timer/scripts/database/createDB.sql ~/
+cp -f ~/rc-lap-timer/scripts/database/dbCycle.sql ~/
+cp -f ~/rc-lap-timer/scripts/database/dropDB.sql ~/
 
 # Copy system files to home directory
 cp -f ~/rc-lap-timer/scripts/system/backupDB.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/clearDB.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/dbCycle.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade1.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade2.sh ~/
+cp -f ~/rc-lap-timer/scripts/system/recreateDB.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/restoreDB.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/upgrayedd.sh ~/
 
@@ -136,11 +144,11 @@ curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=verifying
 files_to_check=(
     "~/backupDB.sql"
     "~/clearDB.sql"
-    "~/backupDB.sh"
-    "~/clearDB.sh"
+    "~/dbCycle.sql"
     "~/piUpgrade1.sh"
     "~/piUpgrade2.sh"
     "~/restoreDB.sh"
+    "~/recreateDB.sh"
     "~/upgrayedd.sh"
     "/etc/motd"
 )
@@ -176,7 +184,6 @@ seconds=$((time_diff % 60))
 # Red LED
 curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
 curl -s -o /dev/null "http://192.168.4.99/rgb?r=255&g=0&b=0" 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD%20Done&message=Time%20to%20choose" 2>/dev/null
 
 
 echo "*** UpgrayeDD asking what you want!"
