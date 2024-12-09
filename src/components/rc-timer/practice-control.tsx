@@ -30,6 +30,7 @@ import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
 import axios from "axios";
 import { LEDDeviceService } from "@/services/ledDevice";
+import { Location } from "@/types/rc-timer";
 
 // ****************************************
 // interface
@@ -80,7 +81,7 @@ export default function PracticeControl() {
   const [savedSessions, setSavedSessions] = useState<Session[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
-  const [timingMode, setTimingMode] = useState<TimingMode>("ui");
+  const [timingMode, setTimingMode] = useState<string>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
   const [announceLapNumber, setAnnounceLapNumber] = useState(false);
@@ -848,6 +849,12 @@ export default function PracticeControl() {
     driversRef.current = drivers;
   }, [drivers]);
 
+  const locationsRef = useRef(locations);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    locationsRef.current = locations;
+  }, [locations]);
+
   const handleSessionCompletion = async (completedLaps: number[]): Promise<void> => {
     setIsRunning(false);
     setStartTime(null);
@@ -886,7 +893,7 @@ export default function PracticeControl() {
       carId: selectedCarRef.current,
       carName: car.name,
       locationId: selectedLocationRef.current,
-      locationName: locations.find((l) => l.id === selectedLocationRef.current)?.name || "",
+      locationName: locationsRef.current.find((l) => l.id === selectedLocationRef.current)?.name || "",
       laps: formattedLaps,
       penalties,
       totalLaps: selectedLapCount === "unlimited" ? completedLaps.length : selectedLapCount,
@@ -1766,6 +1773,7 @@ export default function PracticeControl() {
   // ************************************************************************************************************************************************************************************************************************************************
   // ************************************************************************************************************************************************************************************************************************************************
 
+
   const handleCarDetected = useCallback(
     (carId: string, timestamp: string) => {
       if (!isRunningRef.current) {
@@ -1794,7 +1802,16 @@ export default function PracticeControl() {
     setLaps([]);
     logCurrentSessionStart();
     setLedGreen(100);
-    ledDevice.displayMessage("Session    Start", `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`);
+
+    const driverName = driversRef.current.find((d) => d.id === selectedDriverRef.current)?.name;
+
+    //const carName = getCurrentDriverCars().find((c) => c.id === selectedCarRef.current)?.name;
+    const carName = driversRef.current.find((d) => d.id === selectedDriverRef.current)?.cars.find((c) => c.id === selectedCarRef.current)?.name;
+
+    //const locationName = locations.find((l) => l.id === selectedLocationRef.current)?.name;    
+    const locationName = locationsRef.current.find((l) => l.id === selectedLocationRef.current)?.name;
+
+    ledDevice.displayMessage("Session    Start", `${driverName} - ${carName} at ${locationName}`);
   };
 
   const recordLap_IR = () => {
@@ -1811,16 +1828,12 @@ export default function PracticeControl() {
       announceRaceInfo(lapsRef.current.length + 2, currentLapTime);
     }
     logCurrentSessionRecordLap(lastLapEndTime, currentLapTime);
-    ledDevice.displayMessage(`Lap ${laps.length + 1}`, `${currentLapTime / 1000} seconds`);
+    ledDevice.displayMessage(`Lap ${lapsRef.current.length + 1}`, `${currentLapTime / 1000} seconds`);
     flashLap();
   };
 
   const renderIRDetector = useCallback(() => {
     if (timingMode !== "ir") return null;
-
-    const currentCarNumber = getCurrentDriverCars()
-      .find((c) => c.id === selectedCar)
-      ?.defaultCarNumber?.toString();
 
     return (
       <div className="flex flex-col gap-2">
@@ -1833,27 +1846,25 @@ export default function PracticeControl() {
         <p>IR Detection Mode</p>
       </div>
     );
-  }, [timingMode, selectedDriver, selectedCar, isRunning, handleCarDetected]);
+  }, [timingMode, selectedDriver, selectedCar, selectedLocation, isRunning, handleCarDetected]);
 
-  // Run every x seconds
+  // Run every 25 milliseconds
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-
-    const driver = drivers.find((d) => d.id === selectedDriverRef.current);
-    const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
-
-    const timerJob = () => {
+    
+    const timerJob = () => {      
       if (timingMode == "ir") {
-        fetchCarData();
+        const targetCarId = (getCurrentDriverCars().find((c) => c.id === selectedCarRef.current)?.defaultCarNumber || 0);
+        fetchCarData(targetCarId.toString());
       }
       timeoutId = setTimeout(timerJob, 25);
     };
-
+    
     timerJob(); // Start the first run
 
     // Cleanup function
     return () => clearTimeout(timeoutId);
-  }, [timingMode, selectedDriver, selectedCar, drivers]);
+  }, [timingMode, selectedDriver, selectedCar, selectedLocation, drivers]);
 
   // Clean up detected car numbers
   useEffect(() => {
@@ -1894,18 +1905,20 @@ export default function PracticeControl() {
   );
 
   const processNewDetections = useCallback(
-    (cars: CarDetection[]) => {
+    (cars: CarDetection[], targetCarIdValue: string) => {
       const currentCarIds = new Set(cars.map((car) => car.id));
       const previousCarIds = previousCarsRef.current;
 
       // Find newly detected cars
       cars.forEach((car) => {
-        if (!previousCarIds.has(car.id)) {
-          const cooldownEndTime = cooldownRef.current[car.id];
-          if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
-            handleCarDetected(car.id, car.time);
-            startCooldown(car.id);
-          }
+        if (car.id == targetCarIdValue) {
+          if (!previousCarIds.has(car.id)) {
+            const cooldownEndTime = cooldownRef.current[car.id];
+            if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
+              handleCarDetected(car.id, car.time);
+              startCooldown(car.id);
+            }
+          }  
         }
       });
 
@@ -1915,10 +1928,10 @@ export default function PracticeControl() {
     [handleCarDetected, startCooldown]
   );
 
-  const fetchCarData = useCallback(async () => {
+  const fetchCarData = useCallback(async (targetCarIdValue: string) => {
     try {
       const response = await axios.get("/api/ir/current_cars");
-      processNewDetections(response.data);
+      processNewDetections(response.data, targetCarIdValue);
     } catch (error) {
       console.error("Error fetching car data:", error);
     }
