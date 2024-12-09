@@ -50,7 +50,6 @@ interface CooldownMap {
   [carId: string]: number;
 }
 
-
 export default function PracticeControl() {
   // ****************************************
   // useState
@@ -832,7 +831,6 @@ export default function PracticeControl() {
     }
   };
 
-
   const handleMotionDetected = useCallback(
     (changePercent: number) => {
       if (!isRunningRef.current) {
@@ -851,7 +849,6 @@ export default function PracticeControl() {
   }, [drivers]);
 
   const handleSessionCompletion = async (completedLaps: number[]): Promise<void> => {
-    console.log(`handleSessionCompletion`);
     setIsRunning(false);
     setStartTime(null);
     setCurrentTime(0);
@@ -862,15 +859,12 @@ export default function PracticeControl() {
     //const driver = drivers.find((d) => d.id === selectedDriverRef.current);
     const driver = driversRef.current.find((d) => d.id === selectedDriverRef.current);
     const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
-    console.log(`handleSessionCompletion - selectedDriverRef.current is ${selectedDriverRef.current} in selectedCarRef.current ${selectedCarRef.current}`);
-    console.log(`handleSessionCompletion - driver is ${driver?.name} in car ${car?.name}`);
     if (!driver || !car) {
       return;
     }
 
     // Calculate total time
     const totalTime = completedLaps.reduce((sum, lap) => sum + lap, 0);
-    console.log(`handleSessionCompletion - totalTime is ${totalTime}`);
 
     // Calculate stats using the raw lap times
     const stats = calculateStats(completedLaps);
@@ -900,7 +894,6 @@ export default function PracticeControl() {
     };
 
     try {
-      console.log(`handleSessionCompletion - posting`);
       const response = await fetch("/api/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1458,7 +1451,6 @@ export default function PracticeControl() {
     return !isNaN(num) && num > 0 && num <= 999;
   };
 
-
   // ******************************************************************************************
   // ******************************************************************************************
   // *                               CURRENT SESSION RECORDING                                *
@@ -1768,23 +1760,22 @@ export default function PracticeControl() {
     await setLedBlue(25);
   };
 
-
   // ************************************************************************************************************************************************************************************************************************************************
   // ************************************************************************************************************************************************************************************************************************************************
   // ************************************************************************************************************************************************************************************************************************************************
   // ************************************************************************************************************************************************************************************************************************************************
   // ************************************************************************************************************************************************************************************************************************************************
 
-
-  const handleCarDetected = useCallback((carId: string, timestamp: string) => {    
-    if (!isRunningRef.current) {
-      startTimer_IR();
-    } else if (isRunningRef.current) {
-      recordLap_IR();
-    }
-  }, [isRunningRef]); 
-
-
+  const handleCarDetected = useCallback(
+    (carId: string, timestamp: string) => {
+      if (!isRunningRef.current) {
+        startTimer_IR();
+      } else if (isRunningRef.current) {
+        recordLap_IR();
+      }
+    },
+    [isRunningRef]
+  );
 
   const startTimer_IR = async (): Promise<void> => {
     if (!selectedDriverRef.current || !selectedCarRef.current || !selectedLocationRef.current) {
@@ -1797,27 +1788,14 @@ export default function PracticeControl() {
 
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
-    
+
     setStartTime(Date.now());
-    setIsRunning(true);    
+    setIsRunning(true);
     setLaps([]);
     logCurrentSessionStart();
     setLedGreen(100);
     ledDevice.displayMessage("Session    Start", `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`);
-
-    console.log("startTimer_IR");
   };
-  
-
-
-
-
-
-
-
-
-
-
 
   const recordLap_IR = () => {
     if (!isRunningRef.current) return;
@@ -1836,154 +1814,115 @@ export default function PracticeControl() {
     ledDevice.displayMessage(`Lap ${laps.length + 1}`, `${currentLapTime / 1000} seconds`);
     flashLap();
   };
-    
-     const renderIRDetector = useCallback(() => {    
-        if (timingMode !== "ir") return null;
-    
-        const currentCarNumber = getCurrentDriverCars().find(
-          (c) => c.id === selectedCar
-        )?.defaultCarNumber?.toString();
 
-        return (
-          <div className="flex flex-col gap-2">
-            {isRunning && (
-              <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
-                <StopCircle className="mr-2 h-6 w-6" />
-                Stop Timer
-              </Button>
-            )}
-            <p>IR Detection Mode</p>
-          </div>
-        );
-      
-    }, [timingMode, selectedDriver, selectedCar, isRunning, handleCarDetected]);
+  const renderIRDetector = useCallback(() => {
+    if (timingMode !== "ir") return null;
 
+    const currentCarNumber = getCurrentDriverCars()
+      .find((c) => c.id === selectedCar)
+      ?.defaultCarNumber?.toString();
 
-    // Run every 2 seconds
-    useEffect(() => {
-      let timeoutId: NodeJS.Timeout;
-
-      console.log(`useEffect - selectedDriver is ${selectedDriver} and selectedCar is ${selectedCar}`);
-      console.log(`useEffect - selectedDriverRef.current is ${selectedDriverRef.current} and selectedCarRef.current is ${selectedCarRef.current}`);
-
-      const driver = drivers.find((d) => d.id === selectedDriverRef.current);
-      const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
-      console.log(`useEffect - driver is ${driver?.name} in car ${car?.name}`);
-
-      const timerJob = () => {
-        if (timingMode == "ir") {
-          fetchCarData();
-        }        
-        timeoutId = setTimeout(timerJob, 2000);
-      };
-    
-      timerJob(); // Start the first run
-    
-      // Cleanup function
-      return () => clearTimeout(timeoutId);
-    }, [timingMode, selectedDriver, selectedCar, drivers]);
-
-
-    // Clean up detected car numbers
-    useEffect(() => {
-      const cleanupInterval = setInterval(() => {
-        const now = Date.now();
-        setCarCooldowns((prev) => {
-          const updated = { ...prev };
-          let hasChanges = false;
-          Object.entries(updated).forEach(([carId, endTime]) => {
-            if (endTime < now) {
-              delete updated[carId];
-              hasChanges = true;
-            }
-          });
-          return hasChanges ? updated : prev;
-        });
-      }, 1000);
-  
-      return () => clearInterval(cleanupInterval);
-    }, []);
-  
-
-
-
-
-
-
-
-
-    const [lastDetectedCars, setLastDetectedCars] = useState<CarDetection[]>([]);
-    const [carCooldowns, setCarCooldowns] = useState<CooldownMap>({});
-    const [cooldownPeriod] = useState(5000);
-    const cooldownRef = useRef<CooldownMap>({});
-    const previousCarsRef = useRef<Set<string>>(new Set());
-  
-  
-    const startCooldown = useCallback(
-      (carId: string) => {
-        //console.log(`**startCooldown`);
-        const newCooldowns = {
-          ...cooldownRef.current,
-          [carId]: Date.now() + cooldownPeriod,
-        };
-        cooldownRef.current = newCooldowns;
-        setCarCooldowns(newCooldowns);
-      },
-      [cooldownPeriod]
+    return (
+      <div className="flex flex-col gap-2">
+        {isRunning && (
+          <Button onClick={stopTimer} className="mt-4 w-full bg-red-500 hover:bg-red-600">
+            <StopCircle className="mr-2 h-6 w-6" />
+            Stop Timer
+          </Button>
+        )}
+        <p>IR Detection Mode</p>
+      </div>
     );
-  
-    const processNewDetections = useCallback(    
-      (cars: CarDetection[]) => {
-        console.log(`processNewDetections`);
-        const currentCarIds = new Set(cars.map((car) => car.id));
-        const previousCarIds = previousCarsRef.current;
+  }, [timingMode, selectedDriver, selectedCar, isRunning, handleCarDetected]);
 
-        // Find newly detected cars
-        cars.forEach((car) => {
-          console.log(`processNewDetections - car.id: ${car.id}`);
-          if (!previousCarIds.has(car.id)) {
-            console.log(`processNewDetections - processing`);
-            const cooldownEndTime = cooldownRef.current[car.id];
-            if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
-              console.log(`processNewDetections - not in cooldown`);
-              handleCarDetected(car.id, car.time);
-              startCooldown(car.id);
-            }
+  // Run every x seconds
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const driver = drivers.find((d) => d.id === selectedDriverRef.current);
+    const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
+
+    const timerJob = () => {
+      if (timingMode == "ir") {
+        fetchCarData();
+      }
+      timeoutId = setTimeout(timerJob, 25);
+    };
+
+    timerJob(); // Start the first run
+
+    // Cleanup function
+    return () => clearTimeout(timeoutId);
+  }, [timingMode, selectedDriver, selectedCar, drivers]);
+
+  // Clean up detected car numbers
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setCarCooldowns((prev) => {
+        const updated = { ...prev };
+        let hasChanges = false;
+        Object.entries(updated).forEach(([carId, endTime]) => {
+          if (endTime < now) {
+            delete updated[carId];
+            hasChanges = true;
           }
         });
-  
-        previousCarsRef.current = currentCarIds;
-        setLastDetectedCars(cars);
-      },
-      [handleCarDetected, startCooldown]
-    );
-  
-    const fetchCarData = useCallback(async () => {
-      console.log(`**fetchCarData`);      
-      try {
-        const response = await axios.get("/api/ir/current_cars");
-        processNewDetections(response.data);
-      } catch (error) {
-        console.error("Error fetching car data:", error);
-      }
-    }, [processNewDetections]);
+        return hasChanges ? updated : prev;
+      });
+    }, 1000);
 
-    
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
+  const [lastDetectedCars, setLastDetectedCars] = useState<CarDetection[]>([]);
+  const [carCooldowns, setCarCooldowns] = useState<CooldownMap>({});
+  const [cooldownPeriod] = useState(5000);
+  const cooldownRef = useRef<CooldownMap>({});
+  const previousCarsRef = useRef<Set<string>>(new Set());
 
+  const startCooldown = useCallback(
+    (carId: string) => {
+      const newCooldowns = {
+        ...cooldownRef.current,
+        [carId]: Date.now() + cooldownPeriod,
+      };
+      cooldownRef.current = newCooldowns;
+      setCarCooldowns(newCooldowns);
+    },
+    [cooldownPeriod]
+  );
 
+  const processNewDetections = useCallback(
+    (cars: CarDetection[]) => {
+      const currentCarIds = new Set(cars.map((car) => car.id));
+      const previousCarIds = previousCarsRef.current;
 
+      // Find newly detected cars
+      cars.forEach((car) => {
+        if (!previousCarIds.has(car.id)) {
+          const cooldownEndTime = cooldownRef.current[car.id];
+          if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
+            handleCarDetected(car.id, car.time);
+            startCooldown(car.id);
+          }
+        }
+      });
 
+      previousCarsRef.current = currentCarIds;
+      setLastDetectedCars(cars);
+    },
+    [handleCarDetected, startCooldown]
+  );
 
-
-
-
-
-
-
-
-
-
+  const fetchCarData = useCallback(async () => {
+    try {
+      const response = await axios.get("/api/ir/current_cars");
+      processNewDetections(response.data);
+    } catch (error) {
+      console.error("Error fetching car data:", error);
+    }
+  }, [processNewDetections]);
 
   // ****************************************
   // return

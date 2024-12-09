@@ -36,16 +36,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    console.log(`app/api/data/route.ts - POST`);
     const clonedRequest = request.clone();
     const data = await clonedRequest.json();
 
-    console.log(`data.type: ${data.type}`);
-
     // Handle driver creation
     if (data.type === "driver") {
-      console.log(`adding driver`);
-
       const newDriver = await prisma.driver.create({
         data: {
           id: Date.now().toString(),
@@ -60,8 +55,6 @@ export async function POST(request: Request) {
 
     // Handle car creation
     if (data.type === "car") {
-      console.log(`adding car`);
-
       const newCar = await prisma.car.create({
         data: {
           id: Date.now().toString(),
@@ -78,8 +71,6 @@ export async function POST(request: Request) {
 
     // Handle location creation
     if (data.type === "location") {
-      console.log(`adding location`);
-
       const newLocation = await prisma.location.create({
         data: {
           id: Date.now().toString(),
@@ -90,26 +81,19 @@ export async function POST(request: Request) {
     }
 
     if (data.sessions) {
-      console.log(`adding sessions`);
-
       // Track processed sessions to prevent duplicates
       const processedIds = new Set<string>();
       const errors: Array<{ sessionId: string; error: string }> = [];
 
       // Process each session
       for (const session of data.sessions) {
-        
-        console.log(`adding session: ${session.id}`);
-
         const sessionId = session.id?.toString() || Date.now().toString();
 
         // Skip if we've already processed this session
         if (processedIds.has(sessionId)) {
-          console.log(`skipping, already added session: ${session.id}`);
           continue;
         }
 
-        console.log(`processedIds.add() sessionId: ${sessionId}`);
         processedIds.add(sessionId);
 
         try {
@@ -130,24 +114,20 @@ export async function POST(request: Request) {
           ]);
 
           // Skip if session already exists
-          console.log(`existingSession: ${existingSession}`);
           if (existingSession) {
             continue;
           }
 
           // Validate all required relations exist
           if (!driver) {
-            console.log(`Driver with id ${session.driverId} not found`);
             errors.push({ sessionId, error: `Driver with id ${session.driverId} not found` });
             continue;
           }
           if (!car) {
-            console.log(`Car with id ${session.carId} not found`);
             errors.push({ sessionId, error: `Car with id ${session.carId} not found` });
             continue;
           }
           if (!location) {
-            console.log(`Location with id ${session.locationId} not found`);
             errors.push({ sessionId, error: `Location with id ${session.locationId} not found` });
             continue;
           }
@@ -157,7 +137,6 @@ export async function POST(request: Request) {
 
           // Use transaction to ensure all related data is created atomically
           await prisma.$transaction(async (tx) => {
-            console.log(`prisma - create session`);
             // Create the session
             await tx.session.create({
               data: {
@@ -180,7 +159,6 @@ export async function POST(request: Request) {
               },
             });
 
-            console.log(`prisma - create laps`);
             // Create laps if they exist
             if (session.laps?.length > 0) {
               const lapsToCreate = session.laps.map((lap: any, index: number) => ({
@@ -194,7 +172,6 @@ export async function POST(request: Request) {
               });
             }
 
-            console.log(`prisma - create penalties`);
             // Create penalties if they exist
             if (session.penalties?.length > 0) {
               await tx.penalty.createMany({
@@ -207,7 +184,6 @@ export async function POST(request: Request) {
             }
           });
         } catch (error) {
-          console.log(`Unknown error occurred`);
           errors.push({
             sessionId,
             error: error instanceof Error ? error.message : "Unknown error occurred",
@@ -216,7 +192,6 @@ export async function POST(request: Request) {
       }
 
       // Return success with any errors that occurred
-      console.log(`returning success with any errors that occurred`);
       return NextResponse.json({
         success: true,
         errors: errors.length > 0 ? errors : undefined,
@@ -225,7 +200,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.log(`error saving data: ${error}`);
     logger.error("Error saving data:", error);
     return NextResponse.json(
       {

@@ -24,7 +24,6 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
 
   const isCarAllowed = useCallback(
     (carId: string): boolean => {
-      //console.log(`**isCarAllowed - ${carId}`);
       return allowedCarNumbers.includes(carId);
     },
     [allowedCarNumbers]
@@ -32,7 +31,6 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
 
   const startCooldown = useCallback(
     (carId: string) => {
-      //console.log(`**startCooldown`);
       const newCooldowns = {
         ...cooldownRef.current,
         [carId]: Date.now() + cooldownPeriod,
@@ -43,23 +41,17 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     [cooldownPeriod]
   );
 
-  const processNewDetections = useCallback(    
+  const processNewDetections = useCallback(
     (cars: CarDetection[]) => {
-      //console.log(`**processNewDetections`);
       const currentCarIds = new Set(cars.map((car) => car.id));
       const previousCarIds = previousCarsRef.current;
 
-      //console.log(`1`);
       // Find newly detected cars
       cars.forEach((car) => {
-        //console.log(`2 - ${car.id}`);
         if (!previousCarIds.has(car.id)) {
-          //console.log(`3`);
           const cooldownEndTime = cooldownRef.current[car.id];
           if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
-            //console.log(`4`);
-            if (isCarAllowed(car.id)) {            
-              //console.log(`5`);
+            if (isCarAllowed(car.id)) {
               onCarDetected?.(car.id, car.time);
               startCooldown(car.id);
             }
@@ -74,11 +66,8 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
   );
 
   const fetchCarData = useCallback(async () => {
-    //console.log(`**fetchCarData`);
-
     try {
       const response = await axios.get("/api/ir/current_cars");
-      //console.log(`fetchCarData - response.data: ${response.data}`);
       processNewDetections(response.data);
     } catch (error) {
       console.error("Error fetching car data:", error);
