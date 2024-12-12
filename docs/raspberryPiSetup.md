@@ -330,7 +330,12 @@ On the Raspberry Pi Zero W:
 cd ~
 ```
 
-Create new directory
+Create the directory for database backups
+```bash
+mkdir db-backups
+```
+
+Create new application directory
 ```bash
 mkdir rc-lap-timer
 ```

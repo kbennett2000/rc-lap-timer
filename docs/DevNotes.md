@@ -10,3 +10,6 @@ mkcert localhost 127.0.0.1 192.168.1.* ::1
 ```bash
 npm run dev-https
 ```
+
+# arduino image converter / generator
+https://mischianti.org/images-to-byte-array-online-converter-cpp-arduino/
