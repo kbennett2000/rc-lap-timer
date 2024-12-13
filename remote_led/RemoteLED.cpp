@@ -184,7 +184,6 @@ void handleTextGet() {
   server.send(303);
 }
 
-
 void handlePatternGet() {
   if (server.hasArg("name")) {
     String pattern = server.arg("name");

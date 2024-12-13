@@ -872,6 +872,16 @@ sudo systemctl start ir-detector
 sudo systemctl restart nginx
 ```
 
+Fix the hostapd default config file
+```bash
+sudo bash -c 'echo "DAEMON_CONF=\"/etc/hostapd/hostapd.conf\"" > /etc/default/hostapd'
+```
+
+Restart hostapd
+```bash
+sudo systemctl restart hostapd
+```
+
 Reboot:
 ```bash
 sudo reboot now
