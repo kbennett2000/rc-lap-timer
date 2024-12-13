@@ -93,8 +93,6 @@ export default function PracticeControl() {
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [remoteControlActive, setRemoteControlActive] = useState(false);
 
-  const [allowedCarNumbers, setAllowedCarNumbers] = useState<string[]>([]);
-
   const [addEditDialogState, setAddEditDialogState] = useState<{
     isOpen: boolean;
     type: "driver" | "car" | "location" | null;

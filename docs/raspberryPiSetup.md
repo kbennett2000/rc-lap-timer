@@ -837,6 +837,41 @@ sudo apt install python3-RPi.GPIO
 pip3 install flask flask-cors --break-system-packages
 ```
 
+Create a service file for the IR detector:
+```bash
+sudo nano /etc/systemd/system/ir-detector.service
+```
+
+Add the following content:
+```ini
+[Unit]
+Description=IR Detector Service
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/rc-lap-timer
+ExecStart=/usr/bin/python3 IRDetectorService.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+```bash
+sudo systemctl enable ir-detector
+```
+
+```bash
+sudo systemctl start ir-detector
+```
+
+```bash
+sudo systemctl restart nginx
+```
+
 Reboot:
 ```bash
 sudo reboot now
