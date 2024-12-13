@@ -117,17 +117,22 @@ const PiConfiguration = () => {
             <Input id="userPassword" name="userPassword" type="password" placeholder="Enter new password" value={settings.userPassword} onChange={handleChange} />
           </div>
 
+          {/* TODO: Uncomment to enable changes to WiFi Network name and password - this will break the Remote LED device - see issue #12 */}          
           {/* WiFi Name */}
+          {/*
           <div className="space-y-2">
             <Label htmlFor="wifiName">WiFi Network Name</Label>
             <Input id="wifiName" name="wifiName" placeholder="rc-lap-timer" value={settings.wifiName} onChange={handleChange} />
           </div>
+          */}
 
           {/* WiFi Password */}
+          {/*
           <div className="space-y-2">
             <Label htmlFor="wifiPassword">WiFi Password</Label>
             <Input id="wifiPassword" name="wifiPassword" type="password" placeholder="Enter new WiFi password" value={settings.wifiPassword} onChange={handleChange} />
           </div>
+          */}
         </CardContent>
 
         {/* Save Button */}
