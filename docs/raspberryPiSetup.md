@@ -43,7 +43,11 @@
 
 ## 4. Software Installation
 
-After first boot and SSH'ing in, before making any other changes, modify the network configuration properly:
+Install required packages
+```bash
+sudo apt install -y nodejs git nginx hostapd dnsmasq mariadb-server certbot dhcpcd5
+```
+
 Make backup of original dhcpcd configuration
 ```bash
 sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.backup
@@ -61,6 +65,14 @@ Add these lines at the end of dhcpcd.conf:
     nohook wpa_supplicant
 ```
 
+Enable and start the service:
+```bash
+sudo systemctl enable dhcpcd
+```
+```bash
+sudo systemctl start dhcpcd
+```
+
 Next, update the system:
 ```bash
 sudo apt update && sudo apt upgrade -y
@@ -69,11 +81,6 @@ sudo apt update && sudo apt upgrade -y
 Install Node.js 20.x
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-```
-
-Install required packages
-```bash
-sudo apt install -y nodejs git nginx hostapd dnsmasq mariadb-server certbot
 ```
 
 
@@ -803,16 +810,28 @@ sudo chmod 755 /usr/local/bin/rc-config-helper.sh
 Copy database files to home directory:
 ```bash
 cp -f ~/rc-lap-timer/scripts/database/backupDB.sql ~/
+```
+```bash
 cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/
 ```
 
 Copy system files to home directory:
 ```bash
 cp -f ~/rc-lap-timer/scripts/system/backupDB.sh ~/
+```
+```bash
 cp -f ~/rc-lap-timer/scripts/system/clearDB.sh ~/
+```
+```bash
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade1.sh ~/
+```
+```bash
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade2.sh ~/
+```
+```bash
 cp -f ~/rc-lap-timer/scripts/system/restoreDB.sh ~/
+```
+```bash
 cp -f ~/rc-lap-timer/scripts/system/upgrayedd.sh ~/
 ```
 
@@ -870,16 +889,6 @@ sudo systemctl start ir-detector
 
 ```bash
 sudo systemctl restart nginx
-```
-
-Fix the hostapd default config file
-```bash
-sudo bash -c 'echo "DAEMON_CONF=\"/etc/hostapd/hostapd.conf\"" > /etc/default/hostapd'
-```
-
-Restart hostapd
-```bash
-sudo systemctl restart hostapd
 ```
 
 Reboot:
