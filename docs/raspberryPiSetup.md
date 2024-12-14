@@ -13,6 +13,8 @@
 10. [Testing](#10-testing)
 11. [Maintenance & Troubleshooting](#11-maintenance--troubleshooting)
 
+## Notes: Total installation time is approximately 30-45 minutes and a working internet connection is required throughout the setup. Both ethernet and WiFi access point will work simultaneously with this configuration.
+
 ## 1. Hardware Requirements
 - Raspberry Pi Zero 2 W
 - SanDisk 32GB Ultra microSDHC UHS-I card
@@ -30,7 +32,7 @@
    - Enable SSH
    - Set username: pi
    - Set a password
-   - Configure wireless LAN (for initial setup only)
+   - Configure wireless LAN -- *NOTE: WiFi MUST be configured initially!*
    - Set locale settings
 8. Click "Save" then "Write"
 
@@ -42,6 +44,16 @@
 5. SSH into the Pi: `ssh pi@<IP_ADDRESS>`
 
 ## 4. Software Installation
+
+First, update the system
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+Install Node.js 20.x
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+```
 
 Install required packages
 ```bash
@@ -58,7 +70,7 @@ Edit dhcpcd configuration
 sudo nano /etc/dhcpcd.conf
 ```
 
-Add these lines at the end of dhcpcd.conf:
+Replace the contents with these lines
 ```
     interface wlan0
     static ip_address=192.168.4.1/24
@@ -71,16 +83,6 @@ sudo systemctl enable dhcpcd
 ```
 ```bash
 sudo systemctl start dhcpcd
-```
-
-Next, update the system:
-```bash
-sudo apt update && sudo apt upgrade -y
-```
-
-Install Node.js 20.x
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 ```
 
 
@@ -377,6 +379,17 @@ sudo systemctl stop hostapd
 sudo systemctl stop dnsmasq
 ```
 
+Reset the wireless interface
+```bash
+sudo ip link set wlan0 down
+```
+```bash
+sudo ip addr flush dev wlan0
+```
+```bash
+sudo ip link set wlan0 up
+```
+
 Configure hostapd
 ```bash
 sudo nano /etc/hostapd/hostapd.conf
@@ -608,9 +621,36 @@ Enable and start all services:
 ```bash
 sudo systemctl enable mysql hostapd dnsmasq rc-lap-timer nginx
 ```
+
+Start services in order with delays:
 ```bash
-sudo systemctl start mysql hostapd dnsmasq rc-lap-timer nginx
+sudo systemctl start mysql
 ```
+```bash
+sleep 2
+```
+```bash
+sudo systemctl start hostapd
+```
+```bash
+sleep 2
+```
+```bash
+sudo systemctl start dnsmasq
+```
+```bash
+sleep 2
+```
+```bash
+sudo systemctl start rc-lap-timer
+```
+```bash
+sleep 2
+```
+```bash
+sudo systemctl start nginx
+```
+
 
 Make sure nginx user (www-data) has access to the directory:
 ```bash
@@ -850,7 +890,7 @@ Configure Python and components for IR Detection
 sudo apt install -y python3-pip
 ```
 ```bash
-sudo apt install python3-RPi.GPIO
+sudo apt install -y python3-RPi.GPIO
 ```
 ```bash
 pip3 install flask flask-cors --break-system-packages
