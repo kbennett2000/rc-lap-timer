@@ -1,5 +1,7 @@
 # 🏁 RC Lap Timer 🏎️
 
+NOTE - Infrared beacon lap timing in beta stages. More info to come, stay tuned!
+
 Looking for a free, easy to use lap timing system for backyard, parking lot, or garage RC racing? I created **RC Lap Timer** just for you! Transponder-based RC lap timing systems can be expensive and don't always work well with temporary tracks. **RC Lap Timer** is a lightweight, free alternative that enables casual RC racing without expensive equipment.
 
 **RC Lap Timer** has two modes of recording laps, UI mode and Motion Detection mode. UI mode works with two people: a driver and a timer. While one person drives, the other records lap times as the car crosses the start/finish line. Motion Detection mode only requires a driver. It uses a camera on your phone, tablet, or laptop to detect when the car passes by, and records a lap time each time the car passes. 
