@@ -282,22 +282,15 @@ iface wlan0 inet static
 
 ## 8. HTTPS Configuration
 
-### Generate Self-Signed Certificate
-Generate SSL certificate
+### Make the Timer's Certificate
+Each timer makes its own certificate, with a small certificate authority phones can install to trust it (see
+"Trusting the timer on a phone" in the README). A service makes it at boot whenever it's missing or about to expire:
 ```bash
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
--keyout /etc/ssl/private/rc-lap-timer.key \
--out /etc/ssl/certs/rc-lap-timer.crt \
--subj "/CN=rc-lap-timer/O=RC Lap Timer/C=US"
-```
-
-Set proper permissions on the SSL files:
-```bash
-sudo chmod 600 /etc/ssl/private/rc-lap-timer.key
-```
-
-```bash
-sudo chmod 644 /etc/ssl/certs/rc-lap-timer.crt
+sudo install -m 755 ~/rc-lap-timer/scripts/system/rc-tls.sh /usr/local/bin/rc-tls.sh
+sudo install -m 644 ~/rc-lap-timer/scripts/system/rc-lap-timer-tls.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable rc-lap-timer-tls.service
+sudo rc-tls.sh
 ```
 
 ### Configure Web Server

@@ -29,6 +29,9 @@ What the upgrade does to your data and app:
   `/etc/rc-lap-timer.env`.
 - The app is set to listen on localhost only (nginx stays the only way in), and the old
   `/home/pi/config-api.log` is deleted: older versions wrote the passwords set in System Settings to it.
+- The timer gets its own HTTPS certificate if it doesn't have one yet (timers flashed from the old SD
+  image share one), made by `rc-tls.sh` here and at every boot. Phones that trusted the old certificate
+  install the new one (see "Trusting the timer on a phone" in the README).
 - The web server's settings (`/etc/nginx/sites-available/rc-lap-timer`) are replaced with the app's
   (`scripts/system/nginx/rc-lap-timer.conf`), which let the phone app sync over plain HTTP. The old file
   is kept as `rc-lap-timer.bak`, and goes back if nginx rejects the new one.

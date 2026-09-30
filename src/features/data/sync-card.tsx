@@ -95,7 +95,29 @@ export function SyncCard() {
           Have an RC Lap Timer box (the Raspberry Pi timer)? Syncing shares drivers, cars, locations, sessions and
           motion settings both ways. Join the timer&apos;s Wi-Fi (<strong>rc-lap-timer</strong>), then tap Sync.
         </p>
-        {!device.ios && (
+        {device.ios ? (
+          <details>
+            <summary className="cursor-pointer font-medium">Set up this iPhone or iPad (once)</summary>
+            <div className="mt-2 space-y-2">
+              <p>To sync this way, an iPhone or iPad has to trust the timer. On the timer&apos;s Wi-Fi:</p>
+              <ol className="list-decimal space-y-1 pl-5">
+                <li>
+                  In Safari, open <strong>192.168.4.1/rc-lap-timer-ca.crt</strong> and tap Allow.
+                </li>
+                <li>
+                  Open Settings, tap <strong>Profile Downloaded</strong>, then Install.
+                </li>
+                <li>
+                  In Settings → General → About → <strong>Certificate Trust Settings</strong>, turn on RC Lap Timer.
+                </li>
+              </ol>
+              <p className="text-muted-foreground">
+                The timer&apos;s own pages stop showing a certificate warning too. A timer makes a new certificate about
+                every two years; then do this again.
+              </p>
+            </div>
+          </details>
+        ) : (
           <p className="text-muted-foreground">
             The first time, Chrome asks whether this app may look for devices on your local network: choose Allow.
           </p>
@@ -132,7 +154,10 @@ export function SyncCard() {
                 internet.
               </li>
               {device.ios ? (
-                <li>iPhone and iPad can sync this way only once they trust the timer&apos;s certificate.</li>
+                <li>
+                  iPhone and iPad can sync this way only once they trust the timer: see &ldquo;Set up this iPhone or
+                  iPad&rdquo; above.
+                </li>
               ) : (
                 <li>
                   If Chrome asked about devices on your local network and you chose Block, allow it again in Chrome:

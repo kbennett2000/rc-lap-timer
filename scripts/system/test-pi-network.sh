@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Checks the Pi's web server settings (scripts/system/nginx/rc-lap-timer.conf) in the nginx version Raspberry Pi OS
-# (bookworm) ships, in front of a stand-in for the app. Needs docker, openssl and curl. CI runs it (pi-network job).
+# Checks the timer's HTTPS certificate (scripts/system/rc-tls.sh) and web server settings
+# (scripts/system/nginx/rc-lap-timer.conf), in the nginx version Raspberry Pi OS (bookworm) ships, in front of a
+# stand-in for the app. Needs docker, openssl, curl and GNU date. CI runs it (pi-network job).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -23,13 +24,38 @@ check() {
   fi
 }
 
-# The files nginx gets, laid out as on the Pi: the settings, and a throwaway certificate where they expect the
-# timer's. Containers here have no IPv6, so the [::] listens go (they're the same as the IPv4 ones).
+# The files nginx gets, laid out as on the Pi: the settings, and the certificate the timer makes for itself.
+# Containers here have no IPv6, so the [::] listens go (they're the same as the IPv4 ones).
 root="$work/root"
-mkdir -p "$root/etc/nginx/conf.d" "$root/etc/ssl/certs" "$root/etc/ssl/private"
+ssl="$root/etc/ssl"
+mkdir -p "$root/etc/nginx/conf.d"
 grep -v 'listen \[::\]' scripts/system/nginx/rc-lap-timer.conf > "$root/etc/nginx/conf.d/default.conf"
-openssl req -x509 -nodes -days 1 -newkey rsa:2048 -subj "/CN=rc-lap-timer" \
-  -keyout "$root/etc/ssl/private/rc-lap-timer.key" -out "$root/etc/ssl/certs/rc-lap-timer.crt" 2> /dev/null
+TLS_DIR="$ssl" TLS_HOSTNAME=rclaptimer scripts/system/rc-tls.sh > /dev/null
+
+cert="$ssl/certs/rc-lap-timer.crt"
+ca="$ssl/certs/rc-lap-timer-ca.crt"
+check "the certificate is signed by the timer's CA" "OK" "$(openssl verify -CAfile "$ca" "$cert" 2>&1 | sed 's/.*: //')"
+check "it names the timer every way phones reach it" \
+  "DNS:rc-lap-timer, DNS:rc-lap-timer.local, DNS:rclaptimer, DNS:rclaptimer.local, IP Address:192.168.4.1" \
+  "$(openssl x509 -in "$cert" -noout -ext subjectAltName | tail -1 | xargs)"
+check "it's for a web server" "TLS Web Server Authentication" \
+  "$(openssl x509 -in "$cert" -noout -ext extendedKeyUsage | tail -1 | xargs)"
+days=$((($(date -d "$(openssl x509 -in "$cert" -noout -enddate | cut -d= -f2)" +%s) - \
+  $(date -d "$(openssl x509 -in "$cert" -noout -startdate | cut -d= -f2)" +%s)) / 86400))
+check "it lasts no longer than iPhones accept (825 days)" "yes" "$([ "$days" -le 825 ] && echo yes || echo "$days days")"
+check "the only private key left is the timer's own" "$ssl/private/rc-lap-timer.key" \
+  "$(grep -rl 'PRIVATE KEY' "$ssl")"
+before=$(cat "$ssl"/certs/* | sha256sum)
+TLS_DIR="$ssl" TLS_HOSTNAME=rclaptimer scripts/system/rc-tls.sh > /dev/null
+check "a second run keeps the certificate" "$before" "$(cat "$ssl"/certs/* | sha256sum)"
+# Timers flashed from the old SD image have its shared, self-signed certificate (docs/raspberryPiSetup.md used to
+# make it this way).
+old="$work/old-ssl"
+mkdir -p "$old/certs" "$old/private"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -subj "/CN=rc-lap-timer/O=RC Lap Timer/C=US" \
+  -keyout "$old/private/rc-lap-timer.key" -out "$old/certs/rc-lap-timer.crt" 2> /dev/null
+check "a timer with the old shared certificate gets its own" "Made" \
+  "$(TLS_DIR="$old" TLS_HOSTNAME=rclaptimer scripts/system/rc-tls.sh | head -c 4)"
 
 # Copied in as a tar stream rather than mounted: some docker setups (snap) can't see the host's /tmp.
 docker create --name rclt-nginx -p 127.0.0.1:8080:80 -p 127.0.0.1:8443:443 "$nginx_image" > /dev/null
@@ -65,6 +91,13 @@ check "plain HTTP moves to HTTPS" "301 https://127.0.0.1/api/data" \
 check "plain HTTP reaches the sync status route" "app:/api/sync/status" "$(curl -s http://127.0.0.1:8080/api/sync/status)"
 check "plain HTTP reaches the sync route" "app:/api/sync" "$(curl -s http://127.0.0.1:8080/api/sync)"
 check "HTTPS reaches the app" "app:/" "$(curl -sk https://127.0.0.1:8443/)"
+check "a phone that trusts the CA trusts the timer by name" "app:/" \
+  "$(curl -s --cacert "$ca" --resolve rc-lap-timer:8443:127.0.0.1 https://rc-lap-timer:8443/)"
+check "... and at 192.168.4.1" "app:/" \
+  "$(curl -s --cacert "$ca" --connect-to 192.168.4.1:8443:127.0.0.1:8443 https://192.168.4.1:8443/)"
+check "plain HTTP hands out the CA for phones to install" "200 application/x-x509-ca-cert" \
+  "$(curl -s -o "$work/downloaded.crt" -w '%{http_code} %{content_type}' http://127.0.0.1:8080/rc-lap-timer-ca.crt)"
+check "... the timer's own" "same" "$(cmp -s "$work/downloaded.crt" "$ca" && echo same || echo different)"
 check "HTTPS blocks image optimization" "404" "$(curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:8443/_next/image)"
 
 big="$work/big.json"
