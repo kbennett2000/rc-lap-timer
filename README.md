@@ -223,8 +223,16 @@ Selecting the **Time Using Motion Detection** option will enable motion detectio
 - **Sensitivity**: Sets the level of sensitivity for motion detection. Increase the sensitity if your car has trouble being detected, lower the sensititivy to reduce the risk of false lap detections.
 - **Threshold**: Threshold determines the percentage of the image frame that must change for motion to be recorded. If your car passes the timing point father from the camera you might need a lower Threshold value. Typically values from 0.5% to 5% work well.
 - **Cooldown**: Specifies the amount of time (in milliseconds) to wait before trying to detect motion again. This setting is helpful for reducing false detections. Try running a few laps to get a baseline idea of your lap time, then select a Cooldown time that you feel confident is faster than you will be able to run a lap. For example, if a lap takes you roughly 15 seconds, try a cooldown period of 10000 to 12000 (10 to 12 seconds). 
-- **Frames to Skip**: The number of frames to skip or ignore once the camera is turned on. Setting a high value prevents any camera shake that might occur from touching the device when turning the camera on from being counted as a lap. If you encounter issues with laps being recorded as soon as the camera comes on, try increasing this value.
+- **Frames to Skip**: The number of camera frames to skip or ignore once the camera is turned on. Most cameras send 30 frames a second, so the default of 60 is about 2 seconds. Setting a high value prevents any camera shake that might occur from touching the device when turning the camera on from being counted as a lap. If you encounter issues with laps being recorded as soon as the camera comes on, try increasing this value.
 - **Save / Load Settings**: If you wish to save your current motion detection settings for later use you can use the Save option. Use the Load Settings option to load a previously saved set of motion detection settings.
+
+#### How the camera times a lap
+The app compares each frame from the camera with the one before, on a copy scaled down to 320 pixels across, and counts the pixels whose colour changed by more than the Sensitivity. When that's more than the Threshold, outside the Cooldown, the car has crossed. Most phone browsers (Chrome, and Safari on iOS 15.4 or later) say when the camera took each frame, so a crossing is timed by the moment the car appeared in the picture, however busy the phone was.
+
+While you preview, the app shows how that's going, for example "Checking 30 frames a second, 1.2 ms each, timed by the camera":
+- **frames a second** should match the camera, usually 30. A much higher number means the browser can't say when frames arrive, so the app checks on every screen refresh instead.
+- **ms each** is how long checking a frame takes. A few milliseconds is plenty fast.
+- **timed by the camera** is the most accurate. "Timed by the screen" and "timed as they arrive" are close behind. "Timed when checked" means lap times can be off by a frame or two.
 
 
 ## Recent Sessions
@@ -342,7 +350,9 @@ CI runs all of these on every pull request:
 - `npm test`: unit tests
 - `npm run test:api` and `npm run test:e2e`: API and browser tests against a running server and database.
   [tests/api/api.test.ts](tests/api/api.test.ts) shows how to start both. For the phone-only app, run
-  `npm run build:pages`, start `npm run serve:pages`, then `E2E_TARGET=standalone npm run test:e2e`.
+  `npm run build:pages`, start `npm run serve:pages`, then `E2E_TARGET=standalone npm run test:e2e`. Its camera tests
+  play a video of a car crossing ([tests/e2e/crossing-video.ts](tests/e2e/crossing-video.ts)) as the camera and check
+  every lap; the motion check itself is [src/timing/motion.ts](src/timing/motion.ts).
 
 To change the database schema, edit `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>`, and
 commit the new folder under `prisma/migrations/`. `migrate dev` needs a database user that can create databases.

@@ -182,7 +182,8 @@ test("failed saves are kept, survive a reload, and can be retried", async ({ pag
   await expect(page.getByText("2 sessions not saved")).toBeVisible();
 
   await page.getByRole("button", { name: "Retry save" }).click();
-  await expect(page.getByText("sessions not saved")).toBeHidden();
+  // Retry saves them one at a time, and the banner reads "Session not saved" while the last one is sent.
+  await expect(page.getByText(/sessions? not saved/i)).toBeHidden();
   expect(await sessionsForDriver(), "all three saved exactly once").toHaveLength(before + 3);
   expect(await unsavedCount()).toBe(0);
 });
