@@ -3,13 +3,13 @@
 // ****************************************
 // import
 // ****************************************
-import { cn, fetchOk, formatTime, formatDateTime, newId } from "@/lib/utils";
+import { cn, createAudioContext, fetchOk, formatTime, formatDateTime, newId } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
 import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList, CirclePlay } from "lucide-react";
+import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -18,10 +18,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, UserCog } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
 import { MotionDetector } from "./motion-detector";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -89,7 +89,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   const [announceLapNumber, setAnnounceLapNumber] = useState(false);
   const [announceLastLapTime, setAnnounceLastLapTime] = useState(false);
   const [speechVoice, setSpeechVoice] = useState<SpeechSynthesisVoice | null>(null);
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [playBeeps, setPlayBeeps] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
@@ -273,11 +272,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     // Function to get and set available voices
     const updateVoices = () => {
       const voices = window.speechSynthesis.getVoices();
-      // Filter for English voices
-      const englishVoices = voices.filter((voice) => voice.lang.startsWith("en-"));
-
-      setAvailableVoices(englishVoices);
-
       // If no voice is selected, set the default
       if (!speechVoice) {
         // Try to find Google US English
@@ -293,7 +287,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
             setSpeechVoice(usEnglishVoice);
           } else {
             // Final fallback to any English voice
-            const anyEnglishVoice = englishVoices[0];
+            const anyEnglishVoice = voices.find((voice) => voice.lang.startsWith("en-"));
             if (anyEnglishVoice) {
               setSpeechVoice(anyEnglishVoice);
             }
@@ -348,7 +342,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
     const currentLapNumber = laps.length + 1;
 
-    logCurrentSessionAddPenalty(currentLapNumber);
+    logCurrentSessionAddPenalty();
 
     setPenalties((prev) => {
       const existingPenalty = prev.find((p) => p.lapNumber === currentLapNumber);
@@ -379,7 +373,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
   const announceRaceBegin = useCallback(async () => {
     if (announceLapNumberRef.current) {
-      var didTTSWork = await sayIt("Timing Session Started");
+      await sayIt("Timing Session Started");
     }
   }, []);
 
@@ -439,7 +433,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   }, []);
 
   const announceRaceInfo = useCallback(async (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
-    var announcement = "";
+    let announcement = "";
 
     if (sessionEnded && announceLapNumberRef.current) {
       announcement += "Timing Session Ended.";
@@ -451,7 +445,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       announcement += `Last lap time ${formatTimeForSpeech(lastLapTime)}`;
     }
 
-    var didTTSWork = await sayIt(announcement);
+    await sayIt(announcement);
   }, []);
 
   const speechVoiceRef = useRef(speechVoice);
@@ -536,9 +530,9 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     };
   };
 
-  const calculateSessionStats = (session: any) => {
+  const calculateSessionStats = (session: Pick<Session, "laps" | "penalties">): LapStats => {
     // Ensure laps is an array and each lap has a lapTime
-    const lapTimes = session.laps.filter((lap: any) => lap && typeof lap.lapTime === "number").map((lap: any) => lap.lapTime);
+    const lapTimes = session.laps.filter((lap) => lap && typeof lap.lapTime === "number").map((lap) => lap.lapTime);
 
     if (lapTimes.length === 0) {
       return {
@@ -557,12 +551,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     const worstLapTime = Math.max(...lapTimes);
 
     // Calculate total penalties and find lap with most penalties
-    let maxPenaltyLap = null;
+    let maxPenaltyLap: number | null = null;
     let maxPenaltyCount = 0;
     let totalPenalties = 0;
 
     if (session.penalties && Array.isArray(session.penalties)) {
-      session.penalties.forEach((penalty: any) => {
+      session.penalties.forEach((penalty) => {
         if (penalty.count) {
           totalPenalties += penalty.count;
           if (penalty.count > maxPenaltyCount) {
@@ -826,7 +820,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   };
 
   const handleMotionDetected = useCallback(
-    (changePercent: number) => {
+    () => {
       if (!isRunningRef.current) {
         startTimer_MD();
       } else if (isRunningRef.current) {
@@ -1077,7 +1071,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       const data = await response.json();
 
       // Transform sessions to include stats
-      const sessionsWithStats = data.sessions.map((session: any) => ({
+      const sessionsWithStats = data.sessions.map((session: Session) => ({
         ...session,
         stats: calculateSessionStats(session),
       }));
@@ -1094,7 +1088,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     if (playBeepsRef.current) {
       return new Promise((resolve) => {
         // Create audio context
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioContext = createAudioContext();
 
         // Create oscillator and gain node
         const oscillator = audioContext.createOscillator();
@@ -1185,9 +1179,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     }
   };
 
-  // Add this near your other state variables in lap-timer.tsx
-  const [pollingError, setPollingError] = useState<string | null>(null);
-
   // Update the polling function
   const pollForSessionRequests = useCallback(async () => {
     // Never take over a session that is already running.
@@ -1212,8 +1203,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       if (data.error) {
         throw new Error(data.error);
       }
-
-      setPollingError(null);
 
       if (data.request) {
         const request = data.request;
@@ -1259,9 +1248,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error during polling";
       logger.error("Error polling for requests:", error);
-      setPollingError(errorMessage);
     }
   }, [remoteControlActive]);
 
@@ -1469,7 +1456,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     const displayCarName = getCarNameByIdSync(selectedCar, drivers);
     const displayLocationName = getLocationNameByIdSync(selectedLocation, locations);
 
-    var currentSessionLapCount = 0;
+    let currentSessionLapCount = 0;
     if (selectedLapCount != "unlimited") {
       currentSessionLapCount = selectedLapCount;
     }
@@ -1526,8 +1513,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     }
   };
 
-  const logCurrentSessionAddPenalty = (CurrentLapNumber: number): void => {
-    // Add penalty to current lap record using CurrentLapNumber
+  const logCurrentSessionAddPenalty = (): void => {
     setTheCurrentSessionPenaltyCount(theCurrentSessionPenaltyCount + 1);
   };
 
@@ -1539,7 +1525,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     }
 
     // Delete db record
-    const response = await deleteCurrentSession(theCurrentSessionIdRef.current);
+    await deleteCurrentSession(theCurrentSessionIdRef.current);
   };
 
   function getDriverNameByIdSync(driverId: string, drivers: Driver[]): string | null {
@@ -1688,18 +1674,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     }
   };
 
-  const setLedRed = async (level: number): Promise<void> => {
-    try {
-      await fetchOk(`/api/ir/led/${level}/0/0`);
-
-      const scaledRed = Math.round(2.55 * level);
-      ledDevice.setColor(scaledRed, 0, 0);
-    } catch (error) {
-      console.error("Error setting LED RED:", error);
-      throw error;
-    }
-  };
-
   const setLedGreen = async (level: number): Promise<void> => {
     try {
       await fetchOk(`/api/ir/led/0/${level}/0`);
@@ -1763,7 +1737,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
 
   const handleCarDetected = useCallback(
-    (carId: string, timestamp: string) => {
+    () => {
       if (!isRunningRef.current) {
         startTimer_IR();
       } else if (isRunningRef.current) {
@@ -1855,28 +1829,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     return () => clearTimeout(timeoutId);
   }, [timingMode, selectedDriver, selectedCar, selectedLocation, drivers]);
 
-  // Clean up detected car numbers
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      setCarCooldowns((prev) => {
-        const updated = { ...prev };
-        let hasChanges = false;
-        Object.entries(updated).forEach(([carId, endTime]) => {
-          if (endTime < now) {
-            delete updated[carId];
-            hasChanges = true;
-          }
-        });
-        return hasChanges ? updated : prev;
-      });
-    }, 1000);
-
-    return () => clearInterval(cleanupInterval);
-  }, []);
-
-  const [lastDetectedCars, setLastDetectedCars] = useState<CarDetection[]>([]);
-  const [carCooldowns, setCarCooldowns] = useState<CooldownMap>({});
   const [cooldownPeriod] = useState(5000);
   const cooldownRef = useRef<CooldownMap>({});
   const previousCarsRef = useRef<Set<string>>(new Set());
@@ -1888,7 +1840,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
         [carId]: Date.now() + cooldownPeriod,
       };
       cooldownRef.current = newCooldowns;
-      setCarCooldowns(newCooldowns);
     },
     [cooldownPeriod]
   );
@@ -1904,7 +1855,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
           if (!previousCarIds.has(car.id)) {
             const cooldownEndTime = cooldownRef.current[car.id];
             if (!cooldownEndTime || Date.now() >= cooldownEndTime) {
-              handleCarDetected(car.id, car.time);
+              handleCarDetected();
               startCooldown(car.id);
             }
           }  
@@ -1912,7 +1863,6 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       });
 
       previousCarsRef.current = currentCarIds;
-      setLastDetectedCars(cars);
     },
     [handleCarDetected, startCooldown]
   );
@@ -2461,9 +2411,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
                       <MotionDetector
                         controlRef={motionControlRef}
-                        onMotionDetected={(changePercent) => {
-                          handleMotionDetected(changePercent);
-                        }}
+                        onMotionDetected={handleMotionDetected}
                         playBeeps={playBeepsRef.current}
                         className="w-full"
                       />
@@ -3043,7 +2991,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Session</AlertDialogTitle>
-              <AlertDialogDescription>Are you sure you want to delete the session from {sessionToDelete?.date}? If you delete this session, it's gone for good. So make sure this is what you really want to do!!</AlertDialogDescription>
+              <AlertDialogDescription>Are you sure you want to delete the session from {sessionToDelete?.date}? If you delete this session, it&apos;s gone for good. So make sure this is what you really want to do!!</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>

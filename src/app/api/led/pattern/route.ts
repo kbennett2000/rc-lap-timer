@@ -1,6 +1,6 @@
 // app/api/led/pattern/route.ts
 import { NextResponse } from "next/server";
-import { LED_DEVICE_IP, LED_DEVICE_TIMEOUT } from '../config';
+import { LED_DEVICE_IP } from "../config";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const response = await fetch(`http://${LED_DEVICE_IP}/pattern?name=${name}`);
     if (!response.ok) throw new Error("Failed to run LED pattern");
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to communicate with LED device" }, { status: 500 });
   }
 }

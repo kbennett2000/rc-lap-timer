@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle, Plus, Map, SlidersHorizontal, Users, Cog, Wrench } from "lucide-react";
+import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle, Map, SlidersHorizontal, Users, Cog, Wrench } from "lucide-react";
 import { logger } from "@/lib/logger";
 import PiConfiguration from "@/components/pi-config-settings";
 import TrackMeasurer from "./track-measurer";
@@ -31,11 +31,6 @@ interface DriverCarManagerProps {
 
 type EntityType = "driver" | "car" | "location" | "motionSetting";
 type ActionType = "add" | "edit";
-
-interface CarFormState {
-  name: string;
-  defaultCarNumber?: number;
-}
 
 interface EntityDialogState {
   isOpen: boolean;
@@ -116,7 +111,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       const endpoint = isAdd ? "/api/data" : "/api/manage";
       const method = isAdd ? "POST" : "PATCH";
 
-      let body: any = { name: entityName.trim() };
+      const body: Record<string, unknown> = { name: entityName.trim() };
 
       if (isAdd) {
         body.type = type;
@@ -176,13 +171,13 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
   };
 
   const handleDelete = async () => {
-    const { type, entityId } = deleteDialog;
+    const { type } = deleteDialog;
     if (!type) return;
 
     setIsProcessing(true);
     try {
       let endpoint = "/api/manage";
-      let body: any = { type };
+      const body: Record<string, unknown> = { type };
 
       switch (type) {
         case "motionSetting":
@@ -582,11 +577,11 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {deleteDialog.type === "driver" ? (
-                  <>Are you sure you want to delete driver "{currentDriver?.name}"? This will also delete all their cars, sessions and race results.</>
+                  <>Are you sure you want to delete driver &ldquo;{currentDriver?.name}&rdquo;? This will also delete all their cars, sessions and race results.</>
                 ) : deleteDialog.type === "car" ? (
-                  <>Are you sure you want to delete car "{currentCar?.name}"? This will also delete its sessions and race results.</>
+                  <>Are you sure you want to delete car &ldquo;{currentCar?.name}&rdquo;? This will also delete its sessions and race results.</>
                 ) : deleteDialog.type === "location" ? (
-                  <>Are you sure you want to delete location "{currentLocation?.name}"? This will also delete all sessions and races at this location.</>
+                  <>Are you sure you want to delete location &ldquo;{currentLocation?.name}&rdquo;? This will also delete all sessions and races at this location.</>
                 ) : (
                   <>Are you sure you want to delete this motion setting? This cannot be undone.</>
                 )}

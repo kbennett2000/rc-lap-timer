@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { parseSessionInput } from "@/lib/session-input";
 
 export const dynamic = "force-dynamic";
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0;
-}
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -15,26 +12,11 @@ function badRequest(message: string) {
 
 // Saves one finished practice session with its laps and penalties.
 // Idempotent: posting a session id that already exists succeeds without changing anything, so clients can retry safely.
-async function saveSession(session: any) {
-  if (!isNonEmptyString(session?.id)) return badRequest("Session id is required");
-  if (!isNonEmptyString(session.driverId) || !isNonEmptyString(session.carId) || !isNonEmptyString(session.locationId)) {
-    return badRequest("Session driverId, carId and locationId are required");
-  }
-  const date = new Date(session.date);
-  if (Number.isNaN(date.getTime())) return badRequest("Session date is invalid");
-  if (!Array.isArray(session.laps)) return badRequest("Session laps must be an array");
-
-  const laps = session.laps.map((lap: any, index: number) => ({
-    lapNumber: typeof lap === "object" && Number.isInteger(lap?.lapNumber) ? lap.lapNumber : index + 1,
-    lapTime: Math.round(Number(typeof lap === "object" ? lap?.lapTime : lap)),
-  }));
-  if (laps.some((lap: { lapTime: number }) => !Number.isFinite(lap.lapTime) || lap.lapTime < 0)) {
-    return badRequest("Every lap needs a lap time of 0 ms or more");
-  }
-
-  const penalties = (Array.isArray(session.penalties) ? session.penalties : [])
-    .filter((penalty: any) => Number.isInteger(penalty?.lapNumber) && Number.isInteger(penalty?.count) && penalty.count > 0)
-    .map((penalty: any) => ({ lapNumber: penalty.lapNumber, count: penalty.count }));
+async function saveSession(input: unknown) {
+  const parsed = parseSessionInput(input);
+  if (!parsed.ok) return badRequest(parsed.error);
+  const { session } = parsed;
+  const { date, laps, penalties } = session;
 
   const existing = await prisma.session.findUnique({ where: { id: session.id }, select: { id: true } });
   if (existing) {
@@ -62,20 +44,20 @@ async function saveSession(session: any) {
           driverName: driver.name,
           carName: car.name,
           locationName: location.name,
-          totalTime: laps.reduce((sum: number, lap: { lapTime: number }) => sum + lap.lapTime, 0),
+          totalTime: laps.reduce((sum, lap) => sum + lap.lapTime, 0),
           totalLaps: laps.length,
         },
       });
 
       if (laps.length > 0) {
         await tx.lap.createMany({
-          data: laps.map((lap: { lapNumber: number; lapTime: number }) => ({ sessionId: session.id, ...lap })),
+          data: laps.map((lap) => ({ sessionId: session.id, ...lap })),
         });
       }
 
       if (penalties.length > 0) {
         await tx.penalty.createMany({
-          data: penalties.map((penalty: { lapNumber: number; count: number }) => ({ sessionId: session.id, ...penalty })),
+          data: penalties.map((penalty) => ({ sessionId: session.id, ...penalty })),
         });
       }
     });
@@ -218,7 +200,7 @@ export async function DELETE(request: Request) {
         logger.error("Prisma deletion error:", prismaError);
 
         // Check if this is a record not found error
-        if ((prismaError as any).code === "P2025") {
+        if (prismaError instanceof Prisma.PrismaClientKnownRequestError && prismaError.code === "P2025") {
           return NextResponse.json(
             {
               error: "Session not found",

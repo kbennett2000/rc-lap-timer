@@ -5,33 +5,9 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+// Every finished race entry. The Race History screen filters these on the client.
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const driver = searchParams.get("driver");
-    const car = searchParams.get("car");
-    const location = searchParams.get("location");
-
-    // TODO: delete?
-    // const races = await prisma.race.findMany({
-    //  where: {
-    //    status: "FINISHED",
-    //    entries: {
-    //      some: {
-    //        ...(driver !== "all" && { driverId: driver }),
-    //        ...(car !== "all" && { carId: car }),
-    //      },
-    //    },
-    //    ...(location !== "all" && { locationId: location }),
-    //  },
-    //  include: {
-    //    entries: {
-    //      include: { driver: true, car: true },
-    //    },
-    //  },
-    //  orderBy: { date: "desc" },
-    // });
-
     const races = await prisma.race.findMany({
       where: { status: "FINISHED" },
       include: {

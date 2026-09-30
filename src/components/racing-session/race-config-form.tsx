@@ -31,7 +31,7 @@ interface RaceConfigFormProps {
   onVoiceAnnouncementsChange: (enable: boolean) => void;
 }
 
-export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, startDelay, onStartDelayChange, totalLaps, onTotalLapsChange, playBeeps, onPlayBeepsChange, voiceAnnouncements, onVoiceAnnouncementsChange }) => {
+export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, startDelay, onStartDelayChange, onTotalLapsChange, playBeeps, onPlayBeepsChange, voiceAnnouncements, onVoiceAnnouncementsChange }) => {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [locations, setLocations] = useState<Location[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);

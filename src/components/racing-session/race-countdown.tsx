@@ -1,6 +1,7 @@
 // src/components/racing-session/race-countdown.tsx
 import React, { useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { createAudioContext } from "@/lib/utils";
 
 interface RaceCountdownProps {
   timeLeft: number;
@@ -14,7 +15,7 @@ export const RaceCountdown: React.FC<RaceCountdownProps> = ({ timeLeft, playBeep
     async (type: "count" | "start") => {
       if (!playBeeps) return;
 
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = createAudioContext();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 

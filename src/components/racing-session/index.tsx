@@ -6,10 +6,10 @@ import { RacePositionBoard } from "./race-position-board";
 import { RaceControls } from "./race-controls";
 import { RaceCountdown } from "./race-countdown";
 import IRDetector from "@/components/ir-detector";
-import { RaceStatus, RaceEntryStatus } from "@/types/race-timer";
+import { RaceConfiguration, RaceStatus } from "@/types/race-timer";
 import { logger } from "@/lib/logger";
 import { LEDDeviceService } from "@/services/ledDevice";
-import { fetchOk } from "@/lib/utils";
+import { createAudioContext, fetchOk } from "@/lib/utils";
 
 interface BeepOptions {
   frequency?: number;
@@ -220,7 +220,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setRaceStatus("RACING");
 
       // Clear previous race data and ensure we're creating new Maps
-      const emptyMap = new Map();
       setLapCounts(new Map());
       setLastLapTimes(new Map());
       setBestLapTimes(new Map());
@@ -295,7 +294,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       if (!lastDetectionTimes.has(carNumber)) return undefined;
 
       // Find the leader
-      const leader = Array.from(carPositions.entries()).find(([_, pos]) => pos === 1)?.[0];
+      const leader = Array.from(carPositions.entries()).find(([, pos]) => pos === 1)?.[0];
 
       if (!leader || leader === carNumber) return 0;
 
@@ -308,7 +307,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     [lastDetectionTimes, carPositions]
   );
 
-  const onRaceConfigured = async (config: any) => {
+  const onRaceConfigured = async (config: RaceConfiguration) => {
     try {
       // 1. Create race
       const response = await fetch("/api/races", {
@@ -329,7 +328,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       // 2. Set race ID in state
       setRaceId(race.id);
-      setAllowedCarNumbers(race.entries.map((e: any) => e.carNumber.toString()));
+      setAllowedCarNumbers(race.entries.map((e: { carNumber: number }) => e.carNumber.toString()));
 
       // 3. Start countdown
       const initiateCountdown = async () => {
@@ -400,7 +399,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     if (playBeeps) {
       return new Promise((resolve) => {
         // Create audio context
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioContext = createAudioContext();
 
         // Create oscillator and gain node
         const oscillator = audioContext.createOscillator();
@@ -578,18 +577,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     }
   };
 
-  const setLedRed = async (level: number): Promise<void> => {
-    try {
-      await fetchOk(`/api/ir/led/${level}/0/0`);
-
-      const scaledRed = 2.55 * level;
-      ledDevice.setColor(scaledRed, 0, 0);
-    } catch (error) {
-      console.error("Error setting LED RED:", error);
-      throw error;
-    }
-  };
-
   const setLedGreen = async (level: number): Promise<void> => {
     try {
       await fetchOk(`/api/ir/led/0/${level}/0`);
@@ -627,11 +614,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const flashLap = async (): Promise<void> => {
     await flashPresets.redFlash(1000);
-    setLedGreen(100);
-  };
-
-  const flashPenalty = async (): Promise<void> => {
-    await flashPresets.yellowFlash(1000);
     setLedGreen(100);
   };
 

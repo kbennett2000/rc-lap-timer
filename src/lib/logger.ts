@@ -1,18 +1,18 @@
 export const logger = {
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     console.log(new Date().toISOString(), ...args);
   },
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     console.error(new Date().toISOString(), ...args);
   },
 
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     console.info(...args);
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     console.warn(...args);
   },
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     console.debug(...args);
   },
 };

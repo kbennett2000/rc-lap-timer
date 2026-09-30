@@ -124,5 +124,5 @@ export interface RaceTimingEvent {
   raceId: string;
   carNumber?: number;
   timestamp: number;
-  data?: any;
+  data?: unknown;
 }

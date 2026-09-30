@@ -5,14 +5,19 @@ import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 // Validation helper functions
-function validateMotionSettings(data: any) {
+function isIntegerInRange(value: unknown, min: number, max: number): boolean {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+}
+
+// The body is untrusted JSON, so every field is checked at runtime.
+function validateMotionSettings(data: Record<string, unknown>) {
   const errors: string[] = [];
 
-  if (!data.name || typeof data.name !== "string" || data.name.trim().length === 0) {
+  if (typeof data.name !== "string" || data.name.trim().length === 0) {
     errors.push("Name is required");
   }
 
-  if (!Number.isInteger(data.sensitivity) || data.sensitivity < 5 || data.sensitivity > 200) {
+  if (!isIntegerInRange(data.sensitivity, 5, 200)) {
     errors.push("Sensitivity must be an integer between 5 and 200");
   }
 
@@ -20,11 +25,11 @@ function validateMotionSettings(data: any) {
     errors.push("Threshold must be a number between 0.1 and 10.0");
   }
 
-  if (!Number.isInteger(data.cooldown) || data.cooldown < 100 || data.cooldown > 25000) {
+  if (!isIntegerInRange(data.cooldown, 100, 25000)) {
     errors.push("Cooldown must be an integer between 100 and 25000");
   }
 
-  if (!Number.isInteger(data.framesToSkip) || data.framesToSkip < 1 || data.framesToSkip > 240) {
+  if (!isIntegerInRange(data.framesToSkip, 1, 240)) {
     errors.push("Frames to skip must be an integer between 1 and 240");
   }
 

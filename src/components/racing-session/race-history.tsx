@@ -19,17 +19,6 @@ const DATE_PRESETS = [
   { label: "Last Year", days: 365 },
 ];
 
-interface RaceHistoryProps {
-  onFilterChange?: (filters: RaceFilters) => void;
-}
-
-interface RaceFilters {
-  driver: string;
-  car: string;
-  location: string;
-  dateRange: { from: Date | null; to: Date | null };
-}
-
 interface RaceResult {
   id: string;
   date: Date;
@@ -60,7 +49,7 @@ interface Car {
   name: string;
 }
 
-export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
+export const RaceHistory: React.FC = () => {
   const [filterDriver, setFilterDriver] = useState("all");
   const [filterCar, setFilterCar] = useState("all");
   const [filterLocation, setFilterLocation] = useState("all");

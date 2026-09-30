@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { logger } from "@/lib/logger";
+import { createAudioContext } from "@/lib/utils";
 
 interface MotionDetectorProps {
   onMotionDetected?: (changePercent: number) => void;
@@ -61,7 +62,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [isRunning, setIsRunning] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [error, setError] = useState<string>("");
-  const [motionEvents, setMotionEvents] = useState(0);
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [savedSettings, setSavedSettings] = useState<MotionSettings[]>([]);
@@ -156,7 +156,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (!settings.enableAudio) return;
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = createAudioContext();
       }
       if (audioContextRef.current.state === "suspended") {
         await audioContextRef.current.resume();
@@ -265,7 +265,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
     if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
       let changedPixels = 0;
-      const debugFrame = settingsRef.current.enableDebugView ? debugCtx.createImageData(canvas.width, canvas.height) : null;
 
       for (let i = 0; i < currentFrame.data.length; i += 4) {
         const rDiff = Math.abs(currentFrame.data[i] - previousFrameRef.current.data[i]);
@@ -287,7 +286,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
 
           playBeep();
-          setMotionEvents((prev) => prev + 1);
 
           if (saveMDImagesRef.current) {
             // Save the frame to device gallery

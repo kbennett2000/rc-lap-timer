@@ -356,10 +356,10 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                           return (
                             <div className="bg-white p-3 border rounded-lg shadow-lg">
                               <p className="font-semibold mb-2">Lap {label}</p>
-                              {payload.map((entry: any, index: number) => (
+                              {payload.map((entry, index) => (
                                 <div key={index} className="text-sm">
                                   <span style={{ color: entry.color }}>{entry.name}</span>
-                                  <span className="font-mono ml-2">{formatTime(entry.value)}</span>
+                                  <span className="font-mono ml-2">{formatTime(Number(entry.value))}</span>
                                 </div>
                               ))}
                             </div>
