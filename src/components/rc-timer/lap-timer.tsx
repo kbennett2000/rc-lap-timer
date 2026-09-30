@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { Car as CarIcon, UserCog, Flag } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import DriverCarManager from "@/components/driver-car-manager";
-import { RacingSession } from "../racing-session";
-import { RaceHistory } from "../racing-session/race-history";
 import PracticeControl from "./practice-control";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { gridCols } from "@/lib/utils";
@@ -14,6 +13,15 @@ import { CAPABILITIES } from "@/platform/capabilities";
 
 // Practice, Race (Pi only) and Manager.
 const TAB_COUNT = CAPABILITIES.races ? 3 : 2;
+
+// Race mode is loaded when the Race tab is first opened. The phone-only build has no race mode, and the condition is
+// written out in full so that build leaves the code out altogether.
+const RaceTab =
+  process.env.NEXT_PUBLIC_TARGET === "standalone"
+    ? null
+    : dynamic(() => import("../racing-session/race-tab"), {
+        loading: () => <p className="p-4 text-sm text-muted-foreground">Loading race mode…</p>,
+      });
 
 export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("practice");
@@ -40,12 +48,11 @@ export default function LapTimer() {
           </TabsContent>
 
           {/* Race Session Tab */}
-          {CAPABILITIES.races && (
+          {RaceTab && (
             <TabsContent value="race" className="px-0 sm:px-4 space-y-4 h-full overflow-y-auto">
               <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
                 <ErrorBoundary>
-                  <RacingSession />
-                  <RaceHistory />
+                  <RaceTab />
                 </ErrorBoundary>
               </motion.div>
             </TabsContent>
@@ -72,7 +79,7 @@ export default function LapTimer() {
               </TabsTrigger>
 
               {/* Race */}
-              {CAPABILITIES.races && (
+              {RaceTab && (
                 <TabsTrigger value="race" className="py-3">
                   <div className="flex flex-col items-center">
                     <Flag className="h-5 w-5" />

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,6 @@ import {
   Cog,
   Wrench,
 } from "lucide-react";
-import PiConfiguration from "@/components/pi-config-settings";
 import {
   errorMessage,
   useAppData,
@@ -53,6 +53,10 @@ import TrackMeasurer from "./track-measurer";
 const TAB_COUNT = CAPABILITIES.piSystemConfig ? 5 : 4;
 // A car's default number is for IR timing, in practice and races.
 const SHOW_CAR_NUMBER = CAPABILITIES.irTiming || CAPABILITIES.races;
+
+// The Pi's System Settings, loaded when its tab is first opened; the phone-only build leaves them out.
+const PiConfiguration =
+  process.env.NEXT_PUBLIC_TARGET === "standalone" ? null : dynamic(() => import("@/components/pi-config-settings"));
 
 type EntityType = "driver" | "car" | "location" | "motionSetting";
 type ActionType = "add" | "edit";
@@ -512,7 +516,7 @@ const DriverCarManager: React.FC = () => {
           </TabsContent>
 
           {/* System Settings Tab */}
-          {CAPABILITIES.piSystemConfig && (
+          {PiConfiguration && (
             <TabsContent value="systemSettings" className="space-y-4">
               <div className="space-y-2">
                 <PiConfiguration />

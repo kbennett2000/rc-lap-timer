@@ -29,6 +29,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: The Pi build contains only its own code
+        run: node scripts/check-bundles.mjs pi
 
   pi-runtime:
     name: Build and start on Node 20 (what existing Pis run)
@@ -124,8 +126,10 @@ jobs:
       # The type check still covers the Pi's API routes, which use the Prisma client.
       - run: npx prisma generate
       - run: npm run build:pages
-      - name: The export has no API routes
-        run: test ! -e out/api
+      - name: The export has no API routes, and only the phone app's code
+        run: |
+          test ! -e out/api
+          node scripts/check-bundles.mjs standalone
       - name: Serve the export the way GitHub Pages does
         run: |
           npm run serve:pages > server.log 2>&1 &
