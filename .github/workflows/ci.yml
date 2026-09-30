@@ -92,6 +92,8 @@ jobs:
         run: npx prisma migrate deploy
       - name: Check the migrations produce the schema
         run: npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      - name: The upgrade's database step, on the kinds of database real timers have
+        run: tests/upgrade/test-upgrade-db.sh
       # The phone app too, for the sync tests. First: both builds use .next, and the phone app's lands in out/.
       - run: npm run build:pages
       - run: npm run build
