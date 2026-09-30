@@ -1,0 +1,14 @@
+# Generated or vendored
+node_modules/
+.next/
+out/
+package-lock.json
+prisma/migrations/
+
+# Prose and hardware docs are formatted by hand
+*.md
+docs/
+misc/
+images/
+ir_beacon/
+remote_led/
