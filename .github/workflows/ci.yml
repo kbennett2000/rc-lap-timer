@@ -131,6 +131,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: scripts/system/test-pi-network.sh
+      - name: The system settings helper's clock command
+        run: scripts/system/test-config-helper.sh
 
   phone-app:
     # The phone-only app (NEXT_PUBLIC_TARGET=standalone): a static site for GitHub Pages, with no server or database.
