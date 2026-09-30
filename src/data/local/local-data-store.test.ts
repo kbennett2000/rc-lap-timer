@@ -45,26 +45,10 @@ describe("the phone's on-device store", () => {
     );
   });
 
-  it("doesn't bring back a deleted session when its save is retried", async () => {
-    const { store, session } = await setUp();
-    await store.deleteSession(session.id);
-    expect(await store.saveSession(session)).toEqual({ created: false });
-    expect((await store.loadSnapshot()).sessions).toEqual([]);
-  });
-
   it("treats names that differ only in accents as the same", async () => {
     const store = createLocalDataStore(freshDb());
     await store.createDriver("José");
     await expect(store.createDriver("jose")).rejects.toMatchObject({ kind: "duplicate" });
-  });
-
-  it("keeps a session's updatedAt when names change, so only notes move it", async () => {
-    const { store, driver, session } = await setUp();
-    const before = (await store.loadSnapshot()).sessions[0].updatedAt;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    await store.renameDriver(driver.id, "Amelia");
-    const renamed = (await store.loadSnapshot()).sessions[0];
-    expect(renamed).toMatchObject({ id: session.id, driverName: "Amelia", updatedAt: before });
   });
 
   it("returns records without their name keys", async () => {

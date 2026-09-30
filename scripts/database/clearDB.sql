@@ -1,11 +1,13 @@
 -- Disable foreign key checks to allow deletion in any order
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Clear all tables
+-- Clear all tables. This clears the sync records too (tombstones, aliases, the timer's id), so a phone that syncs
+-- with the timer afterwards brings its own data back.
 TRUNCATE TABLE rc_lap_timer.Car;
 TRUNCATE TABLE rc_lap_timer.CurrentLap;
 TRUNCATE TABLE rc_lap_timer.CurrentSession;
 TRUNCATE TABLE rc_lap_timer.Driver;
+TRUNCATE TABLE rc_lap_timer.IdAlias;
 TRUNCATE TABLE rc_lap_timer.Lap;
 TRUNCATE TABLE rc_lap_timer.Location;
 TRUNCATE TABLE rc_lap_timer.MotionSettings;
@@ -15,6 +17,8 @@ TRUNCATE TABLE rc_lap_timer.RaceEntry;
 TRUNCATE TABLE rc_lap_timer.RaceLap;
 TRUNCATE TABLE rc_lap_timer.Session;
 TRUNCATE TABLE rc_lap_timer.SessionRequest;
+TRUNCATE TABLE rc_lap_timer.SyncMeta;
+TRUNCATE TABLE rc_lap_timer.Tombstone;
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;

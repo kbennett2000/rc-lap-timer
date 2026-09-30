@@ -233,3 +233,29 @@ enum RaceEntryStatus {
   FINISHED
   DNF
 }
+
+// For sync and backups (src/domain/sync). Every delete leaves a tombstone, so a backup or a phone that still has the
+// record can't bring it back. kind is the bundle's RecordKind: driver, car, location, session or motionSettings.
+model Tombstone {
+  kind      String
+  recordId  String
+  deletedAt DateTime
+
+  @@id([kind, recordId])
+  @@index([deletedAt])
+}
+
+// A record that was merged into another with the same name: fromId now means toId.
+model IdAlias {
+  kind   String
+  fromId String
+  toId   String
+
+  @@id([kind, fromId])
+}
+
+// The timer's own sync settings: its deviceId, and when a backup was last saved.
+model SyncMeta {
+  key   String @id
+  value String
+}

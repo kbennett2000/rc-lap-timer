@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { checkMotionSettings, duplicateNameMessage } from "@/domain/rules";
 import { badRequest, conflict, createOnce, isPrismaError, notFound, parseClientId, readJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { deleteMotionSettings } from "@/lib/deletes";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -69,10 +70,9 @@ export async function DELETE(request: Request) {
     const id = new URL(request.url).searchParams.get("id");
     if (!id) return badRequest("Motion settings ID is required");
 
-    await prisma.motionSettings.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+    const found = await prisma.$transaction((tx) => deleteMotionSettings(tx, id));
+    return found ? NextResponse.json({ success: true }) : notFound("Motion settings not found");
   } catch (error) {
-    if (isPrismaError(error, "P2025")) return notFound("Motion settings not found");
     logger.error("Error deleting motion settings:", error);
     return NextResponse.json({ error: "Failed to delete motion settings" }, { status: 500 });
   }
