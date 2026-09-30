@@ -120,6 +120,22 @@ sudo dnf install rpi-imager
 
 ![certificate warning image 2](/images/certWarning2.jpg)
 
+## Trusting the timer on a phone (optional)
+Each timer makes its own certificate the first time it starts, with a small certificate authority that phones can
+install. A phone that installs it no longer sees the warning above, and an iPhone needs it to sync with the phone app
+(Manager → Data → **Sync with the timer**). Android phones can sync without it. On the timer's Wi-Fi:
+
+- **iPhone or iPad:**
+  1. In Safari, open `192.168.4.1/rc-lap-timer-ca.crt` and tap **Allow**.
+  2. Open Settings, tap **Profile Downloaded**, then **Install**.
+  3. In Settings → General → About → **Certificate Trust Settings**, turn on **RC Lap Timer**.
+- **Android:** open `192.168.4.1/rc-lap-timer-ca.crt` in Chrome to download it, then in Settings search for
+  **CA certificate** and install the downloaded file.
+
+The certificate authority can only vouch for this timer: its key is deleted as soon as it has signed the timer's
+certificate. A timer makes a new certificate about every two years (and once when it's upgraded from the old SD
+image); install the new one then.
+
 
 
 # 📊 Usage Guide
