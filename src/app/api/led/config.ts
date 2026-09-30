@@ -1,4 +1,4 @@
-// The Remote LED display (remote_led/RemoteLED.cpp): an ESP32 on the timer's Wi-Fi that takes its commands as query
+// The Remote LED display (remote_led/RemoteLED.cpp): an ESP8266 on the timer's Wi-Fi that takes its commands as query
 // strings. The timer's pages send them to these routes as JSON posts, which another site can't, and the routes pass
 // them on with every value encoded.
 import { NextResponse } from "next/server";
