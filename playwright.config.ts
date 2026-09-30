@@ -12,7 +12,8 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [["list"], ["github"]] : "list",
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100",
+    // The phone-only app is served under its GitHub Pages path (npm run serve:pages); its tests open "./".
+    baseURL: process.env.E2E_BASE_URL ?? (standalone ? "http://127.0.0.1:3100/rc-lap-timer/" : "http://127.0.0.1:3100"),
     // Bundled Chromium by default (npx playwright install chromium); E2E_CHANNEL=chrome uses an installed Chrome.
     channel: process.env.E2E_CHANNEL,
     trace: "retain-on-failure",

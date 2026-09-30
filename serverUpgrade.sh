@@ -80,8 +80,9 @@ echo "*** UpgrayeDD tar!"
 curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=tarring" 2>/dev/null || true
 sleep 2
 # `*` already covers package.json, node_modules and public; .next is the only dot-dir needed.
-# Dotfiles such as .env are not matched by `*`, and TLS keys are excluded explicitly.
-tar -czf rc-lap-timer-build.tar.gz --exclude='*.pem' --exclude='rc-lap-timer-build.tar.gz' * .next
+# Dotfiles such as .env are not matched by `*`, and TLS keys are excluded explicitly, as is out/ (the phone-only
+# build, which the Pi doesn't serve).
+tar -czf rc-lap-timer-build.tar.gz --exclude='*.pem' --exclude='rc-lap-timer-build.tar.gz' --exclude='out' * .next
 
 echo "*** UpgrayeDD pi file!"
 curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=sending%20to%20Pi" 2>/dev/null || true

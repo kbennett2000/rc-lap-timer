@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,8 @@ import {
   Users,
   Cog,
   Wrench,
+  Database,
 } from "lucide-react";
-import PiConfiguration from "@/components/pi-config-settings";
 import {
   errorMessage,
   useAppData,
@@ -45,14 +46,19 @@ import {
   useUpdateMotionSettings,
 } from "@/data/hooks";
 import { sameName } from "@/domain/rules";
+import { DataTab } from "@/features/data/data-tab";
 import { gridCols } from "@/lib/utils";
 import { CAPABILITIES } from "@/platform/capabilities";
 import TrackMeasurer from "./track-measurer";
 
-// Drivers & Cars, Locations, Motion Settings, Utilities, and System Settings on the Pi.
-const TAB_COUNT = CAPABILITIES.piSystemConfig ? 5 : 4;
+// Drivers & Cars, Locations, Motion Settings and Utilities, then System Settings on the Pi or Data on the phone.
+const TAB_COUNT = 4 + Number(CAPABILITIES.piSystemConfig) + Number(CAPABILITIES.onDeviceData);
 // A car's default number is for IR timing, in practice and races.
 const SHOW_CAR_NUMBER = CAPABILITIES.irTiming || CAPABILITIES.races;
+
+// The Pi's System Settings, loaded when its tab is first opened; the phone-only build leaves them out.
+const PiConfiguration =
+  process.env.NEXT_PUBLIC_TARGET === "standalone" ? null : dynamic(() => import("@/components/pi-config-settings"));
 
 type EntityType = "driver" | "car" | "location" | "motionSetting";
 type ActionType = "add" | "edit";
@@ -262,6 +268,15 @@ const DriverCarManager: React.FC = () => {
                 <span className="text-xs mt-1">Utilities</span>
               </div>
             </TabsTrigger>
+
+            {CAPABILITIES.onDeviceData && (
+              <TabsTrigger value="data">
+                <div className="flex flex-col items-center">
+                  <Database className="h-6 w-6" />
+                  <span className="text-xs mt-1">Data</span>
+                </div>
+              </TabsTrigger>
+            )}
 
             {CAPABILITIES.piSystemConfig && (
               <TabsTrigger value="systemSettings">
@@ -511,8 +526,15 @@ const DriverCarManager: React.FC = () => {
             </div>
           </TabsContent>
 
+          {/* Data Tab: installing the phone-only app, and its storage */}
+          {CAPABILITIES.onDeviceData && (
+            <TabsContent value="data" className="space-y-4">
+              <DataTab />
+            </TabsContent>
+          )}
+
           {/* System Settings Tab */}
-          {CAPABILITIES.piSystemConfig && (
+          {PiConfiguration && (
             <TabsContent value="systemSettings" className="space-y-4">
               <div className="space-y-2">
                 <PiConfiguration />

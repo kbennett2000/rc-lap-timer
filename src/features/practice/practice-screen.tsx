@@ -22,10 +22,12 @@ import { noopIntegrations } from "@/integrations/noop";
 import { createPiIntegrations } from "@/integrations/pi";
 import { newId } from "@/lib/utils";
 import { CAPABILITIES } from "@/platform/capabilities";
+import { keepDataOnDevice } from "@/pwa/storage";
 import { now } from "@/timing/clock";
 import { toSessionPayload, type FinishedRun, type TimingMode } from "@/timing/engine";
 import type { CreatedEntity } from "./add-entity-dialog";
 import { CurrentRunCard } from "./current-run-card";
+import { InstallHint } from "./install-hint";
 import { IrTiming } from "./ir-timing";
 import { ManualControls } from "./manual-controls";
 import { MotionTiming } from "./motion-timing";
@@ -45,7 +47,9 @@ function unsavedMessage(failures: SaveFailure[]): string {
   if (cannotSave) {
     return `${what} could not be saved: ${cannotSave.message}. ${failures.length === 1 ? "It is" : "They are"} kept on this device; use Discard at the top of the Practice screen if you don't need ${failures.length === 1 ? "it" : "them"}.`;
   }
-  return `${what} could not be saved. ${failures.length === 1 ? "It has" : "They have"} been kept on this device: check the connection to the timer, then use Retry save at the top of the Practice screen.`;
+  // On the Pi, a save that can be retried failed to reach it; in the phone-only app, the phone's storage failed.
+  const retryHint = CAPABILITIES.onDeviceData ? "try again" : "check the connection to the timer, then try again";
+  return `${what} could not be saved. ${failures.length === 1 ? "It has" : "They have"} been kept on this device: ${retryHint} with Retry save at the top of the Practice screen.`;
 }
 
 const tabMotion = {
@@ -91,6 +95,8 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
       if (run.config.timingMode === "motion") motionRef.current?.stop();
       const outcome = await outbox.saveNew(toSessionPayload(run));
       if (!outcome.ok) alert(unsavedMessage([outcome]));
+      // Once there's something worth keeping, ask the browser not to clear it (it decides without asking the user).
+      else if (CAPABILITIES.onDeviceData) void keepDataOnDevice();
     },
     [outbox],
   );
@@ -234,6 +240,8 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
         <CardTitle>Practice</CardTitle>
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
+        {CAPABILITIES.onDeviceData && <InstallHint />}
+
         {interrupted && (
           <Alert className="mb-4 border-blue-300 bg-blue-50">
             <History className="h-4 w-4" />

@@ -2,11 +2,19 @@ import { describe, expect, it } from "vitest";
 import { capabilitiesFor } from "./capabilities";
 
 describe("capabilitiesFor", () => {
-  it("gives the Pi build everything", () => {
-    expect(Object.values(capabilitiesFor("pi")).every(Boolean)).toBe(true);
+  it("gives the Pi build its features, with the data on the Pi", () => {
+    expect(capabilitiesFor("pi")).toEqual({
+      races: true,
+      irTiming: true,
+      remoteControl: true,
+      liveSessionView: true,
+      ledDisplay: true,
+      piSystemConfig: true,
+      onDeviceData: false,
+    });
   });
 
-  it("hides every Pi feature in the phone-only build", () => {
+  it("hides every Pi feature in the phone-only build, which keeps its data on the phone", () => {
     expect(capabilitiesFor("standalone")).toEqual({
       races: false,
       irTiming: false,
@@ -14,6 +22,7 @@ describe("capabilitiesFor", () => {
       liveSessionView: false,
       ledDisplay: false,
       piSystemConfig: false,
+      onDeviceData: true,
     });
   });
 });
