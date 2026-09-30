@@ -20,6 +20,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+// Only real numbers count as lap times: Number(null), Number("") and Number(true) would all pass as 0 or 1.
+function asNumber(value: unknown): number {
+  return typeof value === "number" ? value : Number.NaN;
+}
+
 // Laps may be numbers (lap times in ms) or { lapNumber, lapTime } objects. Lap times are rounded to whole ms.
 // Penalties that aren't a positive whole count on a whole lap number are dropped.
 export function parseSessionInput(input: unknown): ParseResult {
@@ -34,7 +39,7 @@ export function parseSessionInput(input: unknown): ParseResult {
 
   const laps = input.laps.map((lap: unknown, index: number) => ({
     lapNumber: isRecord(lap) && Number.isInteger(lap.lapNumber) ? (lap.lapNumber as number) : index + 1,
-    lapTime: Math.round(Number(isRecord(lap) ? lap.lapTime : lap)),
+    lapTime: Math.round(asNumber(isRecord(lap) ? lap.lapTime : lap)),
   }));
   if (laps.some((lap) => !Number.isFinite(lap.lapTime) || lap.lapTime < 0)) {
     return { ok: false, error: "Every lap needs a lap time of 0 ms or more" };
