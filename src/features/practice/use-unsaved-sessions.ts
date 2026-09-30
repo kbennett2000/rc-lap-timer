@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { logger } from "@/lib/logger";
+import { useQueryClient } from "@tanstack/react-query";
+import { DATA_KEY, errorMessage } from "@/data/hooks";
+import { useDataStore } from "@/data/provider";
+import { DataStoreError } from "@/data/types";
 import type { NewSession } from "@/domain/types";
+import { logger } from "@/lib/logger";
 
 // Finished sessions are written here before they are sent, and leave only once the server has them. A failed save,
 // a lost connection or a page killed mid-save all leave the session here, with Retry save.
@@ -13,7 +17,13 @@ const LEGACY_STORAGE_KEYS = ["rc-lap-timer-sessions", "rc-lap-timer-drivers"];
 // Entries written by older versions may lack some fields.
 export type UnsavedSession = Pick<NewSession, "id"> & Partial<NewSession>;
 
+// retryable is false when trying again can't help, for example because the session's driver was deleted.
+export type SaveFailure = { ok: false; retryable: boolean; message: string };
+export type SaveOutcome = { ok: true } | SaveFailure;
+
 export function useUnsavedSessions() {
+  const store = useDataStore();
+  const queryClient = useQueryClient();
   const listRef = useRef<UnsavedSession[]>([]);
   const [unsaved, setUnsaved] = useState<UnsavedSession[]>([]);
   // Sessions being sent right now: already written to storage, but not shown as unsaved unless the send fails.
@@ -46,44 +56,40 @@ export function useUnsavedSessions() {
 
   const without = (id: string) => listRef.current.filter((pending) => pending.id !== id);
 
-  // Sends one session. Saving is idempotent: the server ignores an id it already has, so retries are safe.
+  // Sends one session. Saving is idempotent: the store ignores an id it already has, so retries are safe.
   const save = useCallback(
-    async (session: UnsavedSession): Promise<boolean> => {
+    async (session: UnsavedSession): Promise<SaveOutcome> => {
       try {
-        const response = await fetch("/api/data", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || `Failed to save session (HTTP ${response.status})`);
-        }
+        // Entries come from localStorage, so they may be incomplete: the store checks them and refuses what it can't save.
+        await store.saveSession(session as NewSession);
         setList(without(session.id));
-        return true;
+        void queryClient.invalidateQueries({ queryKey: DATA_KEY });
+        return { ok: true };
       } catch (error) {
         logger.error("Error saving session:", error);
         if (!listRef.current.some((pending) => pending.id === session.id)) setList([...listRef.current, session]);
-        return false;
+        const retryable = !(error instanceof DataStoreError) || error.kind === "unavailable";
+        return { ok: false, retryable, message: errorMessage(error) };
       }
     },
-    [setList],
+    [setList, store, queryClient],
   );
 
-  // Returns how many still failed.
-  const retryAll = useCallback(async (): Promise<number> => {
+  // Returns the sessions that still failed.
+  const retryAll = useCallback(async (): Promise<SaveFailure[]> => {
     setIsRetrying(true);
-    let failed = 0;
+    const failures: SaveFailure[] = [];
     for (const session of [...listRef.current]) {
-      if (!(await save(session))) failed++;
+      const outcome = await save(session);
+      if (!outcome.ok) failures.push(outcome);
     }
     setIsRetrying(false);
-    return failed;
+    return failures;
   }, [save]);
 
   // A newly finished session: stored first, then sent.
   const saveNew = useCallback(
-    async (session: UnsavedSession): Promise<boolean> => {
+    async (session: UnsavedSession): Promise<SaveOutcome> => {
       setList([...without(session.id), session]);
       setSending((ids) => new Set(ids).add(session.id));
       try {

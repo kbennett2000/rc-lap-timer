@@ -1,8 +1,8 @@
 "use client";
 
+import { errorMessage, useUpdateSessionNotes } from "@/data/hooks";
 import { isWithinRange, todayRange, type DateRange } from "@/domain/date-range";
 import { DateRangeFilter } from "@/features/history/date-range-filter";
-import { logger } from "@/lib/logger";
 import { useState, useEffect } from "react";
 import { formatDateTime } from "@/domain/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,16 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Edit, Save, FileText } from "lucide-react";
-import { Session } from "@/types/rc-timer";
+import type { Session } from "@/domain/types";
 import { cn } from "@/lib/utils";
 
 interface SessionNotesProps {
   sessions: Session[];
-  // Called after notes are saved so the parent's session list shows them right away.
-  onNotesSaved?: (sessionId: string, notes: string) => void;
 }
 
-export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
+export function SessionNotes({ sessions }: SessionNotesProps) {
+  const updateNotes = useUpdateSessionNotes();
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -79,21 +78,10 @@ export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
     if (!selectedSession) return;
 
     try {
-      const response = await fetch("/api/data", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: selectedSession.id,
-          notes: notes,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to save notes");
-      onNotesSaved?.(selectedSession.id, notes);
+      await updateNotes.mutateAsync({ id: selectedSession.id, notes });
       setIsEditing(false);
     } catch (error) {
-      logger.error("Error saving notes:", error);
-      alert("Failed to save notes. Please try again.");
+      alert(`Failed to save the notes. ${errorMessage(error)}`);
     }
   };
 
