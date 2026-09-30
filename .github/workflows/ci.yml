@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Format, lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  pi-runtime:
+    name: Build and start on Node 20 (what existing Pis run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run build
+      - name: Start the app and load the home page
+        run: |
+          npx next start -p 3000 -H 127.0.0.1 > server.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -fs -o /dev/null http://127.0.0.1:3000/ && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+
+  integration:
+    name: Migrations, API and browser tests (MariaDB)
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        # The MariaDB version Raspberry Pi OS (bookworm) ships.
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci
+          MARIADB_DATABASE: rc_lap_timer
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:ci@127.0.0.1:3306/rc_lap_timer
+      ADMIN_PIN: test1234
+      API_ADMIN_PIN: test1234
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+      - name: Check the migrations produce the schema
+        run: npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      - run: npm run build
+      - name: Start the app
+        run: |
+          npx next start -p 3100 -H 127.0.0.1 > server.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -fs -o /dev/null http://127.0.0.1:3100/ && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+      - run: npm run test:api
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Keep traces and the server log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-results
+          path: |
+            test-results/
+            server.log
+          retention-days: 7
