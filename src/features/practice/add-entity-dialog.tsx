@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { errorMessage, useCreateCar, useCreateDriver, useCreateLocation } from "@/data/hooks";
 import type { Car, Driver, Location } from "@/domain/types";
+import { CAPABILITIES } from "@/platform/capabilities";
 
 export type EntityType = "driver" | "car" | "location";
 
@@ -83,7 +84,7 @@ export function AddEntityDialog({ type, existingNames, driverId, onClose, onCrea
             className={duplicate ? "border-red-500" : ""}
           />
 
-          {type === "car" && (
+          {type === "car" && (CAPABILITIES.irTiming || CAPABILITIES.races) && (
             <div className="space-y-2">
               <Label>Default IR Car Number (Optional)</Label>
               <Input

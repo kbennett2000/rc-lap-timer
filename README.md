@@ -276,12 +276,20 @@ npx prisma migrate deploy
 npm run dev
 ```
 
+`NEXT_PUBLIC_TARGET=standalone npm run dev` runs the phone-only build instead: the Pi's features (Race, IR timing,
+remote control, the live view, LEDs and System Settings) are hidden. For now it still stores its data through the
+Pi's API.
+
+Screens read and change data only through the `DataStore` in [src/data/types.ts](src/data/types.ts).
+[tests/datastore/conformance.ts](tests/datastore/conformance.ts) lists the rules every store follows, as tests.
+
 ## Checks
 CI runs all of these on every pull request:
 - `npm run format:check` (fix with `npm run format`), `npm run lint`, `npm run typecheck`
 - `npm test`: unit tests
 - `npm run test:api` and `npm run test:e2e`: API and browser tests against a running server and database.
-  [tests/api/api.test.ts](tests/api/api.test.ts) shows how to start both.
+  [tests/api/api.test.ts](tests/api/api.test.ts) shows how to start both. For a server built with
+  `NEXT_PUBLIC_TARGET=standalone`, run `E2E_TARGET=standalone npm run test:e2e`.
 
 To change the database schema, edit `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>`, and
 commit the new folder under `prisma/migrations/`. `migrate dev` needs a database user that can create databases.

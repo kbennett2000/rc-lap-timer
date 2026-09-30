@@ -45,7 +45,14 @@ import {
   useUpdateMotionSettings,
 } from "@/data/hooks";
 import { sameName } from "@/domain/rules";
+import { gridCols } from "@/lib/utils";
+import { CAPABILITIES } from "@/platform/capabilities";
 import TrackMeasurer from "./track-measurer";
+
+// Drivers & Cars, Locations, Motion Settings, Utilities, and System Settings on the Pi.
+const TAB_COUNT = CAPABILITIES.piSystemConfig ? 5 : 4;
+// A car's default number is for IR timing, in practice and races.
+const SHOW_CAR_NUMBER = CAPABILITIES.irTiming || CAPABILITIES.races;
 
 type EntityType = "driver" | "car" | "location" | "motionSetting";
 type ActionType = "add" | "edit";
@@ -222,7 +229,7 @@ const DriverCarManager: React.FC = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="drivers">
-          <TabsList className="grid w-full h-full grid-cols-5">
+          <TabsList className={`grid w-full h-full ${gridCols(TAB_COUNT)}`}>
             <TabsTrigger value="drivers">
               <div className="flex flex-col items-center">
                 <Users className="h-6 w-6" />
@@ -256,15 +263,17 @@ const DriverCarManager: React.FC = () => {
               </div>
             </TabsTrigger>
 
-            <TabsTrigger value="systemSettings">
-              <div className="flex flex-col items-center">
-                <Cog className="h-6 w-6" />
-                <span className="text-xs mt-1">
-                  System <br />
-                  Settings
-                </span>
-              </div>
-            </TabsTrigger>
+            {CAPABILITIES.piSystemConfig && (
+              <TabsTrigger value="systemSettings">
+                <div className="flex flex-col items-center">
+                  <Cog className="h-6 w-6" />
+                  <span className="text-xs mt-1">
+                    System <br />
+                    Settings
+                  </span>
+                </div>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Drivers & Cars Tab */}
@@ -503,12 +512,13 @@ const DriverCarManager: React.FC = () => {
           </TabsContent>
 
           {/* System Settings Tab */}
-          <TabsContent value="systemSettings" className="space-y-4">
-            <div className="space-y-2">
-              {/* Pi Configuration Settings */}
-              <PiConfiguration />
-            </div>
-          </TabsContent>
+          {CAPABILITIES.piSystemConfig && (
+            <TabsContent value="systemSettings" className="space-y-4">
+              <div className="space-y-2">
+                <PiConfiguration />
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Add/Edit Entity Dialog */}
@@ -554,7 +564,7 @@ const DriverCarManager: React.FC = () => {
 
             <div className="py-4">
               {/* Car Number Input for Cars */}
-              {entityDialogState.type === "car" && (
+              {entityDialogState.type === "car" && SHOW_CAR_NUMBER && (
                 <div className="space-y-2">
                   <Label>Default IR Car Number (Optional)</Label>
                   <Input

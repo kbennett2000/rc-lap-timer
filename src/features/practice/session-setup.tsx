@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Driver, Location } from "@/domain/types";
+import { CAPABILITIES } from "@/platform/capabilities";
 import type { LapTarget, TimingMode } from "@/timing/engine";
 import { AddEntityDialog, type CreatedEntity, type EntityType } from "./add-entity-dialog";
 import type { SoundSettings } from "./run-sounds";
@@ -111,20 +112,22 @@ export function SessionSetup({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
-          <input
-            type="checkbox"
-            id="remoteControl"
-            checked={remoteControl}
-            onChange={(e) => onRemoteControlChange(e.target.checked)}
-            disabled={locked}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          <label htmlFor="remoteControl" className="text-sm font-medium">
-            Enable Remote Control Mode
-          </label>
-          {remoteControl && <div className="ml-2 text-sm text-gray-500">Polling for session requests...</div>}
-        </div>
+        {CAPABILITIES.remoteControl && (
+          <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
+            <input
+              type="checkbox"
+              id="remoteControl"
+              checked={remoteControl}
+              onChange={(e) => onRemoteControlChange(e.target.checked)}
+              disabled={locked}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <label htmlFor="remoteControl" className="text-sm font-medium">
+              Enable Remote Control Mode
+            </label>
+            {remoteControl && <div className="ml-2 text-sm text-gray-500">Polling for session requests...</div>}
+          </div>
+        )}
 
         <div className={`space-y-2 ${hidden}`}>
           <Label>Driver</Label>
@@ -303,13 +306,15 @@ export function SessionSetup({
                 Time Using Motion Detection
               </Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="ir" id="timing-ir" />
-              <Label htmlFor="timing-ir" className="flex items-center">
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Time Using IR
-              </Label>
-            </div>
+            {CAPABILITIES.irTiming && (
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="ir" id="timing-ir" />
+                <Label htmlFor="timing-ir" className="flex items-center">
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  Time Using IR
+                </Label>
+              </div>
+            )}
           </RadioGroup>
         </div>
 

@@ -18,8 +18,10 @@ import type { Session } from "@/domain/types";
 import { SessionHistory } from "@/features/history/session-history";
 import { useLatest } from "@/hooks/use-latest";
 import { useWakeLock } from "@/hooks/use-wake-lock";
+import { noopIntegrations } from "@/integrations/noop";
 import { createPiIntegrations } from "@/integrations/pi";
 import { newId } from "@/lib/utils";
+import { CAPABILITIES } from "@/platform/capabilities";
 import { now } from "@/timing/clock";
 import { toSessionPayload, type FinishedRun, type TimingMode } from "@/timing/engine";
 import type { CreatedEntity } from "./add-entity-dialog";
@@ -59,7 +61,10 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
   const outbox = useUnsavedSessions();
   const wakeLock = useWakeLock();
   const motionRef = useRef<MotionDetectorHandle>(null);
-  const [integrations] = useState(() => createPiIntegrations());
+  // The Pi's LEDs and live view follow the run; the phone-only build has neither.
+  const [integrations] = useState(() =>
+    CAPABILITIES.ledDisplay || CAPABILITIES.liveSessionView ? createPiIntegrations() : noopIntegrations,
+  );
 
   const [activeTab, setActiveTab] = useState("current");
   const [selection, setSelection] = useState<Selection>({
@@ -146,7 +151,7 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
   };
 
   useRemoteControl({
-    enabled: remoteControl,
+    enabled: CAPABILITIES.remoteControl && remoteControl,
     isIdle: () => store.getState().status !== "running" && !timing.interrupted,
     onRequest: async (request) => {
       // The request may name a driver or car added on another phone moments ago.
@@ -191,7 +196,8 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
       carId: config.carId,
       locationId: config.locationId,
       lapTarget: config.lapTarget,
-      timingMode: config.timingMode,
+      // Without IR timing there is no IR screen (or Stop button) to go back to, so the run carries on with taps.
+      timingMode: config.timingMode === "ir" && !CAPABILITIES.irTiming ? "manual" : config.timingMode,
     });
     timing.resume();
   };
