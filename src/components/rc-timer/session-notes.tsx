@@ -17,16 +17,16 @@ import { logger } from "@/lib/logger";
 
 interface SessionNotesProps {
   sessions: Session[];
+  // Called after notes are saved so the parent's session list shows them right away.
+  onNotesSaved?: (sessionId: string, notes: string) => void;
 }
 
-export function SessionNotes({ sessions }: SessionNotesProps) {
+export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [notes, setNotes] = useState("");
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
@@ -154,53 +154,13 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
       });
 
       if (!response.ok) throw new Error("Failed to save notes");
+      onNotesSaved?.(selectedSession.id, notes);
       setIsEditing(false);
-      setIsRefreshing(false);
     } catch (error) {
       logger.error("Error saving notes:", error);
       alert("Failed to save notes. Please try again.");
     }
   };
-
-  // Focus/blur handlers for textarea
-  useEffect(() => {
-    const handleFocus = (e: FocusEvent) => {
-      if (e.target instanceof HTMLTextAreaElement && refreshInterval) {
-        clearInterval(refreshInterval);
-        setRefreshInterval(null);
-      }
-    };
-
-    const handleBlur = (e: FocusEvent) => {
-      if (e.target instanceof HTMLTextAreaElement && !refreshInterval) {
-        const interval = setInterval(() => {
-          setIsRefreshing(true);
-        }, 5000);
-        setRefreshInterval(interval);
-      }
-    };
-
-    document.addEventListener("focus", handleFocus, true);
-    document.addEventListener("blur", handleBlur, true);
-
-    return () => {
-      document.removeEventListener("focus", handleFocus, true);
-      document.removeEventListener("blur", handleBlur, true);
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
-  }, [refreshInterval]);
-
-  // Update notes when selected session changes or sessions update
-  useEffect(() => {
-    if (selectedSession) {
-      const updatedSession = sessions.find((s) => s.id === selectedSession.id);
-      if (updatedSession && updatedSession.notes !== notes && !isEditing) {
-        setNotes(updatedSession.notes || "");
-      }
-    }
-  }, [sessions, selectedSession, isEditing, notes]);
 
   return (
     <Card>
@@ -388,8 +348,6 @@ export function SessionNotes({ sessions }: SessionNotesProps) {
           </div>
         )}
       </CardContent>
-      {/* Optional: Add refresh indicator */}
-      {isRefreshing && <div className="fixed bottom-20 right-4 text-xs text-muted-foreground">Syncing...</div>}
     </Card>
   );
 }

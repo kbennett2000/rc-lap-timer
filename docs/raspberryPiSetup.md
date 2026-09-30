@@ -522,17 +522,20 @@ server {
     ssl_prefer_server_ciphers on;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
 
-    # Next.js application
+    # The app doesn't use Next.js image optimization; blocking it closes a class of Next.js advisories.
+    location /_next/image {
+        return 404;
+    }
+
+    # Next.js application. No WebSocket upgrade headers are forwarded: the app doesn't use them,
+    # and forwarding them exposes Next.js 14 to advisories that have no 14.x fix.
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
     }
 
     # IR Detector API
@@ -583,11 +586,14 @@ Type=simple
 User=pi
 Group=pi
 WorkingDirectory=/home/pi/rc-lap-timer
-ExecStart=/usr/bin/node /home/pi/rc-lap-timer/node_modules/.bin/next start -p 3000
+# Listen on localhost only, so nginx (TLS and the hardening above) is the only way in
+ExecStart=/usr/bin/node /home/pi/rc-lap-timer/node_modules/.bin/next start -p 3000 -H 127.0.0.1
 Restart=always
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
+# Optional settings such as ADMIN_PIN (see "System Configuration Feature Setup")
+EnvironmentFile=-/etc/rc-lap-timer.env
 
 [Install]
 WantedBy=multi-user.target
@@ -754,78 +760,22 @@ sudo systemctl start nginx
 
 ### System Configuration Feature Setup
 
-Create a shell script to handle system changes:
+Install the configuration helper from the repository. It validates every value, reads passwords
+from stdin, and never passes input through `sed` or a shell:
 ```bash
-sudo nano /usr/local/bin/rc-config-helper.sh
+sudo install -o root -g root -m 755 ~/rc-lap-timer/scripts/system/rc-config-helper.sh /usr/local/bin/rc-config-helper.sh
 ```
 
-Add this content:
+The System Settings screen is disabled until you set an admin PIN. Create `/etc/rc-lap-timer.env`
+(it's outside the app folder, so upgrades don't overwrite it) and restart the app:
 ```bash
-#!/bin/bash
-
-# Exit on any error
-set -e
-
-# Function to update wifi settings
-update_wifi() {
-    local name="$1"
-    local pass="$2"
-    echo "Updating WiFi settings: name=$name"
-    if [ ! -z "$name" ]; then
-        sed -i "s/^ssid=.*/ssid=$name/" /etc/hostapd/hostapd.conf
-    fi
-    if [ ! -z "$pass" ]; then
-        sed -i "s/^wpa_passphrase=.*/wpa_passphrase=$pass/" /etc/hostapd/hostapd.conf
-    fi
-    systemctl restart hostapd
-    echo "WiFi settings updated successfully"
-}
-
-# Function to update hostname
-update_hostname() {
-    local name="$1"
-    echo "Updating hostname to: $name"
-    echo "$name" > /etc/hostname
-    sed -i "s/127\.0\.1\.1.*/127.0.1.1\t$name/" /etc/hosts
-    echo "Hostname updated successfully"
-}
-
-# Function to update user password
-update_password() {
-    local pass="$1"
-    echo "Updating user password"
-    echo "pi:$pass" | chpasswd
-    echo "Password updated successfully"
-}
-
-# Log the command being executed (without password)
-if [ "$1" = "password" ]; then
-    echo "Executing command: $1 ****"
-else
-    echo "Executing command: $@"
-fi
-
-# Parse commands
-case "$1" in
-    "wifi")
-        update_wifi "$2" "$3"
-        ;;
-    "hostname")
-        update_hostname "$2"
-        ;;
-    "password")
-        update_password "$2"
-        ;;
-    "reboot")
-        echo "Initiating system reboot..."
-        shutdown -r now
-        ;;
-    *)
-        echo "Invalid command: $1"
-        exit 1
-        ;;
-esac
+echo 'ADMIN_PIN=choose-a-pin' | sudo tee /etc/rc-lap-timer.env > /dev/null
+sudo chmod 600 /etc/rc-lap-timer.env
+sudo systemctl restart rc-lap-timer
 ```
+Use 6-32 letters or numbers. Anyone who knows the PIN can rename the Pi, change the `pi` user's
+password and reboot it, so don't share it with guests on the Wi-Fi. Wrong PINs lock System Settings for a
+while (longer after each lockout); `sudo systemctl restart rc-lap-timer` clears the lock.
 
 Update sudoers:
 ```bash

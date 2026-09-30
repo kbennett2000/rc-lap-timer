@@ -1,46 +1,30 @@
 // src/app/api/session-requests/[id]/status/route.ts
 import { NextResponse } from "next/server";
+import { Prisma, SessionRequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+
+const VALID_STATUSES = new Set<string>(Object.values(SessionRequestStatus));
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const { status } = await request.json();
-    const { id } = params;
 
-    // Check current status
-    const currentState = await prisma.sessionRequest.findUnique({
-      where: { id },
+    if (typeof status !== "string" || !VALID_STATUSES.has(status)) {
+      return NextResponse.json({ error: `status must be one of ${[...VALID_STATUSES].join(", ")}` }, { status: 400 });
+    }
+
+    const updatedRequest = await prisma.sessionRequest.update({
+      where: { id: params.id },
+      data: { status: status as SessionRequestStatus },
     });
 
-    // Update using raw SQL first to verify enum
-    const rawUpdate = await prisma.$executeRaw`
-      UPDATE SessionRequest 
-      SET status = ${status}, 
-          updatedAt = NOW() 
-      WHERE id = ${id}
-    `;
-
-    // Verify the update with Prisma
-    const updatedRequest = await prisma.sessionRequest.findUnique({
-      where: { id },
-    });
-
-    // Check all requests after update
-    const allRequests = await prisma.sessionRequest.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-
-    return NextResponse.json({
-      success: true,
-      state: {
-        before: currentState,
-        after: updatedRequest,
-      },
-      allRequests,
-    });
+    return NextResponse.json({ success: true, request: updatedRequest });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json({ error: "Session request not found" }, { status: 404 });
+    }
     logger.error("Error updating status:", error);
-    return NextResponse.json({ error: "Failed to update status", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
   }
 }

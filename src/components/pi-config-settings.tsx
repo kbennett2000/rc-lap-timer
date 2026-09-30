@@ -1,85 +1,79 @@
 import React, { useState } from "react";
-import { AlertCircle, Save, RotateCw } from "lucide-react";
+import { Save, RotateCw } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { validateSystemSettings } from "@/lib/system-settings";
+
+const RELOAD_AFTER_REBOOT_MS = 60_000;
+
+type Settings = {
+  adminPin: string;
+  deviceName: string;
+  userPassword: string;
+  wifiName: string;
+  wifiPassword: string;
+};
+
+const EMPTY_SETTINGS: Settings = { adminPin: "", deviceName: "", userPassword: "", wifiName: "", wifiPassword: "" };
+
+function validateSettings(settings: Settings): string | null {
+  if (!settings.adminPin) return "Enter the admin PIN.";
+  return validateSystemSettings(settings);
+}
 
 const PiConfiguration = () => {
-  const [settings, setSettings] = useState({
-    deviceName: "",
-    userPassword: "",
-    wifiName: "",
-    wifiPassword: "",
-    applicationUrl: "",
-  });
+  const [settings, setSettings] = useState<Settings>(EMPTY_SETTINGS);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [status, setStatus] = useState({ isLoading: false, error: "", success: "" });
 
-  const [status, setStatus] = useState({
-    isLoading: false,
-    error: "",
-    success: "",
-  });
+  const hasChanges = Boolean(settings.deviceName || settings.userPassword || settings.wifiName || settings.wifiPassword);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setSettings((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setSettings((prev) => ({ ...prev, [name]: value }));
   };
 
-  const validateSettings = () => {
-    if (settings.deviceName && !/^[a-zA-Z0-9-]+$/.test(settings.deviceName)) {
-      throw new Error("Device name can only contain letters, numbers, and hyphens");
-    }
-    if (settings.wifiName && !/^[a-zA-Z0-9-]+$/.test(settings.wifiName)) {
-      throw new Error("WiFi name can only contain letters, numbers, and hyphens");
-    }
-    if (settings.wifiPassword && settings.wifiPassword.length < 8) {
-      throw new Error("WiFi password must be at least 8 characters long");
-    }
-    if (settings.userPassword && settings.userPassword.length < 8) {
-      throw new Error("User password must be at least 8 characters long");
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const validationError = validateSettings(settings);
+    if (validationError) {
+      setStatus({ isLoading: false, error: validationError, success: "" });
+      return;
+    }
+    setStatus({ isLoading: false, error: "", success: "" });
+    setConfirmOpen(true);
+  };
+
+  const applySettings = async () => {
+    setConfirmOpen(false);
     setStatus({ isLoading: true, error: "", success: "" });
 
     try {
-      validateSettings();
-
       const response = await fetch("/api/system", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const applied = Array.isArray(data.applied) && data.applied.length > 0 ? ` Already applied: ${data.applied.join(", ")}.` : "";
+        throw new Error((data.error || `Request failed (${response.status}).`) + applied);
       }
 
+      setSettings(EMPTY_SETTINGS);
       setStatus({
         isLoading: false,
         error: "",
-        success: "Settings updated successfully. System will reboot in 10 seconds.",
+        success: "Settings updated. The Pi is rebooting; reconnect to its Wi-Fi if needed. This page reloads in about a minute.",
       });
-
-      // Wait for reboot
-      setTimeout(() => {
-        window.location.href = settings.applicationUrl || window.location.href;
-      }, 10000);
-    } catch (error) {
-      setStatus({
-        isLoading: false,
-        error: error.message,
-        success: "",
-      });
+      setTimeout(() => window.location.reload(), RELOAD_AFTER_REBOOT_MS);
+    } catch (err) {
+      setStatus({ isLoading: false, error: err instanceof Error ? err.message : String(err), success: "" });
     }
   };
 
@@ -92,10 +86,10 @@ const PiConfiguration = () => {
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {status.error && (
-            <AlertDialog>
-              <AlertDialogTitle>Error</AlertDialogTitle>
-              <AlertDialogContent>{status.error}</AlertDialogContent>
-            </AlertDialog>
+            <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{status.error}</AlertDescription>
+            </Alert>
           )}
 
           {status.success && (
@@ -104,6 +98,12 @@ const PiConfiguration = () => {
               <AlertDescription>{status.success}</AlertDescription>
             </Alert>
           )}
+
+          {/* Admin PIN */}
+          <div className="space-y-2">
+            <Label htmlFor="adminPin">Admin PIN</Label>
+            <Input id="adminPin" name="adminPin" type="password" autoComplete="off" placeholder="Set as ADMIN_PIN on the Pi" value={settings.adminPin} onChange={handleChange} />
+          </div>
 
           {/* Device Name */}
           <div className="space-y-2">
@@ -114,10 +114,10 @@ const PiConfiguration = () => {
           {/* User Password */}
           <div className="space-y-2">
             <Label htmlFor="userPassword">Pi User Password</Label>
-            <Input id="userPassword" name="userPassword" type="password" placeholder="Enter new password" value={settings.userPassword} onChange={handleChange} />
+            <Input id="userPassword" name="userPassword" type="password" autoComplete="new-password" placeholder="Enter new password" value={settings.userPassword} onChange={handleChange} />
           </div>
 
-          {/* TODO: Uncomment to enable changes to WiFi Network name and password - this will break the Remote LED device - see issue #12 */}          
+          {/* TODO: Uncomment to enable changes to WiFi Network name and password - this will break the Remote LED device - see issue #12 */}
           {/* WiFi Name */}
           {/*
           <div className="space-y-2">
@@ -137,7 +137,7 @@ const PiConfiguration = () => {
 
         {/* Save Button */}
         <CardFooter className="flex justify-end space-x-4">
-          <Button type="submit" disabled={status.isLoading} className="bg-blue-600 hover:bg-blue-700">
+          <Button type="submit" disabled={status.isLoading || !hasChanges} className="bg-blue-600 hover:bg-blue-700">
             {status.isLoading ? (
               <>
                 <RotateCw className="mr-2 h-4 w-4 animate-spin" />
@@ -146,14 +146,25 @@ const PiConfiguration = () => {
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                Save & Reboot                
-              </>              
+                Save & Reboot
+              </>
             )}
           </Button>
-
-          
         </CardFooter>
       </form>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save and reboot?</AlertDialogTitle>
+            <AlertDialogDescription>The Pi reboots right after saving. Any session running on a connected device will be interrupted.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={applySettings}>Save & Reboot</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

@@ -1,13 +1,14 @@
 #!/bin/bash
+set -euo pipefail
 
 # Start the timer
 start_time=$(date +%s)
 
 # Green LED
-curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=255&b=0" 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Starting%20UpgrayeDD" 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/pattern?name=upgrayedd" 2>/dev/null
+curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=255&b=0" 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Starting%20UpgrayeDD" 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/pattern?name=upgrayedd" 2>/dev/null || true
 
 
 clear
@@ -81,50 +82,71 @@ echo "*   dose of that pimpin!     *"
 echo "******************************"
 sleep 2
 
-echo "*** UpgrayeDD backing up your database"
+echo "*** UpgrayeDD backing up your database (nothing gets dropped)"
 # Red LED
-curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/rgb?r=255&g=0&b=0" 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Waiting%20for%20db%20cycle" 2>/dev/null
-./dbCycle.sh
-# Green LED
-curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=255&b=0" 2>/dev/null
+curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/rgb?r=255&g=0&b=0" 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Waiting%20for%20db%20cycle" 2>/dev/null || true
+mkdir -p ~/db-backups
+backup_file=~/db-backups/rc_lap_timer.$(date +%Y%m%d_%H%M%S).sql
+echo "*** UpgrayeDD needs the MySQL root password for the backup"
+# Dump to a temporary name first, so a failed dump never looks like the newest backup.
+trap 'rm -f "$backup_file.partial"' EXIT
+mysqldump -u root -p --single-transaction --complete-insert --databases rc_lap_timer > "$backup_file.partial"
+if ! grep -q "CREATE TABLE" "$backup_file.partial"; then
+  echo "*** UpgrayeDD says the backup looks empty. Stopping before anything is touched."
+  exit 1
+fi
+mv "$backup_file.partial" "$backup_file"
+echo "*** UpgrayeDD saved your data to $backup_file"
 
-echo "*** UpgrayeDD deleting project folder"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20project%20%20%20%20%20folder" 2>/dev/null
-rm -rf rc-lap-timer
+echo "*** UpgrayeDD stopping the app"
+sudo systemctl stop rc-lap-timer || true
+# Green LED
+curl -s -o /dev/null http://127.0.0.1:5000/led/0/100/0 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/rgb?r=0&g=255&b=0" 2>/dev/null || true
+
+echo "*** UpgrayeDD moving the current app to rc-lap-timer.previous (for rollback)"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20project%20%20%20%20%20folder" 2>/dev/null || true
+rm -rf rc-lap-timer.previous
+if [ -d rc-lap-timer ]; then
+  mv rc-lap-timer rc-lap-timer.previous
+fi
 
 echo "*** UpgrayeDD deleting tar file"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20tar%20file" 2>/dev/null
-rm rc-lap-timer-build.tar.gz
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20tar%20file" 2>/dev/null || true
+rm -f rc-lap-timer-build.tar.gz
 
 echo "*** UpgrayeDD deleting system files"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20system%20files" 2>/dev/null
-rm backupDB.sql
-rm clearDB.sql
-rm createDB.sql
-rm dbCycle.sql
-rm dropDB.sql
-rm backupDB.sh
-rm dbCycle.sh
-rm restoreDB.sh
-rm recreateDB.sh
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20system%20files" 2>/dev/null || true
+rm -f backupDB.sql
+rm -f clearDB.sql
+rm -f createDB.sql
+rm -f dbCycle.sql
+rm -f dropDB.sql
+rm -f backupDB.sh
+rm -f dbCycle.sh
+rm -f restoreDB.sh
+rm -f recreateDB.sh
 
 echo "*** UpgrayeDD deleting var/www"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20var%20www" 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=deleting%20var%20www" 2>/dev/null || true
 sudo rm -rf /var/www/rc-lap-timer/
 
 echo "*** UpgrayeDD making a new home"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=making%20a%20new%20home" 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=making%20a%20new%20home" 2>/dev/null || true
 mkdir rc-lap-timer
 cd rc-lap-timer
 
-echo "*** UpgrayeDD creating .env file"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=creating%20env%20file" 2>/dev/null
-cat > .env << 'EOF'
+echo "*** UpgrayeDD keeping your .env file"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=creating%20env%20file" 2>/dev/null || true
+if [ -f ../rc-lap-timer.previous/.env ]; then
+  cp ../rc-lap-timer.previous/.env .env
+else
+  cat > .env << 'EOF'
 DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
 EOF
+fi
 
 # End the timer
 end_time=$(date +%s)
@@ -137,11 +159,11 @@ minutes=$((time_diff / 60))
 seconds=$((time_diff % 60))
 
 # Red LED
-curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/rgb?r=255&g=0&b=0" 2>/dev/null
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Waiting%20for%20Johnny%205" 2>/dev/null
+curl -s -o /dev/null http://127.0.0.1:5000/led/100/0/0 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/rgb?r=255&g=0&b=0" 2>/dev/null || true
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=Waiting%20for%20Johnny%205" 2>/dev/null || true
 
 echo "*** UpgrayeDD done"
 echo "*** UpgrayeDD took $minutes minutes and $seconds seconds"
 echo "*** UpgrayeDD says run ./serverUpgrade.sh on your build box!"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=waiting%20for%20Johnny%205" 2>/dev/null
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=waiting%20for%20Johnny%205" 2>/dev/null || true

@@ -582,11 +582,11 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {deleteDialog.type === "driver" ? (
-                  <>Are you sure you want to delete driver "{currentDriver?.name}"? This will also delete all their cars and session data.</>
+                  <>Are you sure you want to delete driver "{currentDriver?.name}"? This will also delete all their cars, sessions and race results.</>
                 ) : deleteDialog.type === "car" ? (
-                  <>Are you sure you want to delete car "{currentCar?.name}"? This will also delete all associated session data.</>
+                  <>Are you sure you want to delete car "{currentCar?.name}"? This will also delete its sessions and race results.</>
                 ) : deleteDialog.type === "location" ? (
-                  <>Are you sure you want to delete location "{currentLocation?.name}"? This will also delete all associated session data.</>
+                  <>Are you sure you want to delete location "{currentLocation?.name}"? This will also delete all sessions and races at this location.</>
                 ) : (
                   <>Are you sure you want to delete this motion setting? This cannot be undone.</>
                 )}

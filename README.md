@@ -255,8 +255,8 @@ Use this tab to perform the following administrative functions:
 - Rename, and delete Motion Detection Settings
 - Change the device name
 - Change the Pi user password
-- Change the WiFi network name
-- Change the WiFi password
+
+Changing system settings requires the admin PIN set on the Pi (see [Pi setup](docs/raspberryPiSetup.md)).
 
 
 # 🛠️ Development & Contributing
@@ -266,6 +266,10 @@ Contributions are welcome! Please follow these steps:
 - Commit your changes: git commit -m 'Add some feature'
 - Push to the branch: git push origin feature/feature-name
 - Submit a pull request
+
+
+# License
+RC Lap Timer is released under the [MIT License](LICENSE).
 
 
 # Happy Racing! 🏎️
