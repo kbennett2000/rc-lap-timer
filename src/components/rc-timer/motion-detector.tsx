@@ -9,6 +9,15 @@ import { sameName } from "@/domain/rules";
 import type { MotionSettings } from "@/domain/types";
 import { logger } from "@/lib/logger";
 import { now } from "@/timing/clock";
+import {
+  changedPercent,
+  DEFAULT_SETTINGS,
+  nextFrame,
+  skipping,
+  START,
+  type DetectorSettings,
+  type DetectorState,
+} from "@/timing/motion";
 
 export interface MotionDetectorHandle {
   start: () => Promise<void>;
@@ -26,20 +35,6 @@ interface MotionDetectorProps {
   className?: string;
 }
 
-interface DetectorSettings {
-  sensitivity: number;
-  threshold: number;
-  cooldown: number;
-  framesToSkip: number;
-}
-
-const DEFAULT_SETTINGS: DetectorSettings = {
-  sensitivity: 100,
-  threshold: 1.0,
-  cooldown: 10000,
-  framesToSkip: 60,
-};
-
 const ROTATIONS = [0, 90, 180, 270];
 
 export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorProps>(function MotionDetector(
@@ -51,8 +46,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previousFrameRef = useRef<ImageData | null>(null);
-  const lastMotionTimeRef = useRef(0);
-  const frameCountRef = useRef(0);
+  const detectorRef = useRef<DetectorState>(START);
   const animationFrameRef = useRef<number>();
   const activeRef = useRef(false);
 
@@ -125,31 +119,21 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     const at = now();
     const { settings: current, isPreviewing: previewing } = latest.current;
 
-    frameCountRef.current++;
     const previous = previousFrameRef.current;
-    if (previous && frameCountRef.current > current.framesToSkip) {
-      let changedPixels = 0;
-      for (let i = 0; i < currentFrame.data.length; i += 4) {
-        if (
-          Math.abs(currentFrame.data[i] - previous.data[i]) > current.sensitivity ||
-          Math.abs(currentFrame.data[i + 1] - previous.data[i + 1]) > current.sensitivity ||
-          Math.abs(currentFrame.data[i + 2] - previous.data[i + 2]) > current.sensitivity
-        ) {
-          changedPixels++;
-        }
-      }
-      const changePercent = (changedPixels / (currentFrame.width * currentFrame.height)) * 100;
-      setLastChangePercent(changePercent);
-
-      if (changePercent > current.threshold && at - lastMotionTimeRef.current > current.cooldown) {
-        lastMotionTimeRef.current = at;
-        setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
-        if (latest.current.saveMDImages) saveToGallery(canvas, changePercent);
-        if (previewing) {
-          if (latest.current.soundOn) void beep();
-        } else {
-          latest.current.onMotionDetected?.(changePercent, at);
-        }
+    const change =
+      previous && !skipping(detectorRef.current, current)
+        ? changedPercent(previous.data, currentFrame.data, current.sensitivity)
+        : null;
+    const { state, crossing } = nextFrame(detectorRef.current, change, at, current);
+    detectorRef.current = state;
+    if (change !== null) setLastChangePercent(change);
+    if (change !== null && crossing) {
+      setDetectedMotionStats("Motion detected: " + change.toFixed(1));
+      if (latest.current.saveMDImages) saveToGallery(canvas, change);
+      if (previewing) {
+        if (latest.current.soundOn) void beep();
+      } else {
+        latest.current.onMotionDetected?.(change, at);
       }
     }
     previousFrameRef.current = currentFrame;
@@ -190,8 +174,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     animationFrameRef.current = undefined;
     previousFrameRef.current = null;
-    lastMotionTimeRef.current = 0;
-    frameCountRef.current = 0;
+    detectorRef.current = START;
   };
 
   const handleStop = useCallback(() => {
@@ -217,7 +200,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
       latest.current.onCameraChange?.(true);
       if (!activeRef.current) {
         activeRef.current = true;
-        frameCountRef.current = 0;
+        detectorRef.current = START;
         detectMotion();
       }
     } catch (err) {
