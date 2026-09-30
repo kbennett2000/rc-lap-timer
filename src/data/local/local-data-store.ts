@@ -10,10 +10,12 @@ import {
   nameKey,
   type EntityKind,
 } from "@/domain/rules";
+import { BUNDLE_FORMAT, BUNDLE_SCHEMA_VERSION, type Bundle, type BundleContents } from "@/domain/sync/bundle";
+import { mergeBundles, planWrites } from "@/domain/sync/merge";
 import type { Car, Driver, Location, MotionSettings, SessionRecord } from "@/domain/types";
 import { parseSessionInput } from "@/lib/session-input";
 import { newId } from "@/lib/utils";
-import { DataStoreError, type DataStore } from "../types";
+import { DataStoreError, type BackupStore, type DataStore } from "../types";
 import {
   LapTimerDB,
   type CarRow,
@@ -60,8 +62,17 @@ function toStoreError(error: unknown): DataStoreError {
   return new DataStoreError("unavailable", `Couldn't save on this phone: ${detail}`);
 }
 
-export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataStore {
-  const tables = [db.drivers, db.cars, db.locations, db.sessions, db.motionSettings, db.tombstones];
+export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataStore & BackupStore {
+  const tables = [
+    db.drivers,
+    db.cars,
+    db.locations,
+    db.sessions,
+    db.motionSettings,
+    db.tombstones,
+    db.aliases,
+    db.meta,
+  ];
 
   // Every change runs in one read-write transaction, so it happens completely or not at all. Nothing but database
   // calls may be awaited inside one: the transaction commits as soon as it has nothing left to do.
@@ -96,6 +107,43 @@ export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataSto
   async function sessionIdsWhere(field: "driverId" | "carId" | "locationId", ids: string[]) {
     return ids.length === 0 ? [] : ((await db.sessions.where(field).anyOf(ids).primaryKeys()) as string[]);
   }
+
+  // The record an id now stands for: a restore may have folded it into another with the same name.
+  async function resolve(kind: RecordKind, id: string): Promise<string> {
+    let current = id;
+    for (let hop = 0; hop < 10; hop++) {
+      const alias = await db.aliases.get([kind, current]);
+      if (!alias) break;
+      current = alias.toId;
+    }
+    return current;
+  }
+
+  // Everything stored, as a backup's contents (rows without their name keys).
+  async function readContents(): Promise<BundleContents> {
+    const [drivers, cars, locations, sessions, motionSettings, tombstones, aliases] = await Promise.all([
+      db.drivers.toArray(),
+      db.cars.toArray(),
+      db.locations.toArray(),
+      db.sessions.toArray(),
+      db.motionSettings.toArray(),
+      db.tombstones.toArray(),
+      db.aliases.toArray(),
+    ]);
+    return {
+      data: {
+        drivers: drivers.map(withoutNameKey),
+        cars: cars.map(withoutNameKey),
+        locations: locations.map(withoutNameKey),
+        sessions,
+        motionSettings: motionSettings.map(withoutNameKey),
+      },
+      tombstones,
+      aliases,
+    };
+  }
+
+  const withNameKey = <T extends { name: string }>(record: T) => ({ ...record, nameKey: nameKey(record.name) });
 
   // Throws if another record already has this name (a record may keep its own name with different case or accents).
   function refuseTaken(taken: { id: string } | undefined, ownId: string | undefined, kind: EntityKind, name: string) {
@@ -257,10 +305,11 @@ export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataSto
         if ((await db.sessions.get(session.id)) || (await db.tombstones.get(["session", session.id]))) {
           return { created: false };
         }
+        // A save waiting since before a restore may name a driver, car or location that was folded into another.
         const [driver, car, location] = await Promise.all([
-          db.drivers.get(session.driverId),
-          db.cars.get(session.carId),
-          db.locations.get(session.locationId),
+          resolve("driver", session.driverId).then((id) => db.drivers.get(id)),
+          resolve("car", session.carId).then((id) => db.cars.get(id)),
+          resolve("location", session.locationId).then((id) => db.locations.get(id)),
         ]);
         if (!driver) throw new DataStoreError("invalid", `Driver ${session.driverId} not found`);
         if (!car || car.driverId !== driver.id) {
@@ -344,6 +393,58 @@ export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataSto
         if (!(await db.motionSettings.get(id))) return;
         await bury("motionSettings", [id]);
         await db.motionSettings.delete(id);
+      });
+    },
+
+    async exportBundle(): Promise<Bundle> {
+      return change(async () => {
+        // Each phone names itself once, so merged data can tell where it came from.
+        let deviceId = (await db.meta.get("deviceId"))?.value;
+        if (!deviceId) {
+          deviceId = newId();
+          await db.meta.put({ key: "deviceId", value: deviceId });
+        }
+        return {
+          format: BUNDLE_FORMAT,
+          schemaVersion: BUNDLE_SCHEMA_VERSION,
+          exportedAt: now(),
+          deviceId,
+          ...(await readContents()),
+        };
+      });
+    },
+
+    async importBundle(bundle, { dryRun = false } = {}) {
+      // Read, merge and write in one transaction: the merge itself is plain code, so nothing else is awaited.
+      return change(async () => {
+        const before = await readContents();
+        const { merged, summary } = mergeBundles(before, bundle, now());
+        if (dryRun) return summary;
+        const writes = planWrites(before, merged);
+        // Deletes first, so a name that moves between records never meets itself in a unique index.
+        await db.sessions.bulkDelete(writes.sessions.remove);
+        await db.cars.bulkDelete(writes.cars.remove);
+        await db.drivers.bulkDelete(writes.drivers.remove);
+        await db.locations.bulkDelete(writes.locations.remove);
+        await db.motionSettings.bulkDelete(writes.motionSettings.remove);
+        await db.drivers.bulkPut(writes.drivers.put.map(withNameKey));
+        await db.cars.bulkPut(writes.cars.put.map(withNameKey));
+        await db.locations.bulkPut(writes.locations.put.map(withNameKey));
+        await db.motionSettings.bulkPut(writes.motionSettings.put.map(withNameKey));
+        await db.sessions.bulkPut(writes.sessions.put);
+        await db.tombstones.bulkPut(writes.tombstones);
+        await db.aliases.bulkPut(writes.aliases);
+        return summary;
+      });
+    },
+
+    async lastBackupAt() {
+      return read(async () => (await db.meta.get("lastBackupAt"))?.value ?? null);
+    },
+
+    async markBackedUp(at) {
+      return change(async () => {
+        await db.meta.put({ key: "lastBackupAt", value: at });
       });
     },
   };

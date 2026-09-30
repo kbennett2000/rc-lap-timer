@@ -27,6 +27,7 @@ import { now } from "@/timing/clock";
 import { toSessionPayload, type FinishedRun, type TimingMode } from "@/timing/engine";
 import type { CreatedEntity } from "./add-entity-dialog";
 import { CurrentRunCard } from "./current-run-card";
+import { BackupReminder } from "./backup-reminder";
 import { InstallHint } from "./install-hint";
 import { IrTiming } from "./ir-timing";
 import { ManualControls } from "./manual-controls";
@@ -241,6 +242,7 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
         {CAPABILITIES.onDeviceData && <InstallHint />}
+        {CAPABILITIES.onDeviceData && <BackupReminder sessionCount={data.sessions.length} />}
 
         {interrupted && (
           <Alert className="mb-4 border-blue-300 bg-blue-50">

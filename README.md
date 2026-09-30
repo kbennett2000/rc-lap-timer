@@ -12,6 +12,17 @@ Motion Detection mode is great for single drivers and practice sessions. UI mode
 
 ![RC Car](https://img.icons8.com/color/48/000000/car.png)
 
+# 📱 Quick start: just your phone
+
+You don't need a Raspberry Pi to use RC Lap Timer. Open **https://kbennett2000.github.io/rc-lap-timer/** on your phone and add it to your home screen:
+
+- **iPhone or iPad:** open the link in Safari, tap **Share**, then **Add to Home Screen**. Do this *before* you record sessions: the Home Screen app keeps its own data, separate from Safari's.
+- **Android:** open the link in Chrome and tap **Install app** in Manager → Data (or use Chrome's menu: **Install app** or **Add to Home screen**).
+
+The phone app times laps with taps (UI mode) or with the camera (Motion Detection mode), and once it's installed it works without an internet connection. Everything you record is stored **on your phone only**. Save a backup from **Manager → Data** every so often: you can restore it if something goes wrong, or use it to move your data to another phone.
+
+Race mode and infrared (IR) timing need the Raspberry Pi setup below.
+
 # Feature Overview
 
 Watch this short video to understand how RC Lap Timer works and some of the features available. If you like what you see, follow the instructions below to get started!
@@ -19,9 +30,9 @@ Watch this short video to understand how RC Lap Timer works and some of the feat
 [![YouTube Application Overview Video](http://img.youtube.com/vi/lfPLHotND4M/0.jpg)](http://www.youtube.com/watch?v=lfPLHotND4M "RC Lap Timer Overview")
 
 
-# 🚀 Setup Instructions
+# 🚀 Raspberry Pi setup (advanced)
 
-**This application is designed to run on a Raspbery Pi Zero 2 W.**
+**The Raspberry Pi version is designed to run on a Raspberry Pi Zero 2 W.**
 
 **No other Raspberry Pi models are currently supported!**
 
@@ -280,6 +291,10 @@ npm run dev
 remote control, the live view, LEDs and System Settings) are hidden, and the data is stored on the device, in
 IndexedDB ([src/data/local](src/data/local)). `npm run build:pages` builds it as a static site in `out/` (what
 GitHub Pages serves), and `npm run serve:pages` serves that at http://127.0.0.1:3100/rc-lap-timer/.
+
+Once CI passes on `main`, [.github/workflows/pages.yml](.github/workflows/pages.yml) publishes the phone-only app to
+GitHub Pages (Settings → Pages → Source must be set to "GitHub Actions"). Its data layer is in [src/data](src/data):
+the phone's on-device store in `src/data/local`, and backups and merging in [src/domain/sync](src/domain/sync).
 
 The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi build treats `.pi.ts` files as pages and
 routes (see `next.config.js`), so the static build leaves them out.

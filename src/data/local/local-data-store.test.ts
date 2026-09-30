@@ -95,3 +95,60 @@ describe("the phone's on-device store", () => {
     await expect(createLocalDataStore(db).loadSnapshot()).rejects.toMatchObject({ kind: "unavailable" });
   });
 });
+
+describe("backups on the phone", () => {
+  it("restores a backup into a fresh app exactly", async () => {
+    const { store } = await setUp();
+    await store.createMotionSettings({ name: "Sunny", sensitivity: 50, threshold: 1, cooldown: 500, framesToSkip: 10 });
+    const bundle = JSON.parse(JSON.stringify(await store.exportBundle()));
+
+    const fresh = createLocalDataStore(freshDb());
+    const summary = await fresh.importBundle(bundle);
+    expect(summary.session.added).toBe(1);
+    expect(await fresh.loadSnapshot()).toEqual(await store.loadSnapshot());
+    expect(await fresh.listMotionSettings()).toEqual(await store.listMotionSettings());
+  });
+
+  it("previews without writing, and a second restore changes nothing", async () => {
+    const { store } = await setUp();
+    const bundle = await store.exportBundle();
+    const fresh = createLocalDataStore(freshDb());
+
+    expect((await fresh.importBundle(bundle, { dryRun: true })).driver.added).toBe(1);
+    expect((await fresh.loadSnapshot()).drivers).toEqual([]);
+
+    await fresh.importBundle(bundle);
+    const again = await fresh.importBundle(bundle);
+    expect(Object.values(again).every((kind) => kind.added + kind.updated + kind.merged + kind.deleted === 0)).toBe(
+      true,
+    );
+  });
+
+  it("names itself once, and remembers the last backup", async () => {
+    const store = createLocalDataStore(freshDb());
+    const first = await store.exportBundle();
+    expect((await store.exportBundle()).deviceId).toBe(first.deviceId);
+    expect(await store.lastBackupAt()).toBeNull();
+    await store.markBackedUp("2026-09-30T12:00:00.000Z");
+    expect(await store.lastBackupAt()).toBe("2026-09-30T12:00:00.000Z");
+  });
+
+  it("saves a waiting session for records a restore moved to other ids", async () => {
+    // Another phone folded this phone's Amy, Slash and Backyard into its own; restoring its backup moves them here too.
+    const { store, driver, car, location, session } = await setUp();
+    const other = await setUp();
+    const bundle = await other.store.exportBundle();
+    bundle.aliases = [
+      { kind: "driver", fromId: driver.id, toId: other.driver.id },
+      { kind: "car", fromId: car.id, toId: other.car.id },
+      { kind: "location", fromId: location.id, toId: other.location.id },
+    ];
+    await store.importBundle(bundle);
+    expect((await store.loadSnapshot()).drivers.map((d) => d.id)).toEqual([other.driver.id]);
+
+    const pending = { ...session, id: randomUUID() };
+    expect(await store.saveSession(pending)).toEqual({ created: true });
+    const saved = (await store.loadSnapshot()).sessions.find((s) => s.id === pending.id);
+    expect(saved).toMatchObject({ driverId: other.driver.id, carId: other.car.id, locationId: other.location.id });
+  });
+});
