@@ -121,3 +121,11 @@ test("keeps timing while another tab is open", async ({ page }) => {
   // A crossing missed while the other tab was open would show as a lap two loops long.
   expectLoopLaps(laps, 10);
 });
+
+test("remembers the motion settings on the phone", async ({ page }) => {
+  await setUp(page, "Settings"); // cooldown 1000 ms, 1 frame to skip
+  await page.reload();
+  await page.getByLabel("Time Using Motion Detection").click();
+  await expect(page.getByText("Cooldown (1000ms)")).toBeVisible();
+  await expect(page.getByText("Frames to Skip (1)")).toBeVisible();
+});

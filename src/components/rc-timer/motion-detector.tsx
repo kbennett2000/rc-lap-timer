@@ -15,6 +15,7 @@ import {
   DEFAULT_SETTINGS,
   frameTime,
   nextFrame,
+  parseSettings,
   skipping,
   START,
   type DetectorSettings,
@@ -43,6 +44,9 @@ const ROTATIONS = [0, 90, 180, 270];
 // The preview's numbers are refreshed a few times a second: on every frame they'd re-render the screen 30 times a
 // second, for numbers nobody can read that fast.
 const STATS_INTERVAL_MS = 250;
+
+// The settings last used on this device, so the camera is set up the same way next time.
+const SETTINGS_KEY = "rc-lap-timer-motion-settings";
 
 // With requestVideoFrameCallback, no frame for this long while the video plays counts as a stall (see startLoop).
 const STALL_MS = 1000;
@@ -121,6 +125,28 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const [detectedMotionStats, setDetectedMotionStats] = useState("");
   const [saveMDImages, setSaveMDImages] = useState(false);
   const [rotation, setRotation] = useState(0);
+
+  // Remember the settings on this device. This runs before the effect below that reads them back, so the defaults of the
+  // first render never overwrite what's stored.
+  const settingsRestored = useRef(false);
+  useEffect(() => {
+    if (!settingsRestored.current) return;
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // not remembered; still used now
+    }
+  }, [settings]);
+  // Read back after mounting: the page is first drawn without storage, with the defaults.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SETTINGS_KEY);
+      if (saved) setSettings(parseSettings(JSON.parse(saved)));
+    } catch {
+      // unreadable: keep the defaults
+    }
+    settingsRestored.current = true;
+  }, []);
 
   // Latest values for the frame loop, which outlives any single render.
   const latest = useRef({ settings, isPreviewing, saveMDImages, soundOn, onMotionDetected, onCameraChange });
