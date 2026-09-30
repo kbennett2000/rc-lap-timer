@@ -1,0 +1,12 @@
+# Makes the timer's HTTPS certificate before nginx starts, when it needs one (scripts/system/rc-tls.sh): on the first
+# boot of a freshly flashed card, and when the certificate is about to expire. Installed by piUpgrade2.sh.
+[Unit]
+Description=RC Lap Timer HTTPS certificate
+Before=nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rc-tls.sh
+
+[Install]
+WantedBy=multi-user.target nginx.service

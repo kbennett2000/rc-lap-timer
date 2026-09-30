@@ -163,6 +163,21 @@ if ! sudo grep -q '^ADMIN_PIN=' /etc/rc-lap-timer.env 2> /dev/null; then
   fi
 fi
 
+echo "*** UpgrayeDD making sure the timer has its own HTTPS certificate"
+# Timers flashed from the old SD image all share one certificate and key. Each now makes its own, here and at boot
+# (rc-lap-timer-tls.service), with a certificate authority phones can install to trust it.
+sudo install -o root -g root -m 755 scripts/system/rc-tls.sh /usr/local/bin/rc-tls.sh
+sudo install -o root -g root -m 644 scripts/system/rc-lap-timer-tls.service /etc/systemd/system/rc-lap-timer-tls.service
+sudo systemctl daemon-reload
+sudo systemctl enable rc-lap-timer-tls.service > /dev/null 2>&1
+nginx_reload=false
+if tls_output=$(sudo /usr/local/bin/rc-tls.sh); then
+  echo "$tls_output" | sed 's/^/    /'
+  case $tls_output in Made*) nginx_reload=true ;; esac
+else
+  echo "    Couldn't make a certificate (see above), so the timer keeps its old one."
+fi
+
 echo "*** UpgrayeDD updating the web server's settings (nginx)"
 # The site's settings come from the repo. The old file stays as .bak, and goes back if nginx rejects the new one.
 site=/etc/nginx/sites-available/rc-lap-timer
@@ -174,7 +189,7 @@ else
   sudo cp "$site" "$site.bak"
   sudo install -o root -g root -m 644 scripts/system/nginx/rc-lap-timer.conf "$site"
   if sudo nginx -t > /dev/null 2>&1; then
-    sudo systemctl reload nginx
+    nginx_reload=true
     echo "    Updated (the old settings are in $site.bak)"
   else
     sudo nginx -t || true
@@ -182,6 +197,9 @@ else
     echo "    nginx rejected the new settings (see above), so the old ones were put back. Sync over plain HTTP"
     echo "    won't work until that's fixed; everything else does."
   fi
+fi
+if [ "$nginx_reload" = true ] && sudo nginx -t > /dev/null 2>&1; then
+  sudo systemctl reload nginx
 fi
 
 echo "*** UpgrayeDD copying system utilities"
