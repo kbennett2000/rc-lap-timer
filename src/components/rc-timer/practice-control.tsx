@@ -50,7 +50,7 @@ import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { Driver, Car, Session, LapStats, PenaltyData } from "@/types/rc-timer";
-import { MotionDetector } from "./motion-detector";
+import { MotionDetector, type MotionDetectorHandle } from "./motion-detector";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
@@ -143,7 +143,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   // useRef
   // ****************************************
   const remoteControlIntervalRef = useRef<NodeJS.Timeout>();
-  const motionControlRef = useRef<{ stop: () => void; start: () => Promise<void> } | null>(null);
+  const motionControlRef = useRef<MotionDetectorHandle>(null);
   const announceLapNumberRef = useRef(announceLapNumber);
   const sessionStartedAtRef = useRef<string | null>(null);
   const unsavedSessionsRef = useRef<Partial<Session>[]>([]);
@@ -2608,9 +2608,9 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                       )}
 
                       <MotionDetector
-                        controlRef={motionControlRef}
+                        ref={motionControlRef}
                         onMotionDetected={handleMotionDetected}
-                        playBeeps={playBeepsRef.current}
+                        soundOn={playBeeps}
                         className="w-full"
                       />
                     </div>

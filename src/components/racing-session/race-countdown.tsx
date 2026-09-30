@@ -1,7 +1,7 @@
 // src/components/racing-session/race-countdown.tsx
 import React, { useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { createAudioContext } from "@/lib/utils";
+import { playTones, say, SOUNDS } from "@/audio";
 
 interface RaceCountdownProps {
   timeLeft: number;
@@ -10,78 +10,16 @@ interface RaceCountdownProps {
 }
 
 export const RaceCountdown: React.FC<RaceCountdownProps> = ({ timeLeft, playBeeps, voiceAnnouncements }) => {
-  // Sound effects for countdown
   const playCountdownBeep = useCallback(
-    async (type: "count" | "start") => {
-      if (!playBeeps) return;
-
-      const audioContext = createAudioContext();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      if (type === "count") {
-        oscillator.frequency.value = 440; // Standard A4 note
-        gainNode.gain.value = 0.5;
-        oscillator.type = "square";
-      } else {
-        oscillator.frequency.value = 880; // One octave higher
-        gainNode.gain.value = 0.7;
-        oscillator.type = "sawtooth";
-      }
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.start();
-      setTimeout(
-        () => {
-          oscillator.stop();
-          audioContext.close();
-        },
-        type === "count" ? 100 : 400,
-      );
+    (type: "count" | "start") => {
+      if (playBeeps) void playTones(type === "count" ? SOUNDS.countdown : SOUNDS.go);
     },
     [playBeeps],
   );
 
-  // Voice announcements
   const announce = useCallback(
     (text: string) => {
-      if (!voiceAnnouncements) return;
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.2;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      utterance.lang = "en-US"; // Force English language
-
-      // Wait for voices to be loaded
-      const setVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        // First try to find Google US English voice
-        let preferredVoice = voices.find(
-          (voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"),
-        );
-
-        // If no Google US voice, try any English voice
-        if (!preferredVoice) {
-          preferredVoice = voices.find((voice) => voice.lang.startsWith("en"));
-        }
-
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
-      };
-
-      // Check if voices are already loaded
-      if (window.speechSynthesis.getVoices().length) {
-        setVoice();
-      } else {
-        // Wait for voices to be loaded
-        window.speechSynthesis.onvoiceschanged = setVoice;
-      }
-
-      window.speechSynthesis.speak(utterance);
+      if (voiceAnnouncements) say(text);
     },
     [voiceAnnouncements],
   );

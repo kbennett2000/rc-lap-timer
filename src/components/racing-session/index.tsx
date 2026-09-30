@@ -9,7 +9,8 @@ import IRDetector from "@/components/ir-detector";
 import { RaceConfiguration, RaceStatus } from "@/types/race-timer";
 import { logger } from "@/lib/logger";
 import { LEDDeviceService } from "@/services/ledDevice";
-import { createAudioContext, fetchOk } from "@/lib/utils";
+import { beep, playTones, say, SOUNDS, unlockAudio } from "@/audio";
+import { fetchOk } from "@/lib/utils";
 
 interface BeepOptions {
   frequency?: number;
@@ -308,6 +309,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
   );
 
   const onRaceConfigured = async (config: RaceConfiguration) => {
+    // Runs inside the Start Race Setup tap, so sounds can play during the countdown and race.
+    unlockAudio();
     try {
       // 1. Create race
       const response = await fetch("/api/races", {
@@ -395,137 +398,15 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     status: "RACING" as const,
   }));
 
-  const playBeep = ({
-    frequency = 440,
-    duration = 200,
-    volume = 0.5,
-    type = "square",
-  }: BeepOptions = {}): Promise<void> => {
-    if (playBeeps) {
-      return new Promise((resolve) => {
-        // Create audio context
-        const audioContext = createAudioContext();
-
-        // Create oscillator and gain node
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        // Configure oscillator
-        oscillator.type = type;
-        oscillator.frequency.value = frequency;
-
-        // Configure gain (volume)
-        gainNode.gain.value = volume;
-
-        // Connect nodes
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        // Schedule the beep
-        oscillator.start();
-
-        // Schedule the end of the beep
-        setTimeout(() => {
-          oscillator.stop();
-          audioContext.close();
-          resolve();
-        }, duration);
-      });
-    }
-    return Promise.resolve();
-  };
+  const playBeep = (tone: BeepOptions = {}): Promise<void> => (playBeeps ? beep(tone) : Promise.resolve());
 
   const playRaceFinish = async (): Promise<void> => {
-    if (playBeeps) {
-      // Quick ascending beeps followed by victory tone
-      const ascendingBeeps = [
-        { frequency: 440, duration: 100 },
-        { frequency: 554, duration: 100 },
-        { frequency: 659, duration: 100 },
-        { frequency: 880, duration: 100 },
-      ];
-
-      // Play ascending beeps
-      for (const beep of ascendingBeeps) {
-        await playBeep({
-          frequency: beep.frequency,
-          duration: beep.duration,
-          volume: 0.5,
-          type: "square",
-        });
-        // Small gap between beeps
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-
-      // Victory fanfare
-      await playBeep({
-        frequency: 880,
-        duration: 150,
-        volume: 0.6,
-        type: "triangle",
-      });
-
-      // Final sustained victory note
-      await playBeep({
-        frequency: 1320,
-        duration: 400,
-        volume: 0.7,
-        type: "square",
-      });
-    }
+    if (playBeeps) await playTones(SOUNDS.finish);
   };
 
   // Say something
-  const sayIt = useCallback(async (textToSpeak: string): Promise<boolean> => {
-    if (!voiceAnnouncementsRef.current) {
-      return false;
-    }
-
-    try {
-      // Force cancel and wait for cleanup
-      window.speechSynthesis.cancel();
-      await new Promise((resolve) => setTimeout(resolve, 500)); // <-- wait time
-
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-
-      // TODO: change settings?
-      utterance.rate = 1.2;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      utterance.lang = "en-US"; // Force English language
-
-      // Wait for voices to be loaded
-      const setVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        // First try to find Google US English voice
-        let preferredVoice = voices.find(
-          (voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"),
-        );
-
-        // If no Google US voice, try any English voice
-        if (!preferredVoice) {
-          preferredVoice = voices.find((voice) => voice.lang.startsWith("en"));
-        }
-
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
-      };
-
-      // Check if voices are already loaded
-      if (window.speechSynthesis.getVoices().length) {
-        setVoice();
-      } else {
-        // Wait for voices to be loaded
-        window.speechSynthesis.onvoiceschanged = setVoice;
-      }
-
-      window.speechSynthesis.speak(utterance);
-
-      return true;
-    } catch {
-      return false;
-    }
+  const sayIt = useCallback((textToSpeak: string) => {
+    if (voiceAnnouncementsRef.current) say(textToSpeak);
   }, []);
 
   // *****************************************************************************
