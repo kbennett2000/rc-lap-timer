@@ -78,7 +78,8 @@ export function createPiIntegrations(fetchImpl: Fetch = (...args) => fetch(...ar
       });
     },
 
-    onLap(run, lapNumber, lapTime) {
+    onLap(run, lapNumber, exactLapTime) {
+      const lapTime = Math.round(exactLapTime); // whole milliseconds, as the live record stores them
       led(() => message(`Lap ${lapNumber}`, `${lapTime / 1000} seconds`));
       led(async () => {
         await flash(RED, 1000);

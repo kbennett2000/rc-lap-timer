@@ -51,7 +51,7 @@ describe("Pi integrations", () => {
     store.dispatch({ type: "penalty", at: 100 });
     store.dispatch({ type: "penalty", at: 200 });
     store.dispatch({ type: "lap", at: 1000 }); // arrives while the create call is still pending
-    store.dispatch({ type: "lap", at: 2500 });
+    store.dispatch({ type: "lap", at: 2500.4 }); // sub-millisecond timestamps are rounded
     await vi.advanceTimersByTimeAsync(0);
     expect(liveCalls(fetch.calls).map((c) => c.method)).toEqual(["POST", "POST"]); // truncate, create
 
