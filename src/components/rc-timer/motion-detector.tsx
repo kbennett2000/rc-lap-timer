@@ -53,6 +53,7 @@ interface FrameLoop {
   animationFrame?: number;
   watchdog?: ReturnType<typeof setInterval>;
   onVisible?: () => void;
+  onPause?: () => void;
   // When the last frame arrived, and whether the loop gave up waiting for frames and runs on screen refreshes.
   lastFrameAt: number;
   screenPaced: boolean;
@@ -272,16 +273,31 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     activeRef.current = true;
     detectorRef.current = START;
     statsRef.current = freshStats();
-    const loop: FrameLoop = { lastFrameAt: performance.now(), screenPaced: false };
+    const loop: FrameLoop = {
+      video: videoRef.current ?? undefined,
+      lastFrameAt: performance.now(),
+      screenPaced: false,
+    };
     loopRef.current = loop;
-    // A page that was in the background had no frames: don't take that for a stall.
+    // Keep the video playing while the camera is on: a browser can still pause it (when the app goes to the background,
+    // say), and a paused video shows the same frame for ever.
+    const keepPlaying = () => {
+      const video = videoRef.current;
+      if (activeRef.current && video?.paused && document.visibilityState === "visible") video.play().catch(() => {});
+    };
+    loop.onPause = keepPlaying;
+    loop.video?.addEventListener("pause", keepPlaying);
     loop.onVisible = () => {
-      if (document.visibilityState === "visible") loop.lastFrameAt = performance.now();
+      if (document.visibilityState !== "visible") return;
+      // A page that was in the background had no frames: don't take that for a stall.
+      loop.lastFrameAt = performance.now();
+      keepPlaying();
     };
     document.addEventListener("visibilitychange", loop.onVisible);
     // If the browser stops calling back with frames while the video plays (some do for a video that isn't on screen),
     // crossings would be missed: switch to the screen's refreshes until the camera is turned off.
     loop.watchdog = setInterval(() => {
+      keepPlaying();
       const video = videoRef.current;
       if (loop.screenPaced || !video || video.readyState < 2 || document.visibilityState !== "visible") return;
       if (performance.now() - loop.lastFrameAt < STALL_MS) return;
@@ -301,6 +317,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     if (loop.videoCallback !== undefined) loop.video?.cancelVideoFrameCallback(loop.videoCallback);
     clearInterval(loop.watchdog);
     if (loop.onVisible) document.removeEventListener("visibilitychange", loop.onVisible);
+    if (loop.onPause) loop.video?.removeEventListener("pause", loop.onPause);
     loopRef.current = { lastFrameAt: 0, screenPaced: false };
     previousFrameRef.current = null;
     detectorRef.current = START;
@@ -322,6 +339,9 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
       const video = videoRef.current;
       if (!video) return;
       if (video.srcObject !== stream) video.srcObject = stream;
+      // Started here, not with autoplay: browsers pause an autoplaying muted video once it's hidden (while another tab
+      // is open), and don't always start it again, which stopped the timing.
+      await video.play().catch((err) => logger.warn("The camera's video didn't start playing:", err));
       if (video.readyState < 2) {
         await new Promise<void>((resolve) => video.addEventListener("loadeddata", () => resolve(), { once: true }));
       }
@@ -375,7 +395,6 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
       <div className="relative bg-black rounded-lg overflow-hidden">
         <video
           ref={videoRef}
-          autoPlay
           playsInline
           muted
           className="w-full"

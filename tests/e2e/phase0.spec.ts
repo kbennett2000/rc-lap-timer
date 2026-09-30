@@ -192,13 +192,15 @@ test("saved notes stay", async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.goto("/");
   await page.getByRole("tab", { name: "Notes" }).click();
-  await page.getByText(driver.name).first().click();
-  await page.getByRole("button", { name: "Edit" }).click();
+  // Within the Notes tab: the Current tab stays on the page (hidden), with the driver's name in it too.
+  const notes = page.getByRole("tabpanel", { name: "Notes" });
+  await notes.getByText(driver.name).first().click();
+  await notes.getByRole("button", { name: "Edit" }).click();
   const text = `Tried softer springs ${stamp}`;
-  await page.getByRole("textbox").fill(text);
-  await page.getByRole("button", { name: "Save" }).click();
+  await notes.getByRole("textbox").fill(text);
+  await notes.getByRole("button", { name: "Save" }).click();
   await page.waitForTimeout(1500);
-  await expect(page.getByText(text)).toBeVisible();
+  await expect(notes.getByText(text)).toBeVisible();
   expect(
     (await sessionsForDriver()).some((s) => s.notes === text),
     "note stored on the server",

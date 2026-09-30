@@ -46,13 +46,15 @@ async function frameStats(page: Page) {
   return { text, framesPerSecond: Number(/Checking (\d+) frames a second/.exec(text)?.[1]) };
 }
 
-// Times a run of about four loops, and returns its laps.
-async function timeRun(page: Page): Promise<number[]> {
+// Times a run of about four loops, and returns its laps. `meanwhile` runs once the run has started.
+async function timeRun(page: Page, meanwhile?: () => Promise<void>): Promise<number[]> {
   await page.getByRole("button", { name: "Cam On" }).click();
   await expect(page.getByRole("button", { name: "Stop Timer" }), "the first crossing starts the run").toBeVisible({
     timeout: 15_000,
   });
-  await page.waitForTimeout(4 * LOOP_MS + LOOP_MS / 2);
+  const started = Date.now();
+  await meanwhile?.();
+  await page.waitForTimeout(Math.max(0, 4 * LOOP_MS + LOOP_MS / 2 - (Date.now() - started)));
   await page.getByRole("button", { name: "Stop Timer" }).click();
 
   let laps: number[] = [];
@@ -103,4 +105,19 @@ test("keeps timing on screen refreshes when the browser stops handing over frame
 
   // Timed when checked, on the screen's refreshes: less steady, but still one crossing per loop.
   expectLoopLaps(await timeRun(page), 100);
+});
+
+test("keeps timing while another tab is open", async ({ page }) => {
+  await setUp(page, "Tabs");
+  const laps = await timeRun(page, async () => {
+    // Look at the best laps for over a lap, then the Manager, then come back.
+    await page.getByRole("tab", { name: "Best" }).click();
+    await page.waitForTimeout(LOOP_MS * 1.2);
+    await page.getByRole("tab", { name: "Current", exact: true }).click();
+    await page.getByRole("tab", { name: "Manager" }).click();
+    await page.waitForTimeout(LOOP_MS * 1.2);
+    await page.getByRole("tab", { name: "Practice" }).click();
+  });
+  // A crossing missed while the other tab was open would show as a lap two loops long.
+  expectLoopLaps(laps, 10);
 });
