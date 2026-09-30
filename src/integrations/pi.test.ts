@@ -15,14 +15,19 @@ const config: RunConfig = {
   timingMode: "manual",
 };
 
-type Call = { url: string; method: string; body?: Record<string, unknown> };
+type Call = { url: string; method: string; type: string | null; body?: Record<string, unknown> };
 
 function fakeFetch() {
   const calls: Call[] = [];
   let releaseCreate: () => void = () => {};
   const createGate = new Promise<void>((resolve) => (releaseCreate = resolve));
   const impl = vi.fn(async (url: string, init?: RequestInit) => {
-    const call = { url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined };
+    const call = {
+      url,
+      method: init?.method ?? "GET",
+      type: new Headers(init?.headers).get("content-type"),
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+    };
     calls.push(call);
     if (url === "/api/current-session" && call.method === "POST") {
       await createGate;
@@ -60,7 +65,7 @@ describe("Pi integrations", () => {
     await vi.advanceTimersByTimeAsync(10_000);
 
     expect(liveCalls(fetch.calls)).toEqual([
-      { method: "POST", url: "/api/current-session/truncate", body: undefined },
+      { method: "POST", url: "/api/current-session/truncate", body: {} },
       {
         method: "POST",
         url: "/api/current-session",
@@ -78,6 +83,8 @@ describe("Pi integrations", () => {
       },
       { method: "DELETE", url: "/api/current-session", body: { sessionId: "live-1" } },
     ]);
+    // The timer refuses writes that aren't JSON.
+    expect(fetch.calls.filter((c) => c.method !== "GET").map((c) => c.type)).toEqual(Array(5).fill("application/json"));
   });
 
   it("drives the LEDs and keeps going when a call fails", async () => {

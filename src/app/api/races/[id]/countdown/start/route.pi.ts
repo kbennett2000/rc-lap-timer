@@ -1,8 +1,12 @@
 // src/app/api/races/[id]/countdown/start/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { refuseWrite } from "@/lib/api-helpers";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const race = await prisma.race.findUnique({
       where: { id: params.id },

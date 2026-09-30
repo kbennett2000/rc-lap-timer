@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { checkMotionSettings, duplicateNameMessage } from "@/domain/rules";
-import { badRequest, conflict, createOnce, isPrismaError, notFound, parseClientId, readJson } from "@/lib/api-helpers";
+import {
+  badRequest,
+  conflict,
+  createOnce,
+  isPrismaError,
+  notFound,
+  parseClientId,
+  readJson,
+  refuseWrite,
+} from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
 import { deleteMotionSettings } from "@/lib/deletes";
 import { logger } from "@/lib/logger";
@@ -21,6 +30,9 @@ export async function GET() {
 
 // Creates a setting. A client may send its own id; repeating the create with it returns the existing setting.
 export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await readJson(request);
     const checked = checkMotionSettings(data);
@@ -44,6 +56,9 @@ export async function POST(request: Request) {
 
 // Replaces every field of a setting.
 export async function PUT(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await readJson(request);
     const id = data?.id;
@@ -66,6 +81,9 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const id = new URL(request.url).searchParams.get("id");
     if (!id) return badRequest("Motion settings ID is required");

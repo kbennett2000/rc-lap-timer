@@ -2,10 +2,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { CreateRaceRequest } from "./types";
+import { refuseWrite } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const config: CreateRaceRequest = await request.json();
 

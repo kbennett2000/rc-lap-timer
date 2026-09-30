@@ -4,10 +4,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { SessionRequestStatus } from "@prisma/client";
+import { refuseWrite } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const { driverId, carId, locationId, numberOfLaps } = await request.json();
 

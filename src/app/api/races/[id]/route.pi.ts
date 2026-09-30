@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { UpdateRaceRequest } from "../types";
+import { refuseWrite } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const updates: UpdateRaceRequest = await request.json();
 
@@ -57,6 +61,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const race = await prisma.race.findUnique({
       where: { id: params.id },

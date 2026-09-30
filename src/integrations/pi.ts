@@ -69,7 +69,7 @@ export function createPiIntegrations(fetchImpl: Fetch = (...args) => fetch(...ar
 
       liveSessionId = null;
       liveQueue(async () => {
-        await request("/api/current-session/truncate", { method: "POST" });
+        await request("/api/current-session/truncate", json("POST", {}));
         const response = await request(
           "/api/current-session",
           json("POST", { driverName, carName, locationName, lapCount: lapTarget === "unlimited" ? 0 : lapTarget }),

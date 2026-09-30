@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { cleanCarNumber, cleanName, cleanNotes } from "@/domain/rules";
-import { badRequest, createOnce, isPrismaError, notFound, parseClientId, readJson } from "@/lib/api-helpers";
+import {
+  badRequest,
+  createOnce,
+  isPrismaError,
+  notFound,
+  parseClientId,
+  readJson,
+  refuseWrite,
+} from "@/lib/api-helpers";
 import { resolveId } from "@/lib/aliases";
 import { prisma } from "@/lib/db";
 import { deleteSession } from "@/lib/deletes";
@@ -153,6 +161,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await readJson(request);
     if (!data) return badRequest("Request body must be a JSON object");
@@ -182,6 +193,9 @@ export async function POST(request: Request) {
 
 // Deletes one saved session with its laps and penalties.
 export async function DELETE(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await readJson(request);
     const id = data?.id;
@@ -204,6 +218,9 @@ export async function DELETE(request: Request) {
 
 // Sets or clears a saved session's notes.
 export async function PATCH(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await readJson(request);
     const sessionId = data?.sessionId;

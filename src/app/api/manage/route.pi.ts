@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cleanCarNumber, cleanName, duplicateNameMessage } from "@/domain/rules";
-import { badRequest, conflict, isPrismaError, notFound, readJson } from "@/lib/api-helpers";
+import { badRequest, conflict, isPrismaError, notFound, readJson, refuseWrite } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
 import { deleteCar, deleteDriver, deleteLocation, deleteMotionSettings } from "@/lib/deletes";
 import { logger } from "@/lib/logger";
@@ -74,6 +74,9 @@ async function renameMotionSetting(id: string, newName: unknown) {
 }
 
 export async function PATCH(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await readJson(request);
     if (!data) return badRequest("Request body must be a JSON object");
@@ -115,6 +118,9 @@ const DELETES = {
 } as const;
 
 export async function DELETE(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await readJson(request);
     if (!data) return badRequest("Request body must be a JSON object");

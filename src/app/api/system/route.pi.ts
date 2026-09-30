@@ -16,6 +16,7 @@ import { constants } from "fs";
 import { createHash, timingSafeEqual } from "crypto";
 import { logger } from "@/lib/logger";
 import { MIN_ADMIN_PIN_LENGTH, validateSystemSettings } from "@/lib/system-settings";
+import { refuseWrite } from "@/lib/api-helpers";
 
 const HELPER = "/usr/local/bin/rc-config-helper.sh";
 
@@ -65,6 +66,9 @@ function runHelper(args: string[], stdin?: string): Promise<void> {
 }
 
 export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   const expectedPin = process.env.ADMIN_PIN;
   if (!expectedPin) {
     return error(
