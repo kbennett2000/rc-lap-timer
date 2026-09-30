@@ -11,6 +11,7 @@
 #   wifi-stdin <ssid>     set the access point SSID ("" = unchanged) and passphrase, read from the
 #                         first line of stdin (empty line = unchanged)
 #   reboot                reboot the device
+#   set-clock <seconds>   set the clock forward to a phone's or browser's time (seconds since 1970), once per boot
 #
 # Secrets are read from stdin so they never appear in argv (visible in `ps`). Every value is
 # validated here as well as in the web app, and config files are rewritten line by line without
@@ -19,6 +20,8 @@
 set -euo pipefail
 
 HOSTAPD_CONF=/etc/hostapd/hostapd.conf
+# Gone after a reboot (/run is in memory). The tests point it elsewhere; sudo doesn't pass the setting on.
+CLOCK_FLAG="${RC_CLOCK_FLAG:-/run/rc-lap-timer-clock-set}"
 
 die() {
   echo "rc-config-helper: $*" >&2
@@ -112,6 +115,29 @@ update_wifi() {
   echo "Wi-Fi settings updated (applied after reboot)"
 }
 
+# The Pi has no clock battery and no internet, so after being switched off its clock is behind until something sets
+# it. The web app passes on the time of the first phone or browser that opens it. The clock only moves forward, and
+# only once per boot, so a device with a wrong clock can't undo a good setting or keep moving it.
+set_clock() {
+  local target="$1"
+  [[ "$target" =~ ^[0-9]{10}$ ]] || die "invalid time"
+  if [ -e "$CLOCK_FLAG" ]; then
+    echo "Clock already set since boot"
+    return
+  fi
+  if [ "$target" -le "$(date +%s)" ]; then
+    echo "Clock not changed"
+    return
+  fi
+  date -u -s "@$target" > /dev/null
+  touch "$CLOCK_FLAG"
+  # fake-hwclock restores the saved time at boot: save it now, since a Pi is usually unplugged rather than shut down.
+  if command -v fake-hwclock > /dev/null 2>&1; then
+    fake-hwclock save > /dev/null || echo "rc-config-helper: couldn't save the time with fake-hwclock" >&2
+  fi
+  echo "Clock set"
+}
+
 case "${1:-}" in
   hostname)
     [ "$#" -eq 2 ] || die "usage: hostname <name>"
@@ -129,6 +155,10 @@ case "${1:-}" in
     [ "$#" -eq 1 ] || die "usage: reboot"
     echo "Rebooting"
     shutdown -r now
+    ;;
+  set-clock)
+    [ "$#" -eq 2 ] || die "usage: set-clock <seconds since 1970>"
+    set_clock "$2"
     ;;
   *)
     die "unknown command"

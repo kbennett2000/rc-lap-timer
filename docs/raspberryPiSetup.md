@@ -545,6 +545,12 @@ sudo chmod 440 /etc/sudoers.d/rc-lap-timer
 sudo chmod 755 /usr/local/bin/rc-config-helper.sh
 ```
 
+The helper also sets the Pi's clock, which needs no PIN. The Pi has no clock battery and no internet, so after being
+switched off its clock is behind; the app sets it forward to the time of the first phone or browser that opens it
+(once per boot, never backwards, and never during a race). `fake-hwclock` saves that time so it survives a power cut.
+Raspberry Pi OS includes it; check with `dpkg -s fake-hwclock`, and install it with `sudo apt install fake-hwclock`
+if it's missing.
+
 Copy database files to home directory:
 ```bash
 cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/

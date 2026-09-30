@@ -61,9 +61,13 @@ test("syncs both ways with the timer, and a second sync changes nothing", async 
   await runSession(page);
   await expect(sessionCard(page, fixture)).toBeVisible();
 
+  // The phone tells the timer the time first, from its own site like the rest of the sync.
+  const told = page.waitForResponse((r) => r.url() === `${TIMER}/api/sync/clock` && r.request().method() === "POST");
   await syncWith(page);
+  expect(await (await told).json()).toEqual({ changed: false, reason: "close" });
   const synced = page.getByRole("status").filter({ hasText: "Synced with the timer." });
   await expect(synced).toBeVisible();
+  await expect(synced).not.toContainText("Set the timer's clock");
   await expect(synced).toContainText("Added 1 session, 1 car and 1 location.");
   await expect(synced).toContainText("Combined 1 driver with ones of the same name on the timer.");
   await expect(page.getByText("Last backup or sync: today.")).toBeVisible();

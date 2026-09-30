@@ -128,8 +128,12 @@ echo "*** UpgrayeDD owning shit left and right"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=owning%20shit" 2>/dev/null || true
 sudo chown -R pi:pi /home/pi/rc-lap-timer
 
-echo "*** UpgrayeDD installing the System Settings helper"
+echo "*** UpgrayeDD installing the System Settings helper (it also sets the clock from phones)"
 sudo install -o root -g root -m 755 scripts/system/rc-config-helper.sh /usr/local/bin/rc-config-helper.sh
+if ! dpkg -s fake-hwclock > /dev/null 2>&1; then
+  echo "    Note: fake-hwclock isn't installed, so the time phones set is lost when the Pi loses power."
+  echo "    Install it the next time the Pi has internet: sudo apt install fake-hwclock"
+fi
 
 echo "*** UpgrayeDD deleting the old System Settings log (older versions wrote passwords to it)"
 rm -f /home/pi/config-api.log

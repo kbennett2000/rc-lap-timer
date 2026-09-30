@@ -7,18 +7,14 @@
 // (on the Pi: /etc/rc-lap-timer.env, loaded by the systemd unit so it survives upgrades), every
 // request must carry that PIN, and repeated wrong PINs lock the
 // endpoint, for twice as long each time (up to a day), so guessing is impractical. Restarting the app clears
-// a lockout. User input never reaches a shell: the helper runs via execFile with an
-// argument array, secrets go over stdin, and every value is validated here and again in the helper.
+// a lockout; moving the Pi's clock doesn't, because the lockout counts time since the app started. Every value is
+// validated here and again in the helper (src/lib/config-helper.ts).
 import { NextResponse } from "next/server";
-import { execFile } from "child_process";
-import { access } from "fs/promises";
-import { constants } from "fs";
 import { createHash, timingSafeEqual } from "crypto";
+import { refuseWrite } from "@/lib/api-helpers";
+import { HELPER, helperInstalled, helperOutdated, runHelper } from "@/lib/config-helper";
 import { logger } from "@/lib/logger";
 import { MIN_ADMIN_PIN_LENGTH, validateSystemSettings } from "@/lib/system-settings";
-import { refuseWrite } from "@/lib/api-helpers";
-
-const HELPER = "/usr/local/bin/rc-config-helper.sh";
 
 const MAX_FAILED_PIN_ATTEMPTS = 5;
 const FIRST_LOCKOUT_MS = 5 * 60 * 1000;
@@ -51,20 +47,6 @@ function asOptionalString(value: unknown): string | undefined {
   return value === "" ? undefined : value;
 }
 
-function runHelper(args: string[], stdin?: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = execFile("sudo", ["-n", HELPER, ...args], { timeout: 30_000 }, (err, stdout, stderr) => {
-      if (err) {
-        // The original helper printed its errors to stdout, so include both streams.
-        reject(new Error([stderr.trim(), stdout.trim()].filter(Boolean).join("\n") || err.message));
-      } else {
-        resolve();
-      }
-    });
-    child.stdin?.end(stdin === undefined ? "" : `${stdin}\n`);
-  });
-}
-
 export async function POST(request: Request) {
   const refused = refuseWrite(request);
   if (refused) return refused;
@@ -83,7 +65,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const now = Date.now();
+  const now = performance.now();
   if (now < pinLockedUntil) {
     return error(
       429,
@@ -130,9 +112,7 @@ export async function POST(request: Request) {
     return error(400, "Nothing to change.");
   }
 
-  try {
-    await access(HELPER, constants.X_OK);
-  } catch {
+  if (!(await helperInstalled())) {
     return error(
       500,
       `Configuration helper not found or not executable at ${HELPER}. Install scripts/system/rc-config-helper.sh (see docs/raspberryPiSetup.md).`,
@@ -146,12 +126,10 @@ export async function POST(request: Request) {
       await runHelper(change.args, change.stdin);
       applied.push(change.name);
     } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      logger.error(`[system] failed to apply ${change.name}: ${detail}`);
-      const outdated = detail.includes("unknown command") || detail.includes("Invalid command");
+      logger.error(`[system] failed to apply ${change.name}: ${err instanceof Error ? err.message : String(err)}`);
       return error(
         500,
-        outdated
+        helperOutdated(err)
           ? `The installed configuration helper is out of date. Reinstall scripts/system/rc-config-helper.sh to ${HELPER}.`
           : `Failed to update ${change.name}.`,
         { applied },

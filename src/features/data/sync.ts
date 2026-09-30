@@ -13,6 +13,7 @@ export const DEFAULT_TIMER_ADDRESS = "192.168.4.1";
 
 // Finding a timer can wait on Chrome's "devices on your local network" prompt; merging on a Pi Zero takes a while.
 const FIND_TIMEOUT_MS = 30_000;
+const CLOCK_TIMEOUT_MS = 10_000;
 const MERGE_TIMEOUT_MS = 120_000;
 
 // The addresses to try, in order. An address with http:// or https:// is used as it is. Otherwise plain HTTP comes
@@ -43,6 +44,8 @@ export interface SyncResult {
   phone: MergeSummary;
   // The timer's address that worked, to try first next time.
   baseUrl: string;
+  // Whether the timer's clock was behind and set to this phone's.
+  clockSet: boolean;
 }
 
 // A fetch for talking to a timer: from this site to the timer's, without cookies, and not forever.
@@ -76,6 +79,24 @@ async function findTimer(urls: string[], fetchImpl: typeof fetch): Promise<{ bas
   throw new SyncError("unreachable", "Couldn't reach the timer.");
 }
 
+// Sets the timer's clock if it's behind: a Pi has no clock battery, and the time matters for which edit wins. Before
+// the merge, so what the merge records is dated right. An older timer can't, which doesn't stop the sync.
+async function tellTheTime(baseUrl: string, fetchImpl: typeof fetch): Promise<boolean> {
+  try {
+    const response = await timerFetch(fetchImpl, CLOCK_TIMEOUT_MS)(`${baseUrl}/api/sync/clock`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ now: Date.now() }),
+    });
+    const answer: unknown = await response.json();
+    return (
+      response.ok && typeof answer === "object" && answer !== null && "changed" in answer && answer.changed === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function syncWithTimer(
   local: DataStore & BackupStore,
   {
@@ -96,10 +117,11 @@ export async function syncWithTimer(
     throw new SyncError("update-timer", "The timer's software is older than this app's. Update the timer.");
   }
 
+  const clockSet = await tellTheTime(baseUrl, fetchImpl);
   const timer = createApiDataStore({ baseUrl, fetch: timerFetch(fetchImpl, MERGE_TIMEOUT_MS) });
   const timerSummary = await timer.importBundle(await local.exportBundle());
   const parsed = parseBundle(await timer.exportBundle());
   if (!parsed.ok) throw new DataStoreError("invalid", parsed.error);
   const phoneSummary = await local.importBundle(parsed.bundle);
-  return { timer: timerSummary, phone: phoneSummary, baseUrl };
+  return { timer: timerSummary, phone: phoneSummary, baseUrl, clockSet };
 }
