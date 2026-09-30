@@ -89,6 +89,9 @@ test("keeps its data on the phone, hides the Pi's features, and never calls an A
   await expect(page.getByText("Default IR Car Number")).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel" }).click();
   for (const tab of [/Locations/, /Motion/, /Utilities/]) await page.getByRole("tab", { name: tab }).click();
+  await page.getByRole("tab", { name: "Data" }).click();
+  await expect(page.getByText("stored on this device only")).toBeVisible();
+  await expect(page.getByText("Install the app")).toBeVisible();
 
   expect(apiCalls, "requests to an API").toEqual([]);
 });
