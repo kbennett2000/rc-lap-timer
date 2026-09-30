@@ -78,7 +78,8 @@ export default function LapTimer() {
 
           {/* Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 shadow-up pb-[env(safe-area-inset-bottom)]">
-            <TabsList className={`grid ${gridCols(TAB_COUNT)} gap-0`}>
+            {/* As tall as the tabs: the tab list's default height (h-10) cut their labels off below the screen */}
+            <TabsList className={`grid ${gridCols(TAB_COUNT)} gap-0 h-auto w-full`}>
               {/* Practice */}
               <TabsTrigger value="practice" className="py-3">
                 <div className="flex flex-col items-center">
