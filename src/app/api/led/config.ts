@@ -12,6 +12,7 @@ export async function sendToLed(command: string, params: Record<string, string>)
     .join("&");
   try {
     const response = await fetch(`http://${LED_DEVICE_IP}/${command}?${query}`, {
+      cache: "no-store",
       signal: AbortSignal.timeout(LED_DEVICE_TIMEOUT),
     });
     if (!response.ok) throw new Error(`LED device responded with status: ${response.status}`);
