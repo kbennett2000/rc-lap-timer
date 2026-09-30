@@ -371,8 +371,10 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
                     running={running}
                     canStart={Boolean(selection.driverId && selection.carId)}
                     onStart={() => {
+                      // Read the clock before unlocking: creating the audio context can take tens of milliseconds.
+                      const at = now();
                       unlock();
-                      startRun(now());
+                      startRun(at);
                     }}
                     onLap={() => dispatch({ type: "lap", at: now() })}
                     onStop={() => dispatch({ type: "finish", at: now() })}

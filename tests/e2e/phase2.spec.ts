@@ -91,21 +91,29 @@ test("a run survives a reload and can be resumed", async ({ page }) => {
 
 test("lap times match the taps", async ({ page }) => {
   await setUp(page);
-  const intervals = [1200, 800, 1500];
+  // When each tap reached the page. Playwright's own waits stretch on a busy machine, so they can't be the reference.
+  await page.evaluate(() => {
+    const taps: number[] = [];
+    Object.assign(window, { taps });
+    document.addEventListener("click", () => taps.push(performance.timeOrigin + performance.now()), true);
+  });
   await page.getByRole("button", { name: "Start Lap Timer" }).click();
-  await page.waitForTimeout(intervals[0]);
+  await page.waitForTimeout(1200);
   await page.getByRole("button", { name: "Record Lap" }).click();
-  await page.waitForTimeout(intervals[1]);
+  await page.waitForTimeout(800);
   await page.getByRole("button", { name: "Record Lap" }).click();
-  await page.waitForTimeout(intervals[2]);
+  await page.waitForTimeout(1500);
   const saved = savedAfter(page);
   await page.getByRole("button", { name: "Stop Lap Timer" }).click();
   await saved;
 
+  const taps: number[] = await page.evaluate(() => (window as unknown as { taps: number[] }).taps);
+  expect(taps).toHaveLength(4);
   const laps = [...(await sessionsForDriver())[0].laps].sort((a, b) => a.lapNumber - b.lapNumber);
   expect(laps).toHaveLength(3);
   laps.forEach((lap, i) => {
-    expect(Math.abs(lap.lapTime - intervals[i]), `lap ${i + 1}: ${lap.lapTime} ms`).toBeLessThan(150);
+    const between = taps[i + 1] - taps[i];
+    expect(Math.abs(lap.lapTime - between), `lap ${i + 1}: ${lap.lapTime} ms, taps ${between} ms`).toBeLessThan(20);
   });
 });
 
