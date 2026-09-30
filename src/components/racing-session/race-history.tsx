@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { formatLapTime } from "@/domain/format";
 import { format, subDays } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { formatTime } from "@/lib/utils";
 
 const DATE_PRESETS = [
   { label: "Today", days: 1 },
@@ -330,7 +330,7 @@ export const RaceHistory: React.FC = () => {
                     <TableCell className="whitespace-nowrap">{race.driver}</TableCell>
                     <TableCell className="whitespace-nowrap">{race.car}</TableCell>
                     <TableCell className="whitespace-nowrap">{race.position}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatTime(race.bestLap)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatLapTime(race.bestLap)}</TableCell>
                     <TableCell className="whitespace-nowrap">{race.laps}</TableCell>
                     <TableCell className="whitespace-nowrap">{race.status}</TableCell>
                   </TableRow>

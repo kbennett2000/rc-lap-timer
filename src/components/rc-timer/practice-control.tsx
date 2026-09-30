@@ -3,7 +3,8 @@
 // ****************************************
 // import
 // ****************************************
-import { cn, createAudioContext, fetchOk, formatTime, formatDateTime, newId } from "@/lib/utils";
+import { cn, createAudioContext, fetchOk, newId } from "@/lib/utils";
+import { formatDateTime, formatLapTime } from "@/domain/format";
 import { SessionComparison } from "./session-comparison";
 import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -2521,13 +2522,13 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                   <CardTitle
                     className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}
                   >
-                    {formatTime(currentTime)}
+                    {formatLapTime(currentTime)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Current Lap Time */}
                   <div className="text-center text-2xl font-mono text-gray-600">
-                    Current Lap: {formatTime(getCurrentLapTime())}
+                    Current Lap: {formatLapTime(getCurrentLapTime())}
                   </div>
 
                   {/* Lap counter */}
@@ -2651,7 +2652,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                 key={index}
                                 className={`font-mono ${isBestLap ? "text-green-600 font-bold flex items-center" : ""}`}
                               >
-                                Lap {lapNumber}: {formatTime(lap)}
+                                Lap {lapNumber}: {formatLapTime(lap)}
                                 {isBestLap && (
                                   <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                                     Best Lap
@@ -2670,20 +2671,20 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                         {/* Current Session statistics */}
                         <div>
                           <h3 className="font-semibold">Statistics:</h3>
-                          <div className="font-mono">Average: {formatTime(calculateStats(laps).average)}</div>
+                          <div className="font-mono">Average: {formatLapTime(calculateStats(laps).average)}</div>
 
-                          {/* <div className="font-mono">Mean: {formatTime(calculateStats(laps).mean)}</div> */}
+                          {/* <div className="font-mono">Mean: {formatLapTime(calculateStats(laps).mean)}</div> */}
 
                           {laps.length > 0 && (
                             <>
                               <div className="font-mono text-green-600 font-bold mt-2">
-                                Best Lap: {formatTime(Math.min(...laps))}
+                                Best Lap: {formatLapTime(Math.min(...laps))}
                               </div>
                               <div className="font-mono">
                                 Total Penalties: {penalties.reduce((sum, p) => sum + p.count, 0)}
                               </div>
                               <div className="font-mono mt-2">
-                                Total Time: {formatTime(calculateStats(laps).totalTime)}
+                                Total Time: {formatLapTime(calculateStats(laps).totalTime)}
                               </div>
                             </>
                           )}
@@ -2752,7 +2753,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                     )}
                                   >
                                     <span className="min-w-[100px]">
-                                      Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
+                                      Lap {lap.lapNumber}: {formatLapTime(lap.lapTime)}
                                     </span>
 
                                     {/* Flags row - will wrap on mobile */}
@@ -2797,16 +2798,16 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                             <div className="space-y-2">
                               {session.stats && (
                                 <>
-                                  <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
+                                  <div className="font-mono">Average: {formatLapTime(session.stats.average)}</div>
                                   <div className="space-y-1 mt-2">
                                     {typeof session.stats.bestLap === "number" && (
                                       <div className="font-mono text-green-600 font-bold">
-                                        Best Lap: {formatTime(session.stats.bestLap)}
+                                        Best Lap: {formatLapTime(session.stats.bestLap)}
                                       </div>
                                     )}
                                     {typeof session.stats.worstLap === "number" && (
                                       <div className="font-mono text-red-600 font-bold">
-                                        Slowest Lap: {formatTime(session.stats.worstLap)}
+                                        Slowest Lap: {formatLapTime(session.stats.worstLap)}
                                       </div>
                                     )}
                                     <div className="font-mono mt-2">
@@ -2814,7 +2815,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                     </div>
                                   </div>
                                   <div className="font-mono mt-2">
-                                    Total Time: {formatTime(session.stats.totalTime)}
+                                    Total Time: {formatLapTime(session.stats.totalTime)}
                                   </div>
                                 </>
                               )}
@@ -3206,7 +3207,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                         )}
                                       >
                                         <span className="min-w-[100px]">
-                                          Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
+                                          Lap {lap.lapNumber}: {formatLapTime(lap.lapTime)}
                                         </span>
 
                                         {/* Flags row - will wrap on mobile */}
@@ -3251,16 +3252,16 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                 <div className="space-y-2">
                                   {session.stats && (
                                     <>
-                                      <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
+                                      <div className="font-mono">Average: {formatLapTime(session.stats.average)}</div>
                                       <div className="space-y-1 mt-2">
                                         {typeof session.stats.bestLap === "number" && (
                                           <div className="font-mono text-green-600 font-bold">
-                                            Best Lap: {formatTime(session.stats.bestLap)}
+                                            Best Lap: {formatLapTime(session.stats.bestLap)}
                                           </div>
                                         )}
                                         {typeof session.stats.worstLap === "number" && (
                                           <div className="font-mono text-red-600 font-bold">
-                                            Slowest Lap: {formatTime(session.stats.worstLap)}
+                                            Slowest Lap: {formatLapTime(session.stats.worstLap)}
                                           </div>
                                         )}
                                         <div className="font-mono mt-2">
@@ -3268,7 +3269,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                         </div>
                                       </div>
                                       <div className="font-mono mt-2">
-                                        Total Time: {formatTime(session.stats.totalTime)}
+                                        Total Time: {formatLapTime(session.stats.totalTime)}
                                       </div>
                                     </>
                                   )}

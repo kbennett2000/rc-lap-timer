@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { formatDateTime, formatLapTime } from "@/domain/format";
+import { lapStats } from "@/domain/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatTime, formatDateTime } from "@/lib/utils";
+
 import { logger } from "@/lib/logger";
 import { Loader2, Clock, AlertTriangle, Trophy, Timer } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,13 +58,12 @@ export function CurrentSessionDisplay() {
     }
   };
 
-  // Calculate session statistics with safety checks
   const calculateSessionStats = (session: CurrentSession) => {
-    const lapTimes = session.laps.map((lap) => lap.lapTime);
-
+    const stats = lapStats(session.laps.map((lap) => lap.lapTime));
+    const hasLaps = session.laps.length > 0;
     return {
-      bestLapTime: lapTimes.length > 0 ? Math.min(...lapTimes) : null,
-      averageLapTime: lapTimes.length > 0 ? lapTimes.reduce((a, b) => a + b, 0) / lapTimes.length : null,
+      bestLapTime: hasLaps ? stats.bestLap : null,
+      averageLapTime: hasLaps ? stats.average : null,
       totalPenalties: session.laps.reduce((sum, lap) => sum + lap.penaltyCount, 0),
     };
   };
@@ -169,7 +170,7 @@ export function CurrentSessionDisplay() {
                     <Trophy className="h-5 w-5 mx-auto mb-2 text-green-500" />
                     <div className="text-sm font-medium text-gray-500">Best Lap</div>
                     <div className="text-lg font-semibold">
-                      {stats.bestLapTime !== null ? formatTime(stats.bestLapTime) : "--:--:--"}
+                      {stats.bestLapTime !== null ? formatLapTime(stats.bestLapTime) : "--:--:--"}
                     </div>
                   </div>
                 </CardContent>
@@ -181,7 +182,7 @@ export function CurrentSessionDisplay() {
                     <Clock className="h-5 w-5 mx-auto mb-2 text-yellow-500" />
                     <div className="text-sm font-medium text-gray-500">Average</div>
                     <div className="text-lg font-semibold">
-                      {stats.averageLapTime !== null ? formatTime(stats.averageLapTime) : "--:--:--"}
+                      {stats.averageLapTime !== null ? formatLapTime(stats.averageLapTime) : "--:--:--"}
                     </div>
                   </div>
                 </CardContent>
@@ -215,7 +216,7 @@ export function CurrentSessionDisplay() {
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-mono">
-                          Lap {originalIndex + 1}: {formatTime(lap.lapTime)}
+                          Lap {originalIndex + 1}: {formatLapTime(lap.lapTime)}
                         </span>
                         {lap.penaltyCount > 0 && (
                           <span className="text-sm text-red-500">

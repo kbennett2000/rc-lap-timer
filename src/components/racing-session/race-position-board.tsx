@@ -1,7 +1,8 @@
 // src/components/racing-session/race-position-board.tsx
 import React from "react";
+import { formatLapTime } from "@/domain/format";
 import { Card } from "@/components/ui/card";
-import { formatTime } from "@/lib/utils";
+
 import { RaceEntryStatus } from "@/types/race-timer";
 import { Trophy, Zap, Clock, Flag, AlertTriangle } from "lucide-react";
 
@@ -63,12 +64,12 @@ export const RacePositionBoard: React.FC<RacePositionBoardProps> = ({ positions 
                 <div className="text-right">
                   <div className="flex items-center justify-end space-x-2">
                     <Clock className="h-4 w-4" />
-                    <span>{car.lastLapTime ? formatTime(car.lastLapTime) : "--:--:--"}</span>
+                    <span>{car.lastLapTime ? formatLapTime(car.lastLapTime) : "--:--:--"}</span>
                   </div>
                   <div className="text-sm text-gray-600">
                     Laps: {car.lapsCompleted}
                     {car.gap !== undefined && car.position > 1 && !car.status.includes("DNF") && (
-                      <span className="ml-2">Gap: {formatTime(car.gap)}</span>
+                      <span className="ml-2">Gap: {formatLapTime(car.gap)}</span>
                     )}
                   </div>
                 </div>
@@ -105,7 +106,7 @@ export const RacePositionBoard: React.FC<RacePositionBoardProps> = ({ positions 
                   </div>
                   <div className="flex items-center space-x-2">
                     {index === 0 && <Trophy className="h-4 w-4 text-purple-500" />}
-                    <span className="font-mono">{car.bestLapTime && formatTime(car.bestLapTime)}</span>
+                    <span className="font-mono">{car.bestLapTime && formatLapTime(car.bestLapTime)}</span>
                   </div>
                 </div>
               ))}
