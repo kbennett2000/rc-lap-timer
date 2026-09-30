@@ -87,7 +87,9 @@ sudo systemctl start dhcpcd
 
 
 ## 5. Database Setup
-Secure MySQL installation (use password1 for password)
+Secure MySQL installation (use password1 for password). This guide uses `password1` for the database
+throughout, as the upgrade does when it has to make a `.env`. If you choose your own, use the same one everywhere:
+the `rc_timer_user` account below, `DATABASE_URL` in the app's service file, and `.env`.
 ```bash
 sudo mysql_secure_installation
 ```
@@ -96,7 +98,7 @@ Create database setup script
 ```bash
 cat > create_rc_timer_database.sql << 'EOF'
 CREATE DATABASE IF NOT EXISTS rc_lap_timer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'your_secure_password_here';
+CREATE USER IF NOT EXISTS 'rc_timer_user'@'localhost' IDENTIFIED BY 'password1';
 GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
 FLUSH PRIVILEGES;
 EOF
@@ -594,7 +596,7 @@ sudo apt install -y python3-pip
 sudo apt install -y python3-RPi.GPIO
 ```
 ```bash
-pip3 install flask flask-cors --break-system-packages
+pip3 install flask --break-system-packages
 ```
 
 Create a service file for the IR detector:

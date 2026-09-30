@@ -1,37 +1,15 @@
-// app/api/led/rgb/route.ts
-import { NextResponse } from "next/server";
-import { LED_DEVICE_IP } from "../config";
+// Sets the Remote LED display's colour: POST {r, g, b}, each a whole number from 0 to 255.
+import { badRequest, readJson, refuseWrite } from "@/lib/api-helpers";
+import { sendToLed } from "../config";
 
-export const dynamic = "force-dynamic";
+const isLevel = (value: unknown): value is number =>
+  Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 255;
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const r = searchParams.get("r");
-  const g = searchParams.get("g");
-  const b = searchParams.get("b");
+export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
 
-  const ledUrl = `http://${LED_DEVICE_IP}/rgb?r=${r}&g=${g}&b=${b}`;
-
-  try {
-    const response = await fetch(ledUrl, {
-      // Add timeout to avoid hanging
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!response.ok) {
-      throw new Error(`LED device responded with status: ${response.status}`);
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    // More detailed error response
-    return NextResponse.json(
-      {
-        error: "Failed to communicate with LED device",
-        details: error instanceof Error ? error.message : "Unknown error",
-        deviceUrl: ledUrl,
-      },
-      { status: 500 },
-    );
-  }
+  const { r, g, b } = (await readJson(request)) ?? {};
+  if (!isLevel(r) || !isLevel(g) || !isLevel(b)) return badRequest("r, g and b must be whole numbers from 0 to 255");
+  return sendToLed("rgb", { r: String(r), g: String(g), b: String(b) });
 }

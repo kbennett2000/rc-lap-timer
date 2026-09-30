@@ -1,18 +1,14 @@
-// app/api/led/pattern/route.ts
-import { NextResponse } from "next/server";
-import { LED_DEVICE_IP } from "../config";
+// Plays one of the Remote LED display's patterns (handlePatternGet in remote_led/RemoteLED.cpp): POST {name}.
+import { badRequest, readJson, refuseWrite } from "@/lib/api-helpers";
+import { sendToLed } from "../config";
 
-export const dynamic = "force-dynamic";
+const PATTERN_NAME = /^[a-z0-9_-]{1,32}$/;
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const name = searchParams.get("name");
+export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
 
-  try {
-    const response = await fetch(`http://${LED_DEVICE_IP}/pattern?name=${name}`);
-    if (!response.ok) throw new Error("Failed to run LED pattern");
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to communicate with LED device" }, { status: 500 });
-  }
+  const { name } = (await readJson(request)) ?? {};
+  if (typeof name !== "string" || !PATTERN_NAME.test(name)) return badRequest("name must be the name of a pattern");
+  return sendToLed("pattern", { name });
 }

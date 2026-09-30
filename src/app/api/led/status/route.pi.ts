@@ -1,13 +1,15 @@
 // app/api/led/status/route.ts
 import { NextResponse } from "next/server";
-import { LED_DEVICE_IP } from "../config";
+import { LED_DEVICE_IP, LED_DEVICE_TIMEOUT } from "../config";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    // Asked every time: Next 14 would otherwise keep the first answer, and say "connected" from then on.
     const response = await fetch(`http://${LED_DEVICE_IP}/`, {
-      signal: AbortSignal.timeout(5000),
+      cache: "no-store",
+      signal: AbortSignal.timeout(LED_DEVICE_TIMEOUT),
     });
     if (response.ok) {
       return NextResponse.json({ status: "connected" });

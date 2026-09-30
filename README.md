@@ -330,6 +330,8 @@ The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi buil
 routes (see `next.config.js`), so the static build leaves them out. Every route that changes data starts with
 `refuseWrite` ([src/lib/api-helpers.ts](src/lib/api-helpers.ts)), which refuses other sites and bodies that aren't
 JSON; [tests/api/write-guard.test.ts](tests/api/write-guard.test.ts) finds every such route and checks it does.
+Commands for the Remote LED display count as changes too: the timer's pages post them to `/api/led/*` as JSON, and
+those routes pass them on to the display with every value encoded.
 
 Screens read and change data only through the `DataStore` in [src/data/types.ts](src/data/types.ts).
 [tests/datastore/conformance.ts](tests/datastore/conformance.ts) lists the rules every store follows, as tests.

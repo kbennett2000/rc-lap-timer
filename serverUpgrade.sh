@@ -4,9 +4,18 @@ set -euo pipefail
 # Start the timer
 start_time=$(date +%s)
 
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/rgb?r=0&g=255&b=0" 2>/dev/null || true
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=Number%205%20alive" 2>/dev/null || true
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/pattern?name=johnny5" 2>/dev/null || true
+# Shows progress on the Remote LED display, through the timer, when both are there. The timer takes LED commands as
+# JSON posts. Until the Pi has been upgraded, its older app ignores these (it took them as GETs), and that's fine.
+led() {
+  curl -k -s -o /dev/null -X POST -H 'Content-Type: application/json' --data "$2" "https://rclaptimer.local/api/led/$1" 2>/dev/null || true
+}
+led_says() {
+  led text "{\"title\":\" Johnny 5\",\"message\":\"$1\"}"
+}
+
+led rgb '{"r":0,"g":255,"b":0}'
+led_says "Number 5 alive"
+led pattern '{"name":"johnny5"}'
 
 clear
 echo "*******************************************"
@@ -56,28 +65,28 @@ echo "............................................::::::::::::::::--::::::::::::
 sleep 2
 
 echo "*** UpgrayeDD Prisma Generate!"
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=prisma%20generate" 2>/dev/null || true
+led_says "prisma generate"
 npx prisma generate
 sleep 2
 
 echo "*** UpgrayeDD deleted files!"
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=deleted%20files" 2>/dev/null || true
+led_says "deleted files"
 rm -rf .next
 rm -f rc-lap-timer-build.tar.gz
 sleep 2
 
 echo "*** UpgrayeDD build!"
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=npm%20run%20build" 2>/dev/null || true
+led_says "npm run build"
 npm run build
 sleep 2
 
 echo "*** UpgrayeDD Prisma Generate!"
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=prisma%20generate%20again" 2>/dev/null || true
+led_says "prisma generate again"
 npx prisma generate
 sleep 2
 
 echo "*** UpgrayeDD tar!"
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=tarring" 2>/dev/null || true
+led_says "tarring"
 sleep 2
 # `*` already covers package.json, node_modules and public; .next is the only dot-dir needed.
 # Dotfiles such as .env are not matched by `*`, and TLS keys are excluded explicitly, as is out/ (the phone-only
@@ -85,7 +94,7 @@ sleep 2
 tar -czf rc-lap-timer-build.tar.gz --exclude='*.pem' --exclude='rc-lap-timer-build.tar.gz' --exclude='out' * .next
 
 echo "*** UpgrayeDD pi file!"
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=sending%20to%20Pi" 2>/dev/null || true
+led_says "sending to Pi"
 sleep 2
 # Uses SSH keys. Set them up once with: ssh-copy-id pi@rclaptimer.local
 scp rc-lap-timer-build.tar.gz pi@rclaptimer.local:~
@@ -137,6 +146,6 @@ echo "-------------+++=+-=+#==+%#==+=+%*-------+%@@%##@@%%@@@@%%@%@@@@%%%%###@##
 echo "*** Tell UpgrayeDD the server UpgrayyeDD is done!"
 echo "UpgrayeDD took $minutes minutes and $seconds seconds."
 echo "     -- Love Johnny5"
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/text?title=%20Johnny%205&message=Server%20UpgrayeDD%20%20%20%20%20Complete" 2>/dev/null || true
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/pattern?name=johnny5" 2>/dev/null || true
-curl -k -s -o /dev/null "https://rclaptimer.local/api/led/rgb?r=255&g=0&b=0" 2>/dev/null || true
+led_says "Server UpgrayeDD     Complete"
+led pattern '{"name":"johnny5"}'
+led rgb '{"r":255,"g":0,"b":0}'

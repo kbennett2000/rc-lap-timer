@@ -49,15 +49,14 @@ export function createPiIntegrations(fetchImpl: Fetch = (...args) => fetch(...ar
   const setColor = async ({ red, green, blue }: Rgb) => {
     await request(`/api/ir/led/${red}/${green}/${blue}`);
     const scale = (level: number) => Math.round(2.55 * level);
-    await request(`/api/led/rgb?r=${scale(red)}&g=${scale(green)}&b=${scale(blue)}`);
+    await request("/api/led/rgb", json("POST", { r: scale(red), g: scale(green), b: scale(blue) }));
   };
   const flash = async (color: Rgb, ms: number) => {
     await setColor(color);
     await sleep(ms);
     await setColor(OFF);
   };
-  const message = (title: string, text: string) =>
-    request(`/api/led/text?title=${encodeURIComponent(title)}&message=${encodeURIComponent(text)}`);
+  const message = (title: string, text: string) => request("/api/led/text", json("POST", { title, message: text }));
   // Each LED task logs its own failure so a missing display doesn't stop the status LED, and vice versa.
   const led = (task: () => Promise<unknown>) => ledQueue(() => task().catch((error) => logger.warn("LED:", error)));
 

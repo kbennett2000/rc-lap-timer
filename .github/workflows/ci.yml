@@ -77,6 +77,8 @@ jobs:
       API_ADMIN_PIN: test1234
       # The phone app's real site, and the copy the sync browser tests serve next to the Pi build.
       SYNC_ALLOWED_ORIGINS: https://kbennett2000.github.io,http://127.0.0.1:3200
+      # The fake Remote LED display that tests/api/led.test.ts runs.
+      LED_DEVICE_IP: 127.0.0.1:3199
       PAGES_BASE_PATH: /rc-lap-timer
     steps:
       - uses: actions/checkout@v7

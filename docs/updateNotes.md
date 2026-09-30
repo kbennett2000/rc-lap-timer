@@ -17,6 +17,13 @@ ssh-copy-id pi@rclaptimer.local
 ``` 
 on the dev server
 
+`.env` is no longer kept in git. On the dev server (or any clone), the next `git pull` deletes it, so copy it
+aside first and put it back afterwards (or `cp .env.example .env` and set `DATABASE_URL`). The build doesn't need
+it, and the Pi keeps its own: the upgrade copies it from `~/rc-lap-timer.previous`.
+```bash
+cp .env ~/rc-lap-timer.env && git pull && cp ~/rc-lap-timer.env .env
+```
+
 What the upgrade does to your data and app:
 - The database is backed up to `~/db-backups/rc_lap_timer.<date>.sql` (you'll be asked for the MySQL
   root password). Nothing is dropped. Schema changes are applied with `prisma migrate deploy`, and the
@@ -35,6 +42,9 @@ What the upgrade does to your data and app:
 - The web server's settings (`/etc/nginx/sites-available/rc-lap-timer`) are replaced with the app's
   (`scripts/system/nginx/rc-lap-timer.conf`), which let the phone app sync over plain HTTP. The old file
   is kept as `rc-lap-timer.bak`, and goes back if nginx rejects the new one.
+- The Remote LED display's routes take JSON posts now. A timer page left open from before the upgrade can't
+  drive the display until it's reloaded, and `serverUpgrade.sh`'s progress messages only show once the Pi runs
+  this version.
 - The System Settings helper is reinstalled. It can now set the Pi's clock, which the app does from the first
   phone or browser that opens it after a boot (see "The timer's clock" in the README). The upgrade says so if
   `fake-hwclock`, which keeps that time across a power cut, isn't installed.
