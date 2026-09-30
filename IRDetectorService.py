@@ -2,7 +2,6 @@ import RPi.GPIO as GPIO
 import time
 from datetime import datetime
 from flask import Flask, jsonify
-from flask_cors import CORS
 from typing import Dict, List
 from dataclasses import dataclass
 from threading import Lock
@@ -66,9 +65,9 @@ class DetectionManager:
                 for d in self.detections.values()
             ]
 
-# Set up the Flask app and enable CORS
+# Set up the Flask app. nginx serves it to the timer's own pages at /api/ir/, so it sends no CORS headers: other
+# sites can't read it.
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Set up GPIO
 GPIO.setmode(GPIO.BCM)

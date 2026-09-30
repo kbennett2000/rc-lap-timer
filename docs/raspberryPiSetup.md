@@ -596,7 +596,7 @@ sudo apt install -y python3-pip
 sudo apt install -y python3-RPi.GPIO
 ```
 ```bash
-pip3 install flask flask-cors --break-system-packages
+pip3 install flask --break-system-packages
 ```
 
 Create a service file for the IR detector:
