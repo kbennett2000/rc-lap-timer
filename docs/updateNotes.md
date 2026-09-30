@@ -17,6 +17,13 @@ ssh-copy-id pi@rclaptimer.local
 ``` 
 on the dev server
 
+`.env` is no longer kept in git. On the dev server (or any clone), the next `git pull` deletes it, so copy it
+aside first and put it back afterwards (or `cp .env.example .env` and set `DATABASE_URL`). The build doesn't need
+it, and the Pi keeps its own: the upgrade copies it from `~/rc-lap-timer.previous`.
+```bash
+cp .env ~/rc-lap-timer.env && git pull && cp ~/rc-lap-timer.env .env
+```
+
 What the upgrade does to your data and app:
 - The database is backed up to `~/db-backups/rc_lap_timer.<date>.sql` (you'll be asked for the MySQL
   root password). Nothing is dropped. Schema changes are applied with `prisma migrate deploy`, and the
