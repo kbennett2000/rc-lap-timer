@@ -8,8 +8,8 @@ import { RaceCountdown } from "./race-countdown";
 import IRDetector from "@/components/ir-detector";
 import { RaceStatus, RaceEntryStatus } from "@/types/race-timer";
 import { logger } from "@/lib/logger";
-import axios from "axios";
 import { LEDDeviceService } from "@/services/ledDevice";
+import { fetchOk } from "@/lib/utils";
 
 interface RacingSessionProps {
   onRaceComplete?: () => void;
@@ -570,7 +570,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     const validBlue = Math.max(0, Math.min(100, blue));
 
     try {
-      const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
+      await fetchOk(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
 
       const scaledRed = 2.55 * validRed;
       const scaledGreen = 2.55 * validGreen;
@@ -584,7 +584,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const setLedRed = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/${level}/0/0`);
+      await fetchOk(`/api/ir/led/${level}/0/0`);
 
       const scaledRed = 2.55 * level;
       ledDevice.setColor(scaledRed, 0, 0);
@@ -596,7 +596,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const setLedGreen = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/${level}/0`);
+      await fetchOk(`/api/ir/led/0/${level}/0`);
 
       const scaledGreen = 2.55 * level;
       ledDevice.setColor(0, scaledGreen, 0);
@@ -608,7 +608,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const setLedBlue = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/0/${level}`);
+      await fetchOk(`/api/ir/led/0/0/${level}`);
 
       const scaledBlue = 2.55 * level;
       ledDevice.setColor(0, 0, scaledBlue);
@@ -620,7 +620,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const setLedOff = async (): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/0/0`);
+      await fetchOk(`/api/ir/led/0/0/0`);
 
       ledDevice.setColor(0, 0, 0);
     } catch (error) {

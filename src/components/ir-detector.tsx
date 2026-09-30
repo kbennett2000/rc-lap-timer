@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import axios from "axios";
+import { fetchOk } from "@/lib/utils";
 
 interface CarDetection {
   id: string;
@@ -67,8 +67,8 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
 
   const fetchCarData = useCallback(async () => {
     try {
-      const response = await axios.get("/api/ir/current_cars");
-      processNewDetections(response.data);
+      const response = await fetchOk("/api/ir/current_cars");
+      processNewDetections(await response.json());
     } catch (error) {
       console.error("Error fetching car data:", error);
     }

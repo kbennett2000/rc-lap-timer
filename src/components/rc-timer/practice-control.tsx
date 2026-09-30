@@ -3,7 +3,7 @@
 // ****************************************
 // import
 // ****************************************
-import { formatTime, formatDateTime, newId } from "@/lib/utils";
+import { cn, fetchOk, formatTime, formatDateTime, newId } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
 import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -19,7 +19,6 @@ import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } fr
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, UserCog } from "lucide-react";
-import cn from "classnames";
 import { BestLapsComparison } from "./best-laps-comparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,7 +28,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { logger } from "@/lib/logger";
 import { SessionRequestForm } from "../session-request-form";
 import { CurrentSessionDisplay } from "@/components/current-session-display";
-import axios from "axios";
 import { LEDDeviceService } from "@/services/ledDevice";
 import { Location } from "@/types/rc-timer";
 
@@ -1676,7 +1674,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     const validBlue = Math.max(0, Math.min(100, blue));
 
     try {
-      const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
+      await fetchOk(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
 
       const scaledRed = Math.round(2.55 * validRed);
       const scaledGreen = Math.round(2.55 * validGreen);
@@ -1690,7 +1688,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
   const setLedRed = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/${level}/0/0`);
+      await fetchOk(`/api/ir/led/${level}/0/0`);
 
       const scaledRed = Math.round(2.55 * level);
       ledDevice.setColor(scaledRed, 0, 0);
@@ -1702,7 +1700,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
   const setLedGreen = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/${level}/0`);
+      await fetchOk(`/api/ir/led/0/${level}/0`);
 
       const scaledGreen = Math.round(2.55 * level);
       ledDevice.setColor(0, scaledGreen, 0);
@@ -1714,7 +1712,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
   const setLedBlue = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/0/${level}`);
+      await fetchOk(`/api/ir/led/0/0/${level}`);
 
       const scaledBlue = Math.round(2.55 * level);
       ledDevice.setColor(0, 0, scaledBlue);
@@ -1726,7 +1724,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
   const setLedOff = async (): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/0/0`);
+      await fetchOk(`/api/ir/led/0/0/0`);
 
       ledDevice.setColor(0, 0, 0);
     } catch (error) {
@@ -1919,8 +1917,8 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
   const fetchCarData = useCallback(async (targetCarIdValue: string) => {
     try {
-      const response = await axios.get("/api/ir/current_cars");
-      processNewDetections(response.data, targetCarIdValue);
+      const response = await fetchOk("/api/ir/current_cars");
+      processNewDetections(await response.json(), targetCarIdValue);
     } catch (error) {
       console.error("Error fetching car data:", error);
     }
