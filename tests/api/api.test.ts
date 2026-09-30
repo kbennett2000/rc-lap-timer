@@ -2,7 +2,7 @@
 // and idempotently, deletes that stick, renames that reach saved sessions, race-aware cascades, and the
 // hardened System Settings endpoint.
 //
-// Run locally (CI does the same, see .github/workflows/ci.yml):
+// Run locally (CI does the same, see .github/workflows/ci.yml; the README's Checks section has every test's steps):
 //   docker run -d --name rclt-mariadb -e MARIADB_ROOT_PASSWORD=devpass -e MARIADB_DATABASE=rc_lap_timer \
 //     -p 127.0.0.1:3307:3306 mariadb:10.11
 //   export DATABASE_URL="mysql://root:devpass@127.0.0.1:3307/rc_lap_timer"

@@ -1,9 +1,7 @@
 // Browser tests for syncing the phone-only app with a timer: the phone app (static, as GitHub Pages serves it) and the
-// Pi build side by side, as in CI's integration job. Build the phone app first (both builds use .next):
-//   npm run build:pages && npm run build
-//   SYNC_ALLOWED_ORIGINS=http://127.0.0.1:3200 npx next start -p 3100 -H 127.0.0.1 &
-//   node scripts/serve-static.mjs --port 3200 &
-//   E2E_TARGET=sync npm run test:e2e
+// Pi build side by side, as in CI's integration job. The steps are in the README (Development & Contributing →
+// Checks): both builds, the Pi build on 3100 with SYNC_ALLOWED_ORIGINS including http://127.0.0.1:3200, the phone app
+// on 3200 (node scripts/serve-static.mjs --port 3200), then E2E_TARGET=sync npm run test:e2e.
 
 import { expect, request, test, type Page } from "@playwright/test";
 import { addFixtures, openDataTab, pickSelect, runSession, sessionCard } from "./phone-helpers";
