@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { LED_DEVICE_IP, LED_DEVICE_TIMEOUT } from '../config';
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get("name");

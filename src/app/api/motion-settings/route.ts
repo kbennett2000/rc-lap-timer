@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
+
 // Validation helper functions
 function validateMotionSettings(data: any) {
   const errors: string[] = [];

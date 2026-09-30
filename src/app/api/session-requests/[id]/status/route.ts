@@ -1,7 +1,7 @@
 // src/app/api/session-requests/[id]/status/route.ts
 import { NextResponse } from "next/server";
 import { Prisma, SessionRequestStatus } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 const VALID_STATUSES = new Set<string>(Object.values(SessionRequestStatus));
