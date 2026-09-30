@@ -28,6 +28,11 @@ test("keeps its data on the phone, hides the Pi's features, and never calls an A
 
   await expect(page.getByRole("tab", { name: "Practice" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Race" })).toHaveCount(0);
+  // The bottom bar's labels are on the screen, not cut off below it.
+  const manager = await page.getByRole("tab", { name: "Manager" }).boundingBox();
+  expect(manager!.y + manager!.height, "the Manager tab's bottom edge").toBeLessThanOrEqual(
+    page.viewportSize()!.height,
+  );
   await expect(page.getByText("Time Using UI")).toBeVisible();
   await expect(page.getByText("Time Using IR")).toHaveCount(0);
   await expect(page.getByText("Enable Remote Control Mode")).toHaveCount(0);
