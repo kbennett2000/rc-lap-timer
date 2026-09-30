@@ -124,6 +124,14 @@ jobs:
             static.log
           retention-days: 7
 
+  pi-network:
+    # The Pi's web server settings (scripts/system/nginx), in the nginx version Raspberry Pi OS ships.
+    name: The Pi's web server settings (nginx)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/system/test-pi-network.sh
+
   phone-app:
     # The phone-only app (NEXT_PUBLIC_TARGET=standalone): a static site for GitHub Pages, with no server or database.
     name: Phone app (static build)

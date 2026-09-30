@@ -29,6 +29,9 @@ What the upgrade does to your data and app:
   `/etc/rc-lap-timer.env`.
 - The app is set to listen on localhost only (nginx stays the only way in), and the old
   `/home/pi/config-api.log` is deleted: older versions wrote the passwords set in System Settings to it.
+- The web server's settings (`/etc/nginx/sites-available/rc-lap-timer`) are replaced with the app's
+  (`scripts/system/nginx/rc-lap-timer.conf`), which let the phone app sync over plain HTTP. The old file
+  is kept as `rc-lap-timer.bak`, and goes back if nginx rejects the new one.
 - The app is restarted and checked before the reboot prompt. If it doesn't come up, nothing is
   rebooted and the script prints the rollback command:
 ```bash
