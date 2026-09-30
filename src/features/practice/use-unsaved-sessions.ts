@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { logger } from "@/lib/logger";
-import type { SessionPayload } from "@/timing/engine";
+import type { NewSession } from "@/domain/types";
 
 // Finished sessions are written here before they are sent, and leave only once the server has them. A failed save,
 // a lost connection or a page killed mid-save all leave the session here, with Retry save.
@@ -11,7 +11,7 @@ export const UNSAVED_SESSIONS_KEY = "rc-lap-timer-unsaved-sessions";
 const LEGACY_STORAGE_KEYS = ["rc-lap-timer-sessions", "rc-lap-timer-drivers"];
 
 // Entries written by older versions may lack some fields.
-export type UnsavedSession = Pick<SessionPayload, "id"> & Partial<SessionPayload>;
+export type UnsavedSession = Pick<NewSession, "id"> & Partial<NewSession>;
 
 export function useUnsavedSessions() {
   const listRef = useRef<UnsavedSession[]>([]);

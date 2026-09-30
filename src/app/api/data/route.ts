@@ -131,9 +131,6 @@ export async function GET() {
       prisma.driver.findMany({ orderBy: byName, include: { cars: { orderBy: byName } } }),
       prisma.session.findMany({
         include: {
-          driver: true,
-          car: true,
-          location: true,
           laps: { orderBy: byLap },
           penalties: { orderBy: byLap },
         },

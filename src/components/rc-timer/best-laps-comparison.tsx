@@ -35,8 +35,8 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
       bestLaps.push({
         sessionId: session.id,
         date: session.date,
-        driverName: session.driver.name,
-        carName: session.car.name,
+        driverName: session.driverName,
+        carName: session.carName,
         lapTime: bestLapTime,
         lapNumber: bestLap.lapNumber,
         penalties: lapPenalties,

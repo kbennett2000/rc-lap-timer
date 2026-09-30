@@ -459,7 +459,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <SelectValue placeholder="Choose a location" />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations
+                    {[...locations]
                       .sort((a, b) => a.name.localeCompare(b.name))
                       .map((location) => (
                         <SelectItem key={location.id} value={location.id}>

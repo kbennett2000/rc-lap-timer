@@ -146,17 +146,14 @@ describe("toSessionPayload", () => {
         { lapNumber: 2, lapTime: 11_000 },
       ],
       penalties: [{ lapNumber: 1, count: 1 }],
-      totalLaps: 2,
-      stats: { totalTime: 23_346, totalPenalties: 1 },
     });
     expect(parseSessionInput(payload).ok).toBe(true);
   });
 
-  it("leaves out penalties on a dropped lap and reports the lap target", () => {
+  it("leaves out penalties on a dropped lap", () => {
     const run = play([start(10, "ir"), lap(1000), { type: "penalty", at: T0 + 1500 }, { type: "end", at: T0 + 1800 }]);
     const payload = toSessionPayload(run as FinishedRun);
     expect(payload.laps).toHaveLength(1);
     expect(payload.penalties).toEqual([]);
-    expect(payload.totalLaps).toBe(10);
   });
 });
