@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { refuseWrite } from "@/lib/api-helpers";
 
 export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await request.json();
 
@@ -23,6 +27,9 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await request.json();
 
@@ -104,6 +111,9 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const data = await request.json();
 

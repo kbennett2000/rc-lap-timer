@@ -3,10 +3,12 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { expect, request, test, type Page } from "@playwright/test";
+import { expectNoRefusedRequests } from "./pi-helpers";
 
 const stamp = Date.now().toString(36);
 
 test.describe.configure({ mode: "serial" });
+expectNoRefusedRequests();
 
 async function api(method: "GET" | "POST" | "DELETE", path: string, body?: unknown) {
   const context = await request.newContext({ baseURL: test.info().project.use.baseURL });

@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { refuseWrite } from "@/lib/api-helpers";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     // Use a transaction to ensure both operations complete or neither does
     await prisma.$transaction([

@@ -321,7 +321,9 @@ listed in `SYNC_ALLOWED_ORIGINS` (in `/etc/rc-lap-timer.env`; the default is `ht
 fork that publishes its own phone app adds its Pages site there.
 
 The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi build treats `.pi.ts` files as pages and
-routes (see `next.config.js`), so the static build leaves them out.
+routes (see `next.config.js`), so the static build leaves them out. Every route that changes data starts with
+`refuseWrite` ([src/lib/api-helpers.ts](src/lib/api-helpers.ts)), which refuses other sites and bodies that aren't
+JSON; [tests/api/write-guard.test.ts](tests/api/write-guard.test.ts) finds every such route and checks it does.
 
 Screens read and change data only through the `DataStore` in [src/data/types.ts](src/data/types.ts).
 [tests/datastore/conformance.ts](tests/datastore/conformance.ts) lists the rules every store follows, as tests.

@@ -257,6 +257,8 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       const action = isPaused ? "resume" : "pause";
       const response = await fetch(`/api/races/${raceId}/${action}`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
       });
 
       if (!response.ok) {

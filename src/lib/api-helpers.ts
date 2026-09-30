@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { duplicateNameMessage, isUuid, type Checked, type EntityKind } from "@/domain/rules";
+import { crossSite, forbiddenOrigin } from "@/lib/cors";
 
 // Shared by the data routes. Clients tell errors apart by status: 400 invalid, 404 not found, 409 duplicate name
 // (see src/data/api-data-store.ts).
@@ -26,6 +27,17 @@ export function notJson() {
 export function isJsonRequest(request: Request): boolean {
   const type = request.headers.get("content-type") ?? "";
   return type.split(";")[0].trim().toLowerCase() === "application/json";
+}
+
+// Every route that changes data starts with this (the /api/sync routes, which the phone app calls from its own site,
+// have their own checks). Only the timer's own pages may change its data: a page on another site, open on a phone
+// that's on the timer's Wi-Fi, could otherwise send plain-text posts that add drivers, sessions or races. (A browser
+// asks the timer before another site's PUT, PATCH or DELETE, and the timer never says yes.)
+export function refuseWrite(request: Request): Response | null {
+  if (crossSite(request)) return forbiddenOrigin();
+  // A DELETE may have no body; another site's DELETE is refused above, and a browser asks the timer before sending one.
+  if (request.method !== "DELETE" && !isJsonRequest(request)) return notJson();
+  return null;
 }
 
 // P2002: a unique constraint failed. P2025: the record to update or delete doesn't exist.

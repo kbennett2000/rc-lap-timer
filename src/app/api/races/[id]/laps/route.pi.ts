@@ -2,8 +2,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { RecordLapRequest } from "../../types";
+import { refuseWrite } from "@/lib/api-helpers";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const { carNumber, timestamp }: RecordLapRequest = await request.json();
 

@@ -4,6 +4,7 @@
 //   npm run test:e2e
 
 import { expect, request, test, type Page } from "@playwright/test";
+import { expectNoRefusedRequests } from "./pi-helpers";
 
 type Fixture = { id: string; name: string };
 type SavedSession = {
@@ -21,6 +22,7 @@ let car: Fixture;
 let location: Fixture;
 
 test.describe.configure({ mode: "serial" });
+expectNoRefusedRequests();
 
 async function api(path: string, body?: unknown) {
   const context = await request.newContext({ baseURL: test.info().project.use.baseURL });

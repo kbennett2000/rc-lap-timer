@@ -10,7 +10,7 @@ export function allowedOrigins(setting = process.env.SYNC_ALLOWED_ORIGINS): stri
   return origins && origins.length > 0 ? origins : DEFAULT_ORIGINS;
 }
 
-function sameOrigin(request: Request, origin: string): boolean {
+export function sameOrigin(request: Request, origin: string): boolean {
   try {
     return new URL(origin).host === request.headers.get("host");
   } catch {
@@ -47,6 +47,13 @@ export function preflight(request: Request): Response {
       }),
     },
   });
+}
+
+// A request sent by another site's page. Browsers send Origin with every POST, PUT, PATCH and DELETE, their own site's
+// included; requests without one (curl, tests) don't come from a page.
+export function crossSite(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  return origin !== null && !sameOrigin(request, origin);
 }
 
 // A write from another site that isn't allowed. A browser sends some cross-site requests without asking first, so

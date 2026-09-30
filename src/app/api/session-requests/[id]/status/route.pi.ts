@@ -3,10 +3,14 @@ import { NextResponse } from "next/server";
 import { Prisma, SessionRequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { refuseWrite } from "@/lib/api-helpers";
 
 const VALID_STATUSES = new Set<string>(Object.values(SessionRequestStatus));
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
   try {
     const { status } = await request.json();
 
