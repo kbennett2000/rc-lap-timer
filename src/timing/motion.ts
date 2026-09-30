@@ -20,6 +20,31 @@ export const DEFAULT_SETTINGS: DetectorSettings = {
   framesToSkip: 60,
 };
 
+// What each setting's slider allows.
+export const SETTING_RANGES: Record<keyof DetectorSettings, readonly [number, number]> = {
+  sensitivity: [5, 200],
+  threshold: [0.1, 10],
+  cooldown: [100, 25000],
+  framesToSkip: [1, 240],
+};
+
+// Settings read back from the device's storage. Anything missing or outside its slider's range (a different
+// version, or a hand edit) gets its default.
+export function parseSettings(value: unknown): DetectorSettings {
+  const stored = typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+  const setting = (key: keyof DetectorSettings) => {
+    const [min, max] = SETTING_RANGES[key];
+    const number = stored[key];
+    return typeof number === "number" && number >= min && number <= max ? number : DEFAULT_SETTINGS[key];
+  };
+  return {
+    sensitivity: setting("sensitivity"),
+    threshold: setting("threshold"),
+    cooldown: setting("cooldown"),
+    framesToSkip: setting("framesToSkip"),
+  };
+}
+
 // Frames are compared at this size (the longest side, in pixels): small enough for a phone to compare every frame, and
 // still hundreds of pixels for a car crossing the picture. A smaller picture also averages away the camera's grain.
 export const ANALYSIS_SIZE = 320;

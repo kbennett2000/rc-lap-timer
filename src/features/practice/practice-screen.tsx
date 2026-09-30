@@ -350,8 +350,14 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="current" className="px-0 sm:px-4 space-y-4 h-full overflow-y-auto">
-            <motion.div key={activeTab} className="space-y-4" {...tabMotion}>
+          {/* Always mounted (only hidden when inactive): the camera, IR timing and the setup keep running while another
+              tab is open. Unmounting it turned the camera off mid-run, so laps were missed. */}
+          <TabsContent
+            value="current"
+            forceMount
+            className="px-0 sm:px-4 space-y-4 h-full overflow-y-auto data-[state=inactive]:hidden"
+          >
+            <motion.div className="space-y-4" {...tabMotion}>
               <SessionSetup
                 drivers={data.drivers}
                 locations={data.locations}

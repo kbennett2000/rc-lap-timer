@@ -5,6 +5,7 @@ import {
   DEFAULT_SETTINGS,
   frameTime,
   nextFrame,
+  parseSettings,
   skipping,
   START,
   type DetectorState,
@@ -148,5 +149,24 @@ describe("frameTime", () => {
     expect(frameTime({ captureTime: Number.NaN }, NOW - 5, ORIGIN, NOW).source).toBe("arrival");
     expect(frameTime({ captureTime: NOW + 100 }, undefined, ORIGIN, NOW).source).toBe("camera");
     expect(frameTime({ captureTime: NOW - 1000 }, undefined, ORIGIN, NOW).source).toBe("camera");
+  });
+});
+
+describe("parseSettings", () => {
+  it("reads back settings that were saved", () => {
+    const saved = { sensitivity: 40, threshold: 2.5, cooldown: 3000, framesToSkip: 15 };
+    expect(parseSettings(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
+  });
+
+  it("uses the default for anything missing, out of range or not a number", () => {
+    expect(parseSettings({ sensitivity: 4, threshold: 11, cooldown: "3000", framesToSkip: Number.NaN })).toEqual(
+      DEFAULT_SETTINGS,
+    );
+    expect(parseSettings({ cooldown: 500 })).toEqual({ ...DEFAULT_SETTINGS, cooldown: 500 });
+  });
+
+  it("uses the defaults for something that isn't settings at all", () => {
+    for (const value of [null, undefined, 42, "settings", [1, 2]])
+      expect(parseSettings(value)).toEqual(DEFAULT_SETTINGS);
   });
 });
