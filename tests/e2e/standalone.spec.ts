@@ -3,6 +3,7 @@
 //   E2E_TARGET=standalone npm run test:e2e
 // Every test starts with an empty browser, so each one adds its own driver, car and location through the app.
 
+import { spawn } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
 
 type Fixture = { driver: string; car: string; location: string };
@@ -42,6 +43,9 @@ async function addFixtures(page: Page, label: string): Promise<Fixture> {
   return fixture;
 }
 
+// A saved session's card (Recent Sessions and Session Mgmt), as opposed to the setup summary's "Driver: …".
+const sessionCard = (page: Page, fixture: Fixture) => page.getByText(`Driver: ${fixture.driver} - Car: ${fixture.car}`);
+
 async function runSession(page: Page) {
   await page.getByRole("button", { name: "Start Lap Timer" }).click();
   await page.waitForTimeout(500);
@@ -66,11 +70,11 @@ test("keeps its data on the phone, hides the Pi's features, and never calls an A
   await page.getByRole("button", { name: "Cancel" }).click();
 
   await runSession(page);
-  await expect(page.getByText(`Driver: ${fixture.driver}`)).toBeVisible();
+  await expect(sessionCard(page, fixture)).toBeVisible();
   await expect(page.getByText("Session not saved")).toHaveCount(0);
 
   await page.reload();
-  await expect(page.getByText(`Driver: ${fixture.driver}`), "the session is still there after a reload").toBeVisible();
+  await expect(sessionCard(page, fixture), "the session is still there after a reload").toBeVisible();
 
   await page.getByRole("tab", { name: /Session/ }).click();
   await expect(page.getByText("Request a Session")).toHaveCount(0);
@@ -142,7 +146,72 @@ test("an interrupted IR run resumes with tap timing, so it can be stopped", asyn
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.getByRole("button", { name: "Record Lap" })).toBeEnabled();
   await page.getByRole("button", { name: "Stop Lap Timer" }).click();
-  await expect(page.getByText(`Driver: ${fixture.driver}`)).toBeVisible();
+  await expect(sessionCard(page, fixture)).toBeVisible();
   await expect(page.getByText("Session not saved")).toHaveCount(0);
   expect(apiCalls, "requests to an API").toEqual([]);
+});
+
+test("can be installed: manifest and icons", async ({ page, request }) => {
+  await page.goto("./");
+  const manifestUrl = new URL((await page.locator('link[rel="manifest"]').getAttribute("href"))!, page.url());
+  const manifest = await (await request.get(manifestUrl.href)).json();
+  expect(manifest).toMatchObject({
+    id: "/rc-lap-timer/",
+    name: "RC Lap Timer",
+    start_url: "./",
+    scope: "./",
+    display: "standalone",
+  });
+  expect(manifest.icons.map((icon: { sizes: string; purpose: string }) => `${icon.sizes} ${icon.purpose}`)).toEqual([
+    "192x192 any",
+    "512x512 any",
+    "512x512 maskable",
+  ]);
+  for (const icon of manifest.icons) {
+    expect((await request.get(new URL(icon.src, manifestUrl).href)).ok(), icon.src).toBe(true);
+  }
+  const appleIcon = await page.locator('link[rel="apple-touch-icon"]').getAttribute("href");
+  expect(appleIcon).toMatch(/^\/rc-lap-timer\/apple-icon\.png/);
+});
+
+test("opens with its data when the site can't be reached", async ({ page }) => {
+  // A server of its own, so this test can stop it.
+  const url = "http://127.0.0.1:3101/rc-lap-timer/";
+  const server = spawn(process.execPath, ["scripts/serve-static.mjs", "--port", "3101"], { stdio: "ignore" });
+  try {
+    await expect
+      .poll(() =>
+        fetch(url).then(
+          (r) => r.status,
+          () => 0,
+        ),
+      )
+      .toBe(200);
+    await page.goto(url);
+    const fixture = await addFixtures(page, "Offline");
+
+    // The service worker takes over pages opened after it's installed.
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+
+    server.kill();
+    await expect
+      .poll(() =>
+        fetch(url).then(
+          (r) => r.status,
+          () => 0,
+        ),
+      )
+      .toBe(0);
+    const response = await page.reload();
+    expect(response?.fromServiceWorker(), "served by the service worker").toBe(true);
+    // The records made before the server went away are all there.
+    await pickSelect(page, "Select Driver", fixture.driver);
+    await pickSelect(page, "Select Car", fixture.car);
+    await pickSelect(page, "Select Location", fixture.location);
+    await expect(page.getByText(`Location: ${fixture.location}`)).toBeVisible();
+  } finally {
+    server.kill();
+  }
 });

@@ -23,6 +23,10 @@ const RaceTab =
         loading: () => <p className="p-4 text-sm text-muted-foreground">Loading race mode…</p>,
       });
 
+// The phone-only app's offline copy and update offer (src/pwa/app-shell.tsx); the Pi build doesn't have it.
+const AppShell =
+  process.env.NEXT_PUBLIC_TARGET === "standalone" ? dynamic(() => import("@/pwa/app-shell"), { ssr: false }) : null;
+
 export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("practice");
 
@@ -32,7 +36,8 @@ export default function LapTimer() {
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content Area */}
-      <div className="pt-16 pb-20">
+      {/* Room for the bottom bar, and for the home indicator below it on phones without a home button */}
+      <div className="pt-16 pb-[calc(5rem+env(safe-area-inset-bottom))]">
         <Tabs defaultValue="practice" className="h-full" value={activeTab} onValueChange={setActiveTab}>
           {/* Practice Tab: always mounted (only hidden when inactive) so a running session survives tab switches */}
           <TabsContent
@@ -68,7 +73,7 @@ export default function LapTimer() {
           </TabsContent>
 
           {/* Bottom Navigation */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 shadow-up">
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 shadow-up pb-[env(safe-area-inset-bottom)]">
             <TabsList className={`grid ${gridCols(TAB_COUNT)} gap-0`}>
               {/* Practice */}
               <TabsTrigger value="practice" className="py-3">
@@ -99,6 +104,7 @@ export default function LapTimer() {
           </div>
         </Tabs>
       </div>
+      {AppShell && <AppShell />}
     </div>
   );
 }

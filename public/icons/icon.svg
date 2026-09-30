@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- RC Lap Timer: a stopwatch with a checkered-flag quarter. Everything stays inside the central circle (radius
+       205) that Android keeps when it crops a maskable icon, so this one drawing serves every icon size. -->
+  <defs>
+    <pattern id="checks" width="44" height="44" patternUnits="userSpaceOnUse" x="256" y="290">
+      <rect width="22" height="22" fill="#f9fafb"/>
+      <rect x="22" y="22" width="22" height="22" fill="#f9fafb"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" fill="#111827"/>
+  <rect x="222" y="90" width="68" height="34" rx="10" fill="#f9fafb"/>
+  <rect x="243" y="118" width="26" height="30" fill="#f9fafb"/>
+  <rect x="352" y="136" width="48" height="26" rx="9" fill="#f9fafb" transform="rotate(45 376 149)"/>
+  <circle cx="256" cy="290" r="146" fill="#1f2937" stroke="#f9fafb" stroke-width="30"/>
+  <path d="M256 290 L256 159 A131 131 0 0 1 387 290 Z" fill="url(#checks)"/>
+  <line x1="256" y1="290" x2="182" y2="216" stroke="#22c55e" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="256" cy="290" r="20" fill="#22c55e"/>
+</svg>
