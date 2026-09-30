@@ -40,8 +40,8 @@ export async function GET() {
           bestLap: entry.bestLapTime,
           laps: entry.lapsCompleted,
           status: entry.status,
-        }))
-      )
+        })),
+      ),
     );
   } catch (error) {
     console.error("Error:", error);

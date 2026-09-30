@@ -38,10 +38,10 @@ export const RaceCountdown: React.FC<RaceCountdownProps> = ({ timeLeft, playBeep
           oscillator.stop();
           audioContext.close();
         },
-        type === "count" ? 100 : 400
+        type === "count" ? 100 : 400,
       );
     },
-    [playBeeps]
+    [playBeeps],
   );
 
   // Voice announcements
@@ -59,7 +59,9 @@ export const RaceCountdown: React.FC<RaceCountdownProps> = ({ timeLeft, playBeep
       const setVoice = () => {
         const voices = window.speechSynthesis.getVoices();
         // First try to find Google US English voice
-        let preferredVoice = voices.find((voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"));
+        let preferredVoice = voices.find(
+          (voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"),
+        );
 
         // If no Google US voice, try any English voice
         if (!preferredVoice) {
@@ -81,7 +83,7 @@ export const RaceCountdown: React.FC<RaceCountdownProps> = ({ timeLeft, playBeep
 
       window.speechSynthesis.speak(utterance);
     },
-    [voiceAnnouncements]
+    [voiceAnnouncements],
   );
 
   // Handle countdown effects
@@ -97,14 +99,26 @@ export const RaceCountdown: React.FC<RaceCountdownProps> = ({ timeLeft, playBeep
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[200px]">
-      <motion.div key={timeLeft} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={{ duration: 0.3 }} className="text-center">
+      <motion.div
+        key={timeLeft}
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.5, opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="text-center"
+      >
         {timeLeft > 0 ? (
           <>
             <h2 className="text-2xl font-semibold mb-2">Race Starting In</h2>
             <div className="text-6xl font-bold font-mono">{timeLeft}</div>
           </>
         ) : (
-          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1.2, opacity: 1 }} transition={{ duration: 0.5 }} className="text-5xl font-bold text-green-600">
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1.2, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-5xl font-bold text-green-600"
+          >
             GO!
           </motion.div>
         )}

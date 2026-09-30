@@ -45,7 +45,11 @@ export default function LapTimer() {
       <div className="pt-16 pb-20">
         <Tabs defaultValue="practice" className="h-full" value={activeTab} onValueChange={setActiveTab}>
           {/* Practice Tab: always mounted (only hidden when inactive) so a running session survives tab switches */}
-          <TabsContent value="practice" forceMount className="px-4 space-y-4 h-full overflow-y-auto data-[state=inactive]:hidden">
+          <TabsContent
+            value="practice"
+            forceMount
+            className="px-4 space-y-4 h-full overflow-y-auto data-[state=inactive]:hidden"
+          >
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
               <PracticeControl isActive={activeTab === "practice"} />
             </motion.div>
@@ -63,7 +67,12 @@ export default function LapTimer() {
           <TabsContent value="drivercarmanager" className="space-y-4">
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
               {/* Driver Car Manager */}
-              <DriverCarManager drivers={drivers} locations={locations} onDriversUpdate={setDrivers} onLocationsUpdate={setLocations} />
+              <DriverCarManager
+                drivers={drivers}
+                locations={locations}
+                onDriversUpdate={setDrivers}
+                onLocationsUpdate={setLocations}
+              />
             </motion.div>
           </TabsContent>
 

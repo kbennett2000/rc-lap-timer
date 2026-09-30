@@ -38,7 +38,7 @@ export async function PUT(request: Request) {
             error: "Session not found",
             details: `No current session found with ID: ${data.sessionId}`,
           },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -75,7 +75,7 @@ export async function PUT(request: Request) {
             error: "Lap not found",
             details: `No lap found with ID: ${data.lapId}`,
           },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -98,7 +98,7 @@ export async function PUT(request: Request) {
         error: "Error managing current session lap",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -118,7 +118,7 @@ export async function DELETE(request: Request) {
           error: "Session not found",
           details: `No current session found with ID: ${data.sessionId}`,
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -135,7 +135,7 @@ export async function DELETE(request: Request) {
         error: "Error deleting current session",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

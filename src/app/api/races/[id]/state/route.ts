@@ -56,4 +56,3 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "Failed to fetch race state" }, { status: 500 });
   }
 }
-

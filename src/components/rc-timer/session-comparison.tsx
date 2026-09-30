@@ -46,7 +46,9 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
   ];
 
   const prepareChartData = () => {
-    const selectedSessionData = selectedSessions.map((id) => sessions.find((s) => s.id === id)).filter((s): s is Session => s !== undefined);
+    const selectedSessionData = selectedSessions
+      .map((id) => sessions.find((s) => s.id === id))
+      .filter((s): s is Session => s !== undefined);
 
     if (selectedSessionData.length === 0) return [];
 
@@ -114,15 +116,24 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
       const date = parseISO(sessionDate);
 
       if (dateRange.from && !dateRange.to) {
-        return isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd");
+        return (
+          isAfter(date, startOfDay(dateRange.from)) ||
+          format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
+        );
       }
 
       if (!dateRange.from && dateRange.to) {
-        return isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd");
+        return (
+          isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
+        );
       }
 
       if (dateRange.from && dateRange.to) {
-        return (isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) && (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"));
+        return (
+          (isAfter(date, startOfDay(dateRange.from)) ||
+            format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
+        );
       }
 
       return true;
@@ -234,14 +245,21 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
             <div className="flex flex-wrap gap-2 mb-4">
               {DATE_PRESETS.map((preset) => {
                 const presetDates = getPresetDates(preset);
-                const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+                const isActive =
+                  dateRange.from &&
+                  dateRange.to &&
+                  format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") &&
+                  format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
 
                 return (
                   <Button
                     key={preset.label}
                     variant="outline"
                     size="sm"
-                    className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                    className={cn(
+                      "hover:bg-muted",
+                      isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "",
+                    )}
                     onClick={() => {
                       const { from, to } = getPresetDates(preset);
                       setDateRange({ from, to });
@@ -260,13 +278,24 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
               <Label>Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !dateRange.from && "text-muted-foreground",
+                    )}
+                  >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} autoFocus />
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.from}
+                    onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))}
+                    autoFocus
+                  />
                 </PopoverContent>
               </Popover>
             </div>
@@ -274,13 +303,24 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
               <Label>End Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !dateRange.to && "text-muted-foreground",
+                    )}
+                  >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} autoFocus />
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.to}
+                    onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))}
+                    autoFocus
+                  />
                 </PopoverContent>
               </Popover>
             </div>
@@ -310,7 +350,10 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                 {sortSessionsByDate(filteredSessions).map((session) => (
                   <div
                     key={session.id}
-                    className={cn("p-3 rounded-lg border cursor-pointer transition-colors", selectedSessions.includes(session.id) ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50")}
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-colors",
+                      selectedSessions.includes(session.id) ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50",
+                    )}
                     onClick={() => {
                       setSelectedSessions((prev) => {
                         if (prev.includes(session.id)) {
@@ -372,7 +415,15 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                     {Object.keys(chartData[0] || {})
                       .filter((key) => key !== "lap")
                       .map((sessionKey, index) => (
-                        <Line key={sessionKey} type="monotone" dataKey={sessionKey} stroke={`hsl(${index * 60}, 70%, 50%)`} strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                        <Line
+                          key={sessionKey}
+                          type="monotone"
+                          dataKey={sessionKey}
+                          stroke={`hsl(${index * 60}, 70%, 50%)`}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          connectNulls
+                        />
                       ))}
                   </LineChart>
                 </ResponsiveContainer>

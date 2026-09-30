@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         details: error instanceof Error ? error.message : "Unknown error",
         deviceUrl: ledUrl,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

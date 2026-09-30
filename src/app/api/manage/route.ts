@@ -204,7 +204,7 @@ export async function PATCH(request: Request) {
         success: false,
         error: error instanceof Error ? error.message : "Failed to update",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -413,7 +413,7 @@ export async function DELETE(request: Request) {
         success: false,
         error: error instanceof Error ? error.message : "Failed to delete",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

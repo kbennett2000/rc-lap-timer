@@ -5,7 +5,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const FEET_PER_METER = 3.28084;
 
@@ -33,7 +42,9 @@ const TrackMeasurer = () => {
     const R = 20902231; // Earth radius in feet
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -100,7 +111,7 @@ const TrackMeasurer = () => {
             setError("Error getting location");
         }
       },
-      options
+      options,
     );
   };
 
@@ -130,7 +141,9 @@ const TrackMeasurer = () => {
           // Calculate heading
           const dLon = ((current.lon - startPosition.lon) * Math.PI) / 180;
           const y = Math.sin(dLon) * Math.cos((current.lat * Math.PI) / 180);
-          const x = Math.cos((startPosition.lat * Math.PI) / 180) * Math.sin((current.lat * Math.PI) / 180) - Math.sin((startPosition.lat * Math.PI) / 180) * Math.cos((current.lat * Math.PI) / 180) * Math.cos(dLon);
+          const x =
+            Math.cos((startPosition.lat * Math.PI) / 180) * Math.sin((current.lat * Math.PI) / 180) -
+            Math.sin((startPosition.lat * Math.PI) / 180) * Math.cos((current.lat * Math.PI) / 180) * Math.cos(dLon);
           const brng = (Math.atan2(y, x) * 180) / Math.PI;
           setHeading((brng + 360) % 360);
         },
@@ -150,7 +163,7 @@ const TrackMeasurer = () => {
               setError("Error tracking location");
           }
         },
-        options
+        options,
       );
     }
 
@@ -181,12 +194,20 @@ const TrackMeasurer = () => {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Change Target Distance</AlertDialogTitle>
-                <AlertDialogDescription>Enter a new target distance in feet. Default is 132 feet.</AlertDialogDescription>
+                <AlertDialogDescription>
+                  Enter a new target distance in feet. Default is 132 feet.
+                </AlertDialogDescription>
               </AlertDialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="distance">Target Distance (feet)</Label>
-                  <Input id="distance" type="number" step="0.1" value={tempDistance} onChange={(e) => setTempDistance(parseFloat(e.target.value))} />
+                  <Input
+                    id="distance"
+                    type="number"
+                    step="0.1"
+                    value={tempDistance}
+                    onChange={(e) => setTempDistance(parseFloat(e.target.value))}
+                  />
                 </div>
               </div>
               <AlertDialogFooter>
@@ -226,12 +247,17 @@ const TrackMeasurer = () => {
           {permissionStatus === "denied" ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>Please enable location services in your device settings to use this feature.</AlertDescription>
+              <AlertDescription>
+                Please enable location services in your device settings to use this feature.
+              </AlertDescription>
             </Alert>
           ) : (
             <>
               {!startPosition ? (
-                <button onClick={handleStartPosition} className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg">
+                <button
+                  onClick={handleStartPosition}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg"
+                >
                   <MapPin size={20} />
                   Mark Start Line
                 </button>
@@ -242,8 +268,16 @@ const TrackMeasurer = () => {
                   </div>
                   <div className="space-y-2">
                     <p className="text-2xl font-bold">{distance.toFixed(1)} ft</p>
-                    {currentPosition && <p className="text-sm text-gray-500">Accuracy: ±{(currentPosition.accuracy * FEET_PER_METER).toFixed(1)}ft</p>}
-                    <p className={`text-lg ${Math.abs(distance - targetDistance) < 1 ? "text-green-500" : ""}`}>{distance < targetDistance ? `Keep walking: ${(targetDistance - distance).toFixed(1)} ft to go` : `Too far: ${(distance - targetDistance).toFixed(1)} ft past`}</p>
+                    {currentPosition && (
+                      <p className="text-sm text-gray-500">
+                        Accuracy: ±{(currentPosition.accuracy * FEET_PER_METER).toFixed(1)}ft
+                      </p>
+                    )}
+                    <p className={`text-lg ${Math.abs(distance - targetDistance) < 1 ? "text-green-500" : ""}`}>
+                      {distance < targetDistance
+                        ? `Keep walking: ${(targetDistance - distance).toFixed(1)} ft to go`
+                        : `Too far: ${(distance - targetDistance).toFixed(1)} ft past`}
+                    </p>
                     <button onClick={handleReset} className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">
                       Reset
                     </button>

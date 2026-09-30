@@ -164,7 +164,7 @@ export async function POST(request: Request) {
         error: "Error saving data",
         details: (error as Error).message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -206,7 +206,7 @@ export async function DELETE(request: Request) {
               error: "Session not found",
               details: `No session found with ID ${id}`,
             },
-            { status: 404 }
+            { status: 404 },
           );
         }
 
@@ -218,7 +218,7 @@ export async function DELETE(request: Request) {
       {
         error: "Invalid delete request - missing id",
       },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     logger.error("Error in DELETE handler:", error);
@@ -228,7 +228,7 @@ export async function DELETE(request: Request) {
         error: "Error deleting data",
         details: error instanceof Error ? error.message : "Unknown error occurred",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

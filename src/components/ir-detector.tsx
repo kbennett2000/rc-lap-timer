@@ -26,7 +26,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
     (carId: string): boolean => {
       return allowedCarNumbers.includes(carId);
     },
-    [allowedCarNumbers]
+    [allowedCarNumbers],
   );
 
   const startCooldown = useCallback(
@@ -38,7 +38,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
       cooldownRef.current = newCooldowns;
       setCarCooldowns(newCooldowns);
     },
-    [cooldownPeriod]
+    [cooldownPeriod],
   );
 
   const processNewDetections = useCallback(
@@ -62,7 +62,7 @@ const IRDetector: React.FC<IRDetectorProps> = ({ allowedCarNumbers, onCarDetecte
       previousCarsRef.current = currentCarIds;
       setLastDetectedCars(cars);
     },
-    [isCarAllowed, onCarDetected, startCooldown]
+    [isCarAllowed, onCarDetected, startCooldown],
   );
 
   const fetchCarData = useCallback(async () => {

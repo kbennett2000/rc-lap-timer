@@ -11,8 +11,17 @@ export async function POST(request: Request) {
   try {
     const { driverId, carId, locationId, numberOfLaps } = await request.json();
 
-    if (typeof driverId !== "string" || typeof carId !== "string" || typeof locationId !== "string" || !Number.isInteger(numberOfLaps) || numberOfLaps <= 0) {
-      return NextResponse.json({ error: "driverId, carId, locationId and a positive numberOfLaps are required" }, { status: 400 });
+    if (
+      typeof driverId !== "string" ||
+      typeof carId !== "string" ||
+      typeof locationId !== "string" ||
+      !Number.isInteger(numberOfLaps) ||
+      numberOfLaps <= 0
+    ) {
+      return NextResponse.json(
+        { error: "driverId, carId, locationId and a positive numberOfLaps are required" },
+        { status: 400 },
+      );
     }
 
     const newRequest = await prisma.sessionRequest.create({

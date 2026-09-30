@@ -43,7 +43,10 @@ export function parseSessionInput(input: unknown): ParseResult {
   const penalties = (Array.isArray(input.penalties) ? input.penalties : [])
     .filter(
       (penalty: unknown): penalty is { lapNumber: number; count: number } =>
-        isRecord(penalty) && Number.isInteger(penalty.lapNumber) && Number.isInteger(penalty.count) && (penalty.count as number) > 0
+        isRecord(penalty) &&
+        Number.isInteger(penalty.lapNumber) &&
+        Number.isInteger(penalty.count) &&
+        (penalty.count as number) > 0,
     )
     .map((penalty) => ({ lapNumber: penalty.lapNumber, count: penalty.count }));
 

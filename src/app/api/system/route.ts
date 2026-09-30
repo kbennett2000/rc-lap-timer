@@ -67,15 +67,24 @@ function runHelper(args: string[], stdin?: string): Promise<void> {
 export async function POST(request: Request) {
   const expectedPin = process.env.ADMIN_PIN;
   if (!expectedPin) {
-    return error(403, "System settings are disabled. Set ADMIN_PIN in /etc/rc-lap-timer.env on the Pi (see docs/raspberryPiSetup.md) and restart the app.");
+    return error(
+      403,
+      "System settings are disabled. Set ADMIN_PIN in /etc/rc-lap-timer.env on the Pi (see docs/raspberryPiSetup.md) and restart the app.",
+    );
   }
   if (expectedPin.length < MIN_ADMIN_PIN_LENGTH) {
-    return error(403, `ADMIN_PIN is too short: use at least ${MIN_ADMIN_PIN_LENGTH} characters in /etc/rc-lap-timer.env, then restart the app.`);
+    return error(
+      403,
+      `ADMIN_PIN is too short: use at least ${MIN_ADMIN_PIN_LENGTH} characters in /etc/rc-lap-timer.env, then restart the app.`,
+    );
   }
 
   const now = Date.now();
   if (now < pinLockedUntil) {
-    return error(429, `Too many wrong PIN attempts. Try again in ${describeWait(pinLockedUntil - now)}, or restart the app on the Pi.`);
+    return error(
+      429,
+      `Too many wrong PIN attempts. Try again in ${describeWait(pinLockedUntil - now)}, or restart the app on the Pi.`,
+    );
   }
 
   let body: Record<string, unknown>;
@@ -120,7 +129,10 @@ export async function POST(request: Request) {
   try {
     await access(HELPER, constants.X_OK);
   } catch {
-    return error(500, `Configuration helper not found or not executable at ${HELPER}. Install scripts/system/rc-config-helper.sh (see docs/raspberryPiSetup.md).`);
+    return error(
+      500,
+      `Configuration helper not found or not executable at ${HELPER}. Install scripts/system/rc-config-helper.sh (see docs/raspberryPiSetup.md).`,
+    );
   }
 
   const applied: string[] = [];
@@ -138,13 +150,15 @@ export async function POST(request: Request) {
         outdated
           ? `The installed configuration helper is out of date. Reinstall scripts/system/rc-config-helper.sh to ${HELPER}.`
           : `Failed to update ${change.name}.`,
-        { applied }
+        { applied },
       );
     }
   }
 
   setTimeout(() => {
-    runHelper(["reboot"]).catch((err) => logger.error(`[system] reboot failed: ${err instanceof Error ? err.message : String(err)}`));
+    runHelper(["reboot"]).catch((err) =>
+      logger.error(`[system] reboot failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
   }, REBOOT_DELAY_MS);
 
   return NextResponse.json({ message: "Settings updated. The Pi is rebooting now.", applied, rebooting: true });

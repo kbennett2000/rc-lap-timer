@@ -151,7 +151,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
         logger.error("Error recording lap:", error);
       }
     },
-    [raceId, raceStatus, raceStartTime, lastDetectionTimes]
+    [raceId, raceStatus, raceStartTime, lastDetectionTimes],
   );
 
   // Handle race completion
@@ -304,7 +304,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       return carTime - leaderTime;
     },
-    [lastDetectionTimes, carPositions]
+    [lastDetectionTimes, carPositions],
   );
 
   const onRaceConfigured = async (config: RaceConfiguration) => {
@@ -395,7 +395,12 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     status: "RACING" as const,
   }));
 
-  const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
+  const playBeep = ({
+    frequency = 440,
+    duration = 200,
+    volume = 0.5,
+    type = "square",
+  }: BeepOptions = {}): Promise<void> => {
     if (playBeeps) {
       return new Promise((resolve) => {
         // Create audio context
@@ -493,7 +498,9 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       const setVoice = () => {
         const voices = window.speechSynthesis.getVoices();
         // First try to find Google US English voice
-        let preferredVoice = voices.find((voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"));
+        let preferredVoice = voices.find(
+          (voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"),
+        );
 
         // If no Google US voice, try any English voice
         if (!preferredVoice) {
@@ -648,14 +655,26 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
             />
           )}
 
-          {raceStatus === "COUNTDOWN" && <RaceCountdown timeLeft={countdownTime || 0} playBeeps={playBeeps} voiceAnnouncements={voiceAnnouncements} />}
+          {raceStatus === "COUNTDOWN" && (
+            <RaceCountdown
+              timeLeft={countdownTime || 0}
+              playBeeps={playBeeps}
+              voiceAnnouncements={voiceAnnouncements}
+            />
+          )}
 
           {(raceStatus === "RACING" || raceStatus === "PAUSED") && (
             <>
               <RacePositionBoard positions={boardPositions} />
 
               <div className="mt-4">
-                <RaceControls isPaused={isPaused} onPauseResume={togglePause} onStop={stopRace} onDNF={markDNF} availableCarNumbers={allowedCarNumbers.map((num) => parseInt(num))} />
+                <RaceControls
+                  isPaused={isPaused}
+                  onPauseResume={togglePause}
+                  onStop={stopRace}
+                  onDNF={markDNF}
+                  availableCarNumbers={allowedCarNumbers.map((num) => parseInt(num))}
+                />
               </div>
             </>
           )}

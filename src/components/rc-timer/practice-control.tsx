@@ -9,8 +9,34 @@ import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ListX, Trophy, AlertTriangle, PlayCircle, StopCircle, ListPlus, Trash2, User, Car as CarIcon, Turtle, Zap, MapPin, ChartArea, NotebookPen, ClipboardList } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  Video,
+  ListX,
+  Trophy,
+  AlertTriangle,
+  PlayCircle,
+  StopCircle,
+  ListPlus,
+  Trash2,
+  User,
+  Car as CarIcon,
+  Turtle,
+  Zap,
+  MapPin,
+  ChartArea,
+  NotebookPen,
+  ClipboardList,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -432,21 +458,24 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     };
   }, []);
 
-  const announceRaceInfo = useCallback(async (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
-    let announcement = "";
+  const announceRaceInfo = useCallback(
+    async (lapNumber: number, lastLapTime?: number, sessionEnded: boolean = false) => {
+      let announcement = "";
 
-    if (sessionEnded && announceLapNumberRef.current) {
-      announcement += "Timing Session Ended.";
-    } else if (announceLapNumberRef.current) {
-      announcement += `Lap ${lapNumber} started.`;
-    }
+      if (sessionEnded && announceLapNumberRef.current) {
+        announcement += "Timing Session Ended.";
+      } else if (announceLapNumberRef.current) {
+        announcement += `Lap ${lapNumber} started.`;
+      }
 
-    if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
-      announcement += `Last lap time ${formatTimeForSpeech(lastLapTime)}`;
-    }
+      if (announceLastLapTimeRef.current && lastLapTime !== undefined) {
+        announcement += `Last lap time ${formatTimeForSpeech(lastLapTime)}`;
+      }
 
-    await sayIt(announcement);
-  }, []);
+      await sayIt(announcement);
+    },
+    [],
+  );
 
   const speechVoiceRef = useRef(speechVoice);
   // Sync with the ref whenever it changes
@@ -669,7 +698,9 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   // State for last three sessions
   const getLastThreeSessions = () => {
     // First filter out current session
-    const filteredSessions = savedSessions.filter((session) => (currentSession ? session.id !== currentSession.id : true));
+    const filteredSessions = savedSessions.filter((session) =>
+      currentSession ? session.id !== currentSession.id : true,
+    );
 
     // Sort by date, newest first
     const sortedSessions = filteredSessions.sort((a, b) => {
@@ -745,7 +776,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
             };
           }
           return driver;
-        })
+        }),
       );
 
       setSelectedCar(car.id);
@@ -819,16 +850,32 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     }
   };
 
-  const handleMotionDetected = useCallback(
-    () => {
-      if (!isRunningRef.current) {
-        startTimer_MD();
-      } else if (isRunningRef.current) {
-        recordLap_MD();
-      }
-    },
-    [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
-  );
+  const handleMotionDetected = useCallback(() => {
+    if (!isRunningRef.current) {
+      startTimer_MD();
+    } else if (isRunningRef.current) {
+      recordLap_MD();
+    }
+  }, [
+    selectedDriver,
+    selectedCar,
+    startTime,
+    currentTime,
+    laps,
+    currentSession,
+    selectedLapCount,
+    inputLapCount,
+    showLapCountInput,
+    startAnimation,
+    lapAnimation,
+    stopAnimation,
+    penalties,
+    penaltyAnimation,
+    isMobile,
+    timingMode,
+    showMotionDetector,
+    isMotionTimingActive,
+  ]);
 
   const driversRef = useRef(drivers);
   // Sync with the ref whenever it changes
@@ -897,7 +944,9 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       ledDevice.displayMessage("Session   Finished", "All laps complete!");
       flashEnd();
     } else {
-      alert("The session could not be saved. It has been kept on this device: use Retry save at the top of the Practice screen.");
+      alert(
+        "The session could not be saved. It has been kept on this device: use Retry save at the top of the Practice screen.",
+      );
     }
   };
 
@@ -947,13 +996,22 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     setIsRetryingSave(false);
     await loadSavedData();
     if (failed > 0) {
-      alert(`${failed === 1 ? "A session" : `${failed} sessions`} still could not be saved. Check the connection to the timer and try again.`);
+      alert(
+        `${failed === 1 ? "A session" : `${failed} sessions`} still could not be saved. Check the connection to the timer and try again.`,
+      );
     }
   };
 
   const discardUnsavedSessions = (): void => {
     const count = unsavedSessionsRef.current.length;
-    if (!confirm(count === 1 ? "Discard this unsaved session? Its laps will be lost." : `Discard these ${count} unsaved sessions? Their laps will be lost.`)) return;
+    if (
+      !confirm(
+        count === 1
+          ? "Discard this unsaved session? Its laps will be lost."
+          : `Discard these ${count} unsaved sessions? Their laps will be lost.`,
+      )
+    )
+      return;
     setUnsavedSessionList([]);
   };
 
@@ -1009,17 +1067,25 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       const date = parseISO(sessionDate);
 
       if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
-        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
+        return (
+          isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
+          format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")
+        );
       }
 
       if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
+        return (
+          isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
+          format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd")
+        );
       }
 
       if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
         return (
-          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
+          (isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
+            format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
+            format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
         );
       }
 
@@ -1041,17 +1107,25 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       const date = parseISO(sessionDate);
 
       if (previousSessionsDateRange.from && !previousSessionsDateRange.to) {
-        return isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd");
+        return (
+          isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
+          format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")
+        );
       }
 
       if (!previousSessionsDateRange.from && previousSessionsDateRange.to) {
-        return isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd");
+        return (
+          isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
+          format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd")
+        );
       }
 
       if (previousSessionsDateRange.from && previousSessionsDateRange.to) {
         return (
-          (isAfter(date, startOfDay(previousSessionsDateRange.from)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(previousSessionsDateRange.to)) || format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
+          (isAfter(date, startOfDay(previousSessionsDateRange.from)) ||
+            format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(previousSessionsDateRange.to)) ||
+            format(date, "yyyy-MM-dd") === format(previousSessionsDateRange.to, "yyyy-MM-dd"))
         );
       }
 
@@ -1084,7 +1158,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     }
   };
 
-  const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
+  const playBeep = ({
+    frequency = 440,
+    duration = 200,
+    volume = 0.5,
+    type = "square",
+  }: BeepOptions = {}): Promise<void> => {
     if (playBeepsRef.current) {
       return new Promise((resolve) => {
         // Create audio context
@@ -1375,7 +1454,10 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
     // flashPresets.greenFlash(1000);
     setLedGreen(100);
-    ledDevice.displayMessage("Session    Start", `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`);
+    ledDevice.displayMessage(
+      "Session    Start",
+      `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`,
+    );
   };
 
   const startTimer_MD = async (): Promise<void> => {
@@ -1396,7 +1478,10 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
     //flashPresets.greenFlash(1000);
     setLedGreen(100);
-    ledDevice.displayMessage("Session    Start", `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`);
+    ledDevice.displayMessage(
+      "Session    Start",
+      `${drivers.find((d) => d.id === selectedDriver)?.name} - ${getCurrentDriverCars().find((c) => c.id === selectedCar)?.name} at ${locations.find((l) => l.id === selectedLocation)?.name}`,
+    );
   };
 
   const stopTimer = (): void => {
@@ -1562,7 +1647,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   }
 
   // Create a new current session
-  async function createCurrentSession(data: { driverName: string; carName: string; locationName: string; lapCount?: number }) {
+  async function createCurrentSession(data: {
+    driverName: string;
+    carName: string;
+    locationName: string;
+    lapCount?: number;
+  }) {
     const response = await fetch("/api/current-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1572,7 +1662,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   }
 
   // Add a new lap to current session
-  async function addLapToCurrentSession(data: { sessionId: string; lapTime: number; lapNumber: number; penaltyCount?: number }) {
+  async function addLapToCurrentSession(data: {
+    sessionId: string;
+    lapTime: number;
+    lapNumber: number;
+    penaltyCount?: number;
+  }) {
     const response = await fetch("/api/current-session", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -1735,17 +1830,13 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   // ************************************************************************************************************************************************************************************************************************************************
   // ************************************************************************************************************************************************************************************************************************************************
 
-
-  const handleCarDetected = useCallback(
-    () => {
-      if (!isRunningRef.current) {
-        startTimer_IR();
-      } else if (isRunningRef.current) {
-        recordLap_IR();
-      }
-    },
-    [isRunningRef]
-  );
+  const handleCarDetected = useCallback(() => {
+    if (!isRunningRef.current) {
+      startTimer_IR();
+    } else if (isRunningRef.current) {
+      recordLap_IR();
+    }
+  }, [isRunningRef]);
 
   const startTimer_IR = async (): Promise<void> => {
     if (!selectedDriverRef.current || !selectedCarRef.current || !selectedLocationRef.current) {
@@ -1769,9 +1860,11 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     const driverName = driversRef.current.find((d) => d.id === selectedDriverRef.current)?.name;
 
     //const carName = getCurrentDriverCars().find((c) => c.id === selectedCarRef.current)?.name;
-    const carName = driversRef.current.find((d) => d.id === selectedDriverRef.current)?.cars.find((c) => c.id === selectedCarRef.current)?.name;
+    const carName = driversRef.current
+      .find((d) => d.id === selectedDriverRef.current)
+      ?.cars.find((c) => c.id === selectedCarRef.current)?.name;
 
-    //const locationName = locations.find((l) => l.id === selectedLocationRef.current)?.name;    
+    //const locationName = locations.find((l) => l.id === selectedLocationRef.current)?.name;
     const locationName = locationsRef.current.find((l) => l.id === selectedLocationRef.current)?.name;
 
     ledDevice.displayMessage("Session    Start", `${driverName} - ${carName} at ${locationName}`);
@@ -1814,15 +1907,15 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   // Run every 25 milliseconds
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
-    const timerJob = () => {      
+
+    const timerJob = () => {
       if (timingMode == "ir") {
-        const targetCarId = (getCurrentDriverCars().find((c) => c.id === selectedCarRef.current)?.defaultCarNumber || 0);
+        const targetCarId = getCurrentDriverCars().find((c) => c.id === selectedCarRef.current)?.defaultCarNumber || 0;
         fetchCarData(targetCarId.toString());
       }
       timeoutId = setTimeout(timerJob, 25);
     };
-    
+
     timerJob(); // Start the first run
 
     // Cleanup function
@@ -1841,7 +1934,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       };
       cooldownRef.current = newCooldowns;
     },
-    [cooldownPeriod]
+    [cooldownPeriod],
   );
 
   const processNewDetections = useCallback(
@@ -1858,23 +1951,26 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
               handleCarDetected();
               startCooldown(car.id);
             }
-          }  
+          }
         }
       });
 
       previousCarsRef.current = currentCarIds;
     },
-    [handleCarDetected, startCooldown]
+    [handleCarDetected, startCooldown],
   );
 
-  const fetchCarData = useCallback(async (targetCarIdValue: string) => {
-    try {
-      const response = await fetchOk("/api/ir/current_cars");
-      processNewDetections(await response.json(), targetCarIdValue);
-    } catch (error) {
-      console.error("Error fetching car data:", error);
-    }
-  }, [processNewDetections]);
+  const fetchCarData = useCallback(
+    async (targetCarIdValue: string) => {
+      try {
+        const response = await fetchOk("/api/ir/current_cars");
+        processNewDetections(await response.json(), targetCarIdValue);
+      } catch (error) {
+        console.error("Error fetching car data:", error);
+      }
+    },
+    [processNewDetections],
+  );
 
   // ****************************************
   // return
@@ -1888,12 +1984,15 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
         {unsavedSessions.length > 0 && (
           <Alert variant="destructive" className="mb-4">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>{unsavedSessions.length === 1 ? "Session not saved" : `${unsavedSessions.length} sessions not saved`}</AlertTitle>
+            <AlertTitle>
+              {unsavedSessions.length === 1 ? "Session not saved" : `${unsavedSessions.length} sessions not saved`}
+            </AlertTitle>
             <AlertDescription>
               <ul className="list-disc pl-5">
                 {unsavedSessions.map((pending) => (
                   <li key={pending.id}>
-                    {pending.driverName} / {pending.carName}, {pending.laps?.length ?? 0} laps{pending.date ? ` (${formatDateTime(pending.date)})` : ""}
+                    {pending.driverName} / {pending.carName}, {pending.laps?.length ?? 0} laps
+                    {pending.date ? ` (${formatDateTime(pending.date)})` : ""}
                   </li>
                 ))}
               </ul>
@@ -1957,7 +2056,13 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
           {/* Current Session Tab */}
           <TabsContent value="current" className="px-4 space-y-4 h-full overflow-y-auto">
-            <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
               {/* Session Configuration Card */}
               <Card>
                 <CardHeader>
@@ -1970,7 +2075,13 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                     <div className="space-y-2">
                       {/* Annouce Lap Number */}
                       <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="announceLapNumber" checked={announceLapNumber} onChange={(e) => setAnnounceLapNumber(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                        <input
+                          type="checkbox"
+                          id="announceLapNumber"
+                          checked={announceLapNumber}
+                          onChange={(e) => setAnnounceLapNumber(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
                         <label htmlFor="announceLapNumber" className="text-sm">
                           Announce Lap Numbers
                         </label>
@@ -1978,7 +2089,13 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
                       {/* Annouce Last Lap Time */}
                       <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="announceLastLapTime" checked={announceLastLapTime} onChange={(e) => setAnnounceLastLapTime(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                        <input
+                          type="checkbox"
+                          id="announceLastLapTime"
+                          checked={announceLastLapTime}
+                          onChange={(e) => setAnnounceLastLapTime(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
                         <label htmlFor="announceLastLapTime" className="text-sm">
                           Announce Last Lap Time
                         </label>
@@ -1986,7 +2103,13 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
                       {/* Play Beeps */}
                       <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="playBeeps" checked={playBeeps} onChange={(e) => setPlayBeeps(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                        <input
+                          type="checkbox"
+                          id="playBeeps"
+                          checked={playBeeps}
+                          onChange={(e) => setPlayBeeps(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
                         <label htmlFor="playBeeps" className="text-sm">
                           Play Beeps
                         </label>
@@ -2015,7 +2138,9 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                     <label htmlFor="remoteControl" className="text-sm font-medium">
                       Enable Remote Control Mode
                     </label>
-                    {remoteControlActive && <div className="ml-2 text-sm text-gray-500">Polling for session requests...</div>}
+                    {remoteControlActive && (
+                      <div className="ml-2 text-sm text-gray-500">Polling for session requests...</div>
+                    )}
                   </div>
 
                   {/* Driver Selection */}
@@ -2150,8 +2275,17 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                   >
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Add New {addEditDialogState.type === "driver" ? "Driver" : addEditDialogState.type === "car" ? "Car" : "Location"}</AlertDialogTitle>
-                        <AlertDialogDescription>Enter a name for the new {addEditDialogState.type}</AlertDialogDescription>
+                        <AlertDialogTitle>
+                          Add New{" "}
+                          {addEditDialogState.type === "driver"
+                            ? "Driver"
+                            : addEditDialogState.type === "car"
+                              ? "Car"
+                              : "Location"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Enter a name for the new {addEditDialogState.type}
+                        </AlertDialogDescription>
                       </AlertDialogHeader>
                       <div className="py-4">
                         <Input
@@ -2165,9 +2299,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                           placeholder={`Enter ${addEditDialogState.type} name`}
                           className={
                             addEditDialogState.entityName.trim() &&
-                            ((addEditDialogState.type === "driver" && !isDriverNameUnique(addEditDialogState.entityName)) ||
-                              (addEditDialogState.type === "car" && !isCarNameUniqueForDriver(addEditDialogState.entityName)) ||
-                              (addEditDialogState.type === "location" && !isLocationNameUnique(addEditDialogState.entityName)))
+                            ((addEditDialogState.type === "driver" &&
+                              !isDriverNameUnique(addEditDialogState.entityName)) ||
+                              (addEditDialogState.type === "car" &&
+                                !isCarNameUniqueForDriver(addEditDialogState.entityName)) ||
+                              (addEditDialogState.type === "location" &&
+                                !isLocationNameUnique(addEditDialogState.entityName)))
                               ? "border-red-500"
                               : ""
                           }
@@ -2197,11 +2334,14 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                         )}
 
                         {addEditDialogState.entityName.trim() &&
-                          (addEditDialogState.type === "driver" && !isDriverNameUnique(addEditDialogState.entityName) ? (
+                          (addEditDialogState.type === "driver" &&
+                          !isDriverNameUnique(addEditDialogState.entityName) ? (
                             <p className="text-sm text-red-500 mt-2">This driver name already exists</p>
-                          ) : addEditDialogState.type === "car" && !isCarNameUniqueForDriver(addEditDialogState.entityName) ? (
+                          ) : addEditDialogState.type === "car" &&
+                            !isCarNameUniqueForDriver(addEditDialogState.entityName) ? (
                             <p className="text-sm text-red-500 mt-2">This car name already exists for this driver</p>
-                          ) : addEditDialogState.type === "location" && !isLocationNameUnique(addEditDialogState.entityName) ? (
+                          ) : addEditDialogState.type === "location" &&
+                            !isLocationNameUnique(addEditDialogState.entityName) ? (
                             <p className="text-sm text-red-500 mt-2">This location name already exists</p>
                           ) : null)}
                       </div>
@@ -2225,9 +2365,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                           }}
                           disabled={
                             !addEditDialogState.entityName.trim() ||
-                            (addEditDialogState.type === "driver" && !isDriverNameUnique(addEditDialogState.entityName)) ||
-                            (addEditDialogState.type === "car" && !isCarNameUniqueForDriver(addEditDialogState.entityName)) ||
-                            (addEditDialogState.type === "location" && !isLocationNameUnique(addEditDialogState.entityName))
+                            (addEditDialogState.type === "driver" &&
+                              !isDriverNameUnique(addEditDialogState.entityName)) ||
+                            (addEditDialogState.type === "car" &&
+                              !isCarNameUniqueForDriver(addEditDialogState.entityName)) ||
+                            (addEditDialogState.type === "location" &&
+                              !isLocationNameUnique(addEditDialogState.entityName))
                           }
                         >
                           Add
@@ -2276,7 +2419,15 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
                     {showLapCountInput && (
                       <div className="flex space-x-2 mt-2">
-                        <Input type="number" min="1" max="999" placeholder="Enter number of laps" value={inputLapCount} onChange={(e) => setInputLapCount(e.target.value)} disabled={isRunning} />
+                        <Input
+                          type="number"
+                          min="1"
+                          max="999"
+                          placeholder="Enter number of laps"
+                          value={inputLapCount}
+                          onChange={(e) => setInputLapCount(e.target.value)}
+                          disabled={isRunning}
+                        />
                         <Button
                           disabled={isRunning}
                           onClick={() => {
@@ -2293,7 +2444,11 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                       </div>
                     )}
 
-                    <div className="text-sm text-muted-foreground mt-1">{selectedLapCount === "unlimited" ? "Session will continue until manually stopped" : `Session will automatically complete after ${selectedLapCount} laps`}</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {selectedLapCount === "unlimited"
+                        ? "Session will continue until manually stopped"
+                        : `Session will automatically complete after ${selectedLapCount} laps`}
+                    </div>
                   </div>
 
                   {/* Timing Mode Selection */}
@@ -2363,36 +2518,78 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
               {/* Timer Display */}
               <Card>
                 <CardHeader>
-                  <CardTitle className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}>{formatTime(currentTime)}</CardTitle>
+                  <CardTitle
+                    className={cn("text-center text-5xl font-mono transition-all", isRunning && "animate-time-pulse")}
+                  >
+                    {formatTime(currentTime)}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Current Lap Time */}
-                  <div className="text-center text-2xl font-mono text-gray-600">Current Lap: {formatTime(getCurrentLapTime())}</div>
+                  <div className="text-center text-2xl font-mono text-gray-600">
+                    Current Lap: {formatTime(getCurrentLapTime())}
+                  </div>
 
                   {/* Lap counter */}
                   <div className="text-xl font-mono text-center">
-                    {isRunning ? (selectedLapCount !== "unlimited" ? (laps.length >= selectedLapCount ? "Timing Session Finished" : `Lap: ${laps.length + 1} of ${selectedLapCount}`) : `Lap: ${laps.length + 1}`) : laps.length > 0 ? "Timing Session Finished" : "Ready"}
+                    {isRunning
+                      ? selectedLapCount !== "unlimited"
+                        ? laps.length >= selectedLapCount
+                          ? "Timing Session Finished"
+                          : `Lap: ${laps.length + 1} of ${selectedLapCount}`
+                        : `Lap: ${laps.length + 1}`
+                      : laps.length > 0
+                        ? "Timing Session Finished"
+                        : "Ready"}
                   </div>
 
                   {/* Timer controls */}
                   {timingMode === "ui" && (
                     <div className="flex flex-col gap-2">
-                      <Button onClick={startTimer} disabled={isRunning || !selectedDriver || !selectedCar} className={cn("bg-green-500 hover:bg-green-600 transition-all", startAnimation && "animate-timer-start")}>
+                      <Button
+                        onClick={startTimer}
+                        disabled={isRunning || !selectedDriver || !selectedCar}
+                        className={cn(
+                          "bg-green-500 hover:bg-green-600 transition-all",
+                          startAnimation && "animate-timer-start",
+                        )}
+                      >
                         <PlayCircle className="mr-2 h-6 w-6" />
                         Start Lap Timer
                       </Button>
 
-                      <Button onClick={recordLap} disabled={!isRunning} className={cn("bg-blue-500 hover:bg-blue-600 transition-all", lapAnimation && "animate-lap-record")}>
+                      <Button
+                        onClick={recordLap}
+                        disabled={!isRunning}
+                        className={cn(
+                          "bg-blue-500 hover:bg-blue-600 transition-all",
+                          lapAnimation && "animate-lap-record",
+                        )}
+                      >
                         <ListPlus className="mr-2 h-6 w-6" />
                         Record Lap
                       </Button>
 
-                      <Button onClick={stopTimer} disabled={!isRunning} className={cn("bg-red-500 hover:bg-red-600 transition-all", stopAnimation && "animate-timer-stop")}>
+                      <Button
+                        onClick={stopTimer}
+                        disabled={!isRunning}
+                        className={cn(
+                          "bg-red-500 hover:bg-red-600 transition-all",
+                          stopAnimation && "animate-timer-stop",
+                        )}
+                      >
                         <StopCircle className="mr-2 h-6 w-6" />
                         Stop Lap Timer
                       </Button>
 
-                      <Button onClick={addPenalty} disabled={!isRunning} className={cn("bg-yellow-500 hover:bg-yellow-600 transition-all", penaltyAnimation && "animate-penalty-add")}>
+                      <Button
+                        onClick={addPenalty}
+                        disabled={!isRunning}
+                        className={cn(
+                          "bg-yellow-500 hover:bg-yellow-600 transition-all",
+                          penaltyAnimation && "animate-penalty-add",
+                        )}
+                      >
                         <AlertTriangle className="mr-2 h-6 w-6" />
                         Add Penalty
                       </Button>
@@ -2435,8 +2632,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                         <div>
                           <h3 className="font-semibold">Session Info:</h3>
                           <div className="font-mono">Driver: {drivers.find((d) => d.id === selectedDriver)?.name}</div>
-                          <div className="font-mono">Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}</div>
-                          <div className="font-mono">Location: {locations.find((l) => l.id === selectedLocation)?.name}</div>
+                          <div className="font-mono">
+                            Car: {getCurrentDriverCars().find((c) => c.id === selectedCar)?.name}
+                          </div>
+                          <div className="font-mono">
+                            Location: {locations.find((l) => l.id === selectedLocation)?.name}
+                          </div>
                           <h3 className="font-semibold mt-4">Lap Times:</h3>
 
                           {/* Current Session lap times */}
@@ -2446,9 +2647,16 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                             const bestLap = getBestLap(laps);
                             const isBestLap = bestLap && index === bestLap.lapNumber - 1;
                             return (
-                              <div key={index} className={`font-mono ${isBestLap ? "text-green-600 font-bold flex items-center" : ""}`}>
+                              <div
+                                key={index}
+                                className={`font-mono ${isBestLap ? "text-green-600 font-bold flex items-center" : ""}`}
+                              >
                                 Lap {lapNumber}: {formatTime(lap)}
-                                {isBestLap && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Best Lap</span>}
+                                {isBestLap && (
+                                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                    Best Lap
+                                  </span>
+                                )}
                                 {lapPenalties > 0 && (
                                   <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
                                     {lapPenalties} {lapPenalties === 1 ? "Penalty" : "Penalties"}
@@ -2468,9 +2676,15 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
                           {laps.length > 0 && (
                             <>
-                              <div className="font-mono text-green-600 font-bold mt-2">Best Lap: {formatTime(Math.min(...laps))}</div>
-                              <div className="font-mono">Total Penalties: {penalties.reduce((sum, p) => sum + p.count, 0)}</div>
-                              <div className="font-mono mt-2">Total Time: {formatTime(calculateStats(laps).totalTime)}</div>
+                              <div className="font-mono text-green-600 font-bold mt-2">
+                                Best Lap: {formatTime(Math.min(...laps))}
+                              </div>
+                              <div className="font-mono">
+                                Total Penalties: {penalties.reduce((sum, p) => sum + p.count, 0)}
+                              </div>
+                              <div className="font-mono mt-2">
+                                Total Time: {formatTime(calculateStats(laps).totalTime)}
+                              </div>
                             </>
                           )}
                         </div>
@@ -2498,7 +2712,12 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                               Driver: {session.driverName} - Car: {session.carName} - Location: {session.locationName}
                             </div>
                           </div>
-                          <Button onClick={() => setSessionToDelete(session)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
+                          <Button
+                            onClick={() => setSessionToDelete(session)}
+                            variant="destructive"
+                            size="sm"
+                            className="bg-red-500 hover:bg-red-600"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -2515,12 +2734,23 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                 const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
                                 const isBestLap = lap.lapTime === bestLap;
                                 const isWorstLap = lap.lapTime === worstLap;
-                                const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
+                                const lapPenalties =
+                                  session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
                                 // Safely check for max penalties
-                                const hasMaxPenalties = Boolean(session.stats?.maxPenaltyLap === lap.lapNumber && session.stats.maxPenaltyCount > 0);
+                                const hasMaxPenalties = Boolean(
+                                  session.stats?.maxPenaltyLap === lap.lapNumber && session.stats.maxPenaltyCount > 0,
+                                );
 
                                 return (
-                                  <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "", hasMaxPenalties ? "bg-yellow-50" : "")}>
+                                  <div
+                                    key={lap.lapNumber}
+                                    className={cn(
+                                      "font-mono flex items-center",
+                                      isBestLap ? "text-green-600 font-bold" : "",
+                                      isWorstLap ? "text-red-600 font-bold" : "",
+                                      hasMaxPenalties ? "bg-yellow-50" : "",
+                                    )}
+                                  >
                                     <span className="min-w-[100px]">
                                       Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
                                     </span>
@@ -2569,11 +2799,23 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                 <>
                                   <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
                                   <div className="space-y-1 mt-2">
-                                    {typeof session.stats.bestLap === "number" && <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>}
-                                    {typeof session.stats.worstLap === "number" && <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>}
-                                    <div className="font-mono mt-2">Total Penalties: {session.stats.totalPenalties || 0}</div>
+                                    {typeof session.stats.bestLap === "number" && (
+                                      <div className="font-mono text-green-600 font-bold">
+                                        Best Lap: {formatTime(session.stats.bestLap)}
+                                      </div>
+                                    )}
+                                    {typeof session.stats.worstLap === "number" && (
+                                      <div className="font-mono text-red-600 font-bold">
+                                        Slowest Lap: {formatTime(session.stats.worstLap)}
+                                      </div>
+                                    )}
+                                    <div className="font-mono mt-2">
+                                      Total Penalties: {session.stats.totalPenalties || 0}
+                                    </div>
                                   </div>
-                                  <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
+                                  <div className="font-mono mt-2">
+                                    Total Time: {formatTime(session.stats.totalTime)}
+                                  </div>
                                 </>
                               )}
                             </div>
@@ -2589,7 +2831,13 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
           {/* Previous Sessions Tab */}
           <TabsContent value="previous" className="px-4 space-y-4 h-full overflow-y-auto">
-            <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
               {savedSessions.length === 0 ? (
                 <>
                   {/* Current Session Display */}
@@ -2624,7 +2872,9 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                       <div className="text-center py-12">
                         <ListX className="mx-auto h-12 w-12 text-muted-foreground/50" />
                         <h3 className="mt-4 text-lg font-semibold">No Sessions Recorded</h3>
-                        <p className="mt-2 text-sm text-muted-foreground">Record your first timing session to see it appear here.</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Record your first timing session to see it appear here.
+                        </p>
                       </div>
                     </CardContent>
                   </Card>
@@ -2698,12 +2948,20 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                           <Label>Filter by Car</Label>
                           <Select value={filterCar} onValueChange={setFilterCar} disabled={filterDriver === "all"}>
                             <SelectTrigger disabled={filterDriver === "all"}>
-                              <SelectValue placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"} />
+                              <SelectValue
+                                placeholder={filterDriver === "all" ? "Select a driver first" : "All Cars"}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">All Cars</SelectItem>
                               {filterDriver !== "all" &&
-                                Array.from(new Set(savedSessions.filter((session) => session.driverName === filterDriver).map((session) => session.carName)))
+                                Array.from(
+                                  new Set(
+                                    savedSessions
+                                      .filter((session) => session.driverName === filterDriver)
+                                      .map((session) => session.carName),
+                                  ),
+                                )
                                   .filter((name) => name && name.trim() !== "")
                                   .sort((a, b) => a.localeCompare(b))
                                   .map((car) => (
@@ -2753,14 +3011,22 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                           {DATE_PRESETS.map((preset) => {
                             const presetDates = getPresetDates(preset);
                             const isActive =
-                              previousSessionsDateRange.from && previousSessionsDateRange.to && format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+                              previousSessionsDateRange.from &&
+                              previousSessionsDateRange.to &&
+                              format(previousSessionsDateRange.from, "yyyy-MM-dd") ===
+                                format(presetDates.from, "yyyy-MM-dd") &&
+                              format(previousSessionsDateRange.to, "yyyy-MM-dd") ===
+                                format(presetDates.to, "yyyy-MM-dd");
 
                             return (
                               <Button
                                 key={preset.label}
                                 variant="outline"
                                 size="sm"
-                                className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                                className={cn(
+                                  "hover:bg-muted",
+                                  isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "",
+                                )}
                                 onClick={() => {
                                   const { from, to } = getPresetDates(preset);
                                   setPreviousSessionsDateRange({ from, to });
@@ -2776,9 +3042,17 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                         <div className="flex flex-col sm:flex-row gap-2">
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.from && "text-muted-foreground")}>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full sm:w-[240px] justify-start text-left font-normal",
+                                  !previousSessionsDateRange.from && "text-muted-foreground",
+                                )}
+                              >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {previousSessionsDateRange.from ? format(previousSessionsDateRange.from, "PPP") : "Select start date"}
+                                {previousSessionsDateRange.from
+                                  ? format(previousSessionsDateRange.from, "PPP")
+                                  : "Select start date"}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -2798,9 +3072,17 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !previousSessionsDateRange.to && "text-muted-foreground")}>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full sm:w-[240px] justify-start text-left font-normal",
+                                  !previousSessionsDateRange.to && "text-muted-foreground",
+                                )}
+                              >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {previousSessionsDateRange.to ? format(previousSessionsDateRange.to, "PPP") : "Select end date"}
+                                {previousSessionsDateRange.to
+                                  ? format(previousSessionsDateRange.to, "PPP")
+                                  : "Select end date"}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -2813,7 +3095,11 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                     to: date,
                                   }))
                                 }
-                                disabled={(date) => (previousSessionsDateRange.from ? isBefore(date, previousSessionsDateRange.from) : false)}
+                                disabled={(date) =>
+                                  previousSessionsDateRange.from
+                                    ? isBefore(date, previousSessionsDateRange.from)
+                                    : false
+                                }
                                 autoFocus
                               />
                             </PopoverContent>
@@ -2838,15 +3124,23 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                           <div className="text-sm text-muted-foreground">
                             {previousSessionsDateRange.from &&
                             previousSessionsDateRange.to &&
-                            format(previousSessionsDateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") &&
-                            format(previousSessionsDateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                            format(previousSessionsDateRange.from, "yyyy-MM-dd") ===
+                              format(startOfDay(new Date()), "yyyy-MM-dd") &&
+                            format(previousSessionsDateRange.to, "yyyy-MM-dd") ===
+                              format(endOfDay(new Date()), "yyyy-MM-dd") ? (
                               "Showing sessions from today"
                             ) : (
                               <>
                                 Showing sessions
-                                {previousSessionsDateRange.from && !previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")}`}
-                                {!previousSessionsDateRange.from && previousSessionsDateRange.to && ` until ${format(previousSessionsDateRange.to, "PPP")}`}
-                                {previousSessionsDateRange.from && previousSessionsDateRange.to && ` from ${format(previousSessionsDateRange.from, "PPP")} to ${format(previousSessionsDateRange.to, "PPP")}`}
+                                {previousSessionsDateRange.from &&
+                                  !previousSessionsDateRange.to &&
+                                  ` from ${format(previousSessionsDateRange.from, "PPP")}`}
+                                {!previousSessionsDateRange.from &&
+                                  previousSessionsDateRange.to &&
+                                  ` until ${format(previousSessionsDateRange.to, "PPP")}`}
+                                {previousSessionsDateRange.from &&
+                                  previousSessionsDateRange.to &&
+                                  ` from ${format(previousSessionsDateRange.from, "PPP")} to ${format(previousSessionsDateRange.to, "PPP")}`}
                               </>
                             )}
                           </div>
@@ -2861,17 +3155,23 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                             .filter((session) => isWithinPreviousSessionsDateRange(session.date))
                             .filter((session) => filterDriver === "all" || session.driverName === filterDriver)
                             .filter((session) => filterCar === "all" || session.carName === filterCar)
-                            .filter((session) => filterLocation === "all" || session.locationName === filterLocation)
+                            .filter((session) => filterLocation === "all" || session.locationName === filterLocation),
                         ).map((session) => (
                           <div key={session.id} className="border-t pt-4 first:border-t-0 first:pt-0">
                             <div className="flex justify-between items-center mb-2">
                               <div>
                                 <h3 className="font-semibold">{formatDateTime(session.date)}</h3>
                                 <div className="text-sm text-muted-foreground">
-                                  Driver: {session.driverName} - Car: {session.carName} - Location: {session.locationName}
+                                  Driver: {session.driverName} - Car: {session.carName} - Location:{" "}
+                                  {session.locationName}
                                 </div>
                               </div>
-                              <Button onClick={() => setSessionToDelete(session)} variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600">
+                              <Button
+                                onClick={() => setSessionToDelete(session)}
+                                variant="destructive"
+                                size="sm"
+                                className="bg-red-500 hover:bg-red-600"
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -2888,12 +3188,23 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                     const worstLap = Math.max(...session.laps.map((l) => l.lapTime));
                                     const isBestLap = lap.lapTime === bestLap;
                                     const isWorstLap = lap.lapTime === worstLap;
-                                    const lapPenalties = session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
+                                    const lapPenalties =
+                                      session.penalties?.find((p) => p.lapNumber === lap.lapNumber)?.count || 0;
                                     // Safely check for max penalties
-                                    const hasMaxPenalties = Boolean(session.stats?.maxPenaltyLap === lap.lapNumber && session.stats.maxPenaltyCount > 0);
+                                    const hasMaxPenalties = Boolean(
+                                      session.stats?.maxPenaltyLap === lap.lapNumber &&
+                                      session.stats.maxPenaltyCount > 0,
+                                    );
 
                                     return (
-                                      <div key={lap.lapNumber} className={cn("font-mono flex items-center", isBestLap ? "text-green-600 font-bold" : "", isWorstLap ? "text-red-600 font-bold" : "")}>
+                                      <div
+                                        key={lap.lapNumber}
+                                        className={cn(
+                                          "font-mono flex items-center",
+                                          isBestLap ? "text-green-600 font-bold" : "",
+                                          isWorstLap ? "text-red-600 font-bold" : "",
+                                        )}
+                                      >
                                         <span className="min-w-[100px]">
                                           Lap {lap.lapNumber}: {formatTime(lap.lapTime)}
                                         </span>
@@ -2942,11 +3253,23 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                     <>
                                       <div className="font-mono">Average: {formatTime(session.stats.average)}</div>
                                       <div className="space-y-1 mt-2">
-                                        {typeof session.stats.bestLap === "number" && <div className="font-mono text-green-600 font-bold">Best Lap: {formatTime(session.stats.bestLap)}</div>}
-                                        {typeof session.stats.worstLap === "number" && <div className="font-mono text-red-600 font-bold">Slowest Lap: {formatTime(session.stats.worstLap)}</div>}
-                                        <div className="font-mono mt-2">Total Penalties: {session.stats.totalPenalties || 0}</div>
+                                        {typeof session.stats.bestLap === "number" && (
+                                          <div className="font-mono text-green-600 font-bold">
+                                            Best Lap: {formatTime(session.stats.bestLap)}
+                                          </div>
+                                        )}
+                                        {typeof session.stats.worstLap === "number" && (
+                                          <div className="font-mono text-red-600 font-bold">
+                                            Slowest Lap: {formatTime(session.stats.worstLap)}
+                                          </div>
+                                        )}
+                                        <div className="font-mono mt-2">
+                                          Total Penalties: {session.stats.totalPenalties || 0}
+                                        </div>
                                       </div>
-                                      <div className="font-mono mt-2">Total Time: {formatTime(session.stats.totalTime)}</div>
+                                      <div className="font-mono mt-2">
+                                        Total Time: {formatTime(session.stats.totalTime)}
+                                      </div>
                                     </>
                                   )}
                                 </div>
@@ -2956,7 +3279,11 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                         ))}
                       </div>
 
-                      {savedSessions.filter((session) => isWithinDateRange(session.date)).length === 0 && <div className="text-center py-8 text-muted-foreground">No sessions found for the selected date range.</div>}
+                      {savedSessions.filter((session) => isWithinDateRange(session.date)).length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No sessions found for the selected date range.
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </>
@@ -2966,22 +3293,47 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
           {/* Best Laps Comparison Tab */}
           <TabsContent value="best" className="px-4 space-y-4 h-full overflow-y-auto">
-            <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
               {Array.isArray(savedSessions) && <BestLapsComparison sessions={savedSessions} />}
             </motion.div>
           </TabsContent>
 
           {/* Session Comparison Tab */}
           <TabsContent value="compare" className="px-4 space-y-4 h-full overflow-y-auto">
-            <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
               {Array.isArray(savedSessions) && <SessionComparison sessions={savedSessions} />}
             </motion.div>
           </TabsContent>
 
           {/* Session Notes Tab */}
           <TabsContent value="notes" className="px-4 space-y-4 h-full overflow-y-auto">
-            <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-              <SessionNotes sessions={savedSessions} onNotesSaved={(sessionId, notes) => setSavedSessions((prev) => prev.map((session) => (session.id === sessionId ? { ...session, notes } : session)))} />
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
+              <SessionNotes
+                sessions={savedSessions}
+                onNotesSaved={(sessionId, notes) =>
+                  setSavedSessions((prev) =>
+                    prev.map((session) => (session.id === sessionId ? { ...session, notes } : session)),
+                  )
+                }
+              />
             </motion.div>
           </TabsContent>
         </Tabs>
@@ -2991,11 +3343,18 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Session</AlertDialogTitle>
-              <AlertDialogDescription>Are you sure you want to delete the session from {sessionToDelete?.date}? If you delete this session, it&apos;s gone for good. So make sure this is what you really want to do!!</AlertDialogDescription>
+              <AlertDialogDescription>
+                Are you sure you want to delete the session from {sessionToDelete?.date}? If you delete this session,
+                it&apos;s gone for good. So make sure this is what you really want to do!!
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction disabled={isDeleting} onClick={() => sessionToDelete && deleteSession(sessionToDelete.id)} className="bg-red-500 hover:bg-red-600">
+              <AlertDialogAction
+                disabled={isDeleting}
+                onClick={() => sessionToDelete && deleteSession(sessionToDelete.id)}
+                className="bg-red-500 hover:bg-red-600"
+              >
                 {isDeleting ? (
                   <div className="flex items-center">
                     <span className="animate-spin mr-2">â³</span>

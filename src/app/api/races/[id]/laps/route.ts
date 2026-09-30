@@ -28,14 +28,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     // Calculate lap time and position
-    const lastLap = entry.laps.length > 0 ? entry.laps.reduce((latest, lap) => (lap.timestamp > latest.timestamp ? lap : latest)) : null;
+    const lastLap =
+      entry.laps.length > 0
+        ? entry.laps.reduce((latest, lap) => (lap.timestamp > latest.timestamp ? lap : latest))
+        : null;
 
     const lapTime = lastLap ? timestamp - lastLap.timestamp.getTime() : timestamp - race.startTime!.getTime();
 
     // Calculate positions
     const allEntries = race.entries.map((e) => ({
       ...e,
-      lastLapCompleted: e.laps.length > 0 ? e.laps.reduce((latest, lap) => (lap.timestamp > latest.timestamp ? lap : latest)).timestamp : race.startTime,
+      lastLapCompleted:
+        e.laps.length > 0
+          ? e.laps.reduce((latest, lap) => (lap.timestamp > latest.timestamp ? lap : latest)).timestamp
+          : race.startTime,
     }));
 
     const positions = allEntries

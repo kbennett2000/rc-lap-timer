@@ -76,15 +76,24 @@ export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
       const date = parseISO(sessionDate);
 
       if (dateRange.from && !dateRange.to) {
-        return isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd");
+        return (
+          isAfter(date, startOfDay(dateRange.from)) ||
+          format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
+        );
       }
 
       if (!dateRange.from && dateRange.to) {
-        return isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd");
+        return (
+          isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
+        );
       }
 
       if (dateRange.from && dateRange.to) {
-        return (isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) && (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"));
+        return (
+          (isAfter(date, startOfDay(dateRange.from)) ||
+            format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
+        );
       }
 
       return true;
@@ -227,14 +236,21 @@ export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
                 <div className="flex flex-wrap gap-2 mb-4">
                   {DATE_PRESETS.map((preset) => {
                     const presetDates = getPresetDates(preset);
-                    const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+                    const isActive =
+                      dateRange.from &&
+                      dateRange.to &&
+                      format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") &&
+                      format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
 
                     return (
                       <Button
                         key={preset.label}
                         variant="outline"
                         size="sm"
-                        className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                        className={cn(
+                          "hover:bg-muted",
+                          isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "",
+                        )}
                         onClick={() => {
                           const { from, to } = getPresetDates(preset);
                           setDateRange({ from, to });
@@ -253,13 +269,24 @@ export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
                   <Label>Start Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-[240px] justify-start text-left font-normal",
+                          !dateRange.from && "text-muted-foreground",
+                        )}
+                      >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} autoFocus />
+                      <Calendar
+                        mode="single"
+                        selected={dateRange.from}
+                        onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))}
+                        autoFocus
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -267,13 +294,24 @@ export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
                   <Label>End Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-[240px] justify-start text-left font-normal",
+                          !dateRange.to && "text-muted-foreground",
+                        )}
+                      >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} autoFocus />
+                      <Calendar
+                        mode="single"
+                        selected={dateRange.to}
+                        onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))}
+                        autoFocus
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -289,7 +327,10 @@ export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
                   {filteredSessions.map((session) => (
                     <div
                       key={session.id}
-                      className={cn("p-3 rounded-lg border cursor-pointer transition-colors", selectedSession?.id === session.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50")}
+                      className={cn(
+                        "p-3 rounded-lg border cursor-pointer transition-colors",
+                        selectedSession?.id === session.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50",
+                      )}
                       onClick={() => {
                         setSelectedSession(session);
                         setNotes(session.notes || "");
@@ -335,13 +376,22 @@ export function SessionNotes({ sessions, onNotesSaved }: SessionNotesProps) {
                       </Button>
                     </div>
                     {isEditing ? (
-                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add notes about track conditions, car setup, or anything else..." className="min-h-[200px]" />
+                      <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Add notes about track conditions, car setup, or anything else..."
+                        className="min-h-[200px]"
+                      />
                     ) : (
-                      <div className="p-4 border rounded-lg min-h-[200px] whitespace-pre-wrap">{notes || "No notes added yet."}</div>
+                      <div className="p-4 border rounded-lg min-h-[200px] whitespace-pre-wrap">
+                        {notes || "No notes added yet."}
+                      </div>
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">Select a session to view or edit notes</div>
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    Select a session to view or edit notes
+                  </div>
                 )}
               </div>
             </div>

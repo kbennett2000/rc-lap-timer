@@ -50,7 +50,7 @@ export async function GET() {
         // execId,
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

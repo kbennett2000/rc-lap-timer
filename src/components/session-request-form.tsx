@@ -6,7 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
@@ -166,7 +175,13 @@ export const SessionRequestForm: React.FC<SessionRequestFormProps> = ({ drivers,
           {/* Number of Laps */}
           <div className="space-y-2">
             <Label>Number of Laps</Label>
-            <Input type="number" min="1" value={numberOfLaps} onChange={(e) => setNumberLaps(e.target.value)} placeholder="Enter number of laps" />
+            <Input
+              type="number"
+              min="1"
+              value={numberOfLaps}
+              onChange={(e) => setNumberLaps(e.target.value)}
+              placeholder="Enter number of laps"
+            />
           </div>
 
           {formError && (

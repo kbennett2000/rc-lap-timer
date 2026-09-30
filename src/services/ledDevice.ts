@@ -19,7 +19,9 @@ export class LEDDeviceService {
   }
 
   async displayMessage(title: string, message: string): Promise<void> {
-    const response = await fetch(`/api/led/text?title=${encodeURIComponent(title)}&message=${encodeURIComponent(message)}`);
+    const response = await fetch(
+      `/api/led/text?title=${encodeURIComponent(title)}&message=${encodeURIComponent(message)}`,
+    );
     if (!response.ok) {
       throw new Error("Failed to display message");
     }

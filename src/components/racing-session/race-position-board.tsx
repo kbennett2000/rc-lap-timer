@@ -28,7 +28,9 @@ export const RacePositionBoard: React.FC<RacePositionBoardProps> = ({ positions 
   const sortedPositions = [...positions].sort((a, b) => a.position - b.position);
 
   // Find the overall best lap time
-  const overallBestLap = Math.min(...positions.map((p) => p.bestLapTime || Infinity).filter((time) => time !== Infinity));
+  const overallBestLap = Math.min(
+    ...positions.map((p) => p.bestLapTime || Infinity).filter((time) => time !== Infinity),
+  );
 
   return (
     <div className="space-y-2">
@@ -48,7 +50,9 @@ export const RacePositionBoard: React.FC<RacePositionBoardProps> = ({ positions 
               >
                 {/* Position and Car Info */}
                 <div className="flex items-center space-x-3">
-                  <span className="font-bold text-lg min-w-[2rem]">{car.status === "DNF" ? "DNF" : `P${car.position}`}</span>
+                  <span className="font-bold text-lg min-w-[2rem]">
+                    {car.status === "DNF" ? "DNF" : `P${car.position}`}
+                  </span>
                   <div>
                     <div className="font-semibold">{car.driverName}</div>
                     <div className="text-sm text-gray-600">Car #{car.carNumber}</div>
@@ -63,7 +67,9 @@ export const RacePositionBoard: React.FC<RacePositionBoardProps> = ({ positions 
                   </div>
                   <div className="text-sm text-gray-600">
                     Laps: {car.lapsCompleted}
-                    {car.gap !== undefined && car.position > 1 && !car.status.includes("DNF") && <span className="ml-2">Gap: {formatTime(car.gap)}</span>}
+                    {car.gap !== undefined && car.position > 1 && !car.status.includes("DNF") && (
+                      <span className="ml-2">Gap: {formatTime(car.gap)}</span>
+                    )}
                   </div>
                 </div>
 

@@ -10,7 +10,9 @@ export async function GET(request: Request) {
   const message = searchParams.get("message");
 
   try {
-    const response = await fetch(`http://${LED_DEVICE_IP}/text?title=${encodeURIComponent(title || "")}&message=${encodeURIComponent(message || "")}`);
+    const response = await fetch(
+      `http://${LED_DEVICE_IP}/text?title=${encodeURIComponent(title || "")}&message=${encodeURIComponent(message || "")}`,
+    );
     if (!response.ok) throw new Error("Failed to set LED message");
     return NextResponse.json({ success: true });
   } catch {
