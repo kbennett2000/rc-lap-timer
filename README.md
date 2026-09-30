@@ -142,6 +142,11 @@ forward to the phone's time as they open, and the phone app does the same when i
 dated right. It only moves forward, once per boot, and never during a race. If a phone with a wrong clock ever sets it
 ahead, set it back over SSH: `sudo date -s '2026-09-30 14:00' && sudo fake-hwclock save force`.
 
+## Upgrading a timer
+Follow [docs/updateNotes.md](docs/updateNotes.md), starting with its step that sends the new upgrade scripts to the
+timer. Skipping it matters: a timer last upgraded before those scripts were rewritten would run its old upgrade, which
+drops the database.
+
 
 
 # 📊 Usage Guide
