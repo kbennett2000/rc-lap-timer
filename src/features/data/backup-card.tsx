@@ -15,6 +15,7 @@ import {
 import { parseBundle, type Bundle } from "@/domain/sync/bundle";
 import type { MergeSummary } from "@/domain/sync/merge";
 import { UNSAVED_SESSIONS_KEY } from "@/features/practice/use-unsaved-sessions";
+import { CAPABILITIES } from "@/platform/capabilities";
 import { useDeviceInfo } from "@/pwa/install";
 import { ACTIVE_RUN_KEY } from "@/timing/active-run-store";
 import { backupFileName, describeAge, describeContents, describeMerge } from "./backup-text";
@@ -24,6 +25,9 @@ interface PendingRestore {
   preview: MergeSummary;
   dropped: number;
 }
+
+// Where the backups come from and go: the phone-only app's own data, or the timer's.
+const HERE = CAPABILITIES.onDeviceData ? "this app" : "the timer";
 
 // Why a restore can't start now, if it can't: it changes the data a running or unsaved session refers to.
 function restoreBlocker(): string | null {
@@ -147,7 +151,7 @@ export function BackupCard() {
     try {
       const summary = await restore.mutateAsync(pending.bundle);
       setPending(null);
-      setMessage(["Backup restored.", ...describeMerge(summary, "did")]);
+      setMessage(["Backup restored.", ...describeMerge(summary, "did", HERE)]);
     } catch (error) {
       setMessage([`The backup wasn't restored. ${errorMessage(error)}`]);
     }
@@ -162,10 +166,17 @@ export function BackupCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <p>
-          A backup file holds everything in the app. Keep one somewhere safe (Files, a computer, cloud storage) to get
-          your data back, or to move it to another phone or browser.
-        </p>
+        {CAPABILITIES.onDeviceData ? (
+          <p>
+            A backup file holds everything in the app. Keep one somewhere safe (Files, a computer, cloud storage) to get
+            your data back, or to move it to another phone or browser.
+          </p>
+        ) : (
+          <p>
+            A backup file holds everything on the timer. Keep one somewhere safe to get the timer&apos;s data back, or
+            to move it to the phone app or another timer.
+          </p>
+        )}
         <p>
           Last backup:{" "}
           {lastBackup === undefined ? "…" : lastBackup === null ? "never" : describeAge(lastBackup, new Date())}.
@@ -189,9 +200,11 @@ export function BackupCard() {
 
         {pending && (
           <div className="space-y-2 rounded border p-3">
-            <p>This backup holds {describeContents(pending.bundle.data)}. Restoring it merges it into this app:</p>
+            <p>
+              This backup holds {describeContents(pending.bundle.data)}. Restoring it merges it into {HERE}:
+            </p>
             <ul className="list-disc pl-5">
-              {describeMerge(pending.preview, "will").map((line) => (
+              {describeMerge(pending.preview, "will", HERE).map((line) => (
                 <li key={line}>{line}</li>
               ))}
               {pending.dropped > 0 && (

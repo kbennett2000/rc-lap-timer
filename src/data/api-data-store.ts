@@ -1,8 +1,11 @@
-// The DataStore backed by the Pi's API routes (/api/data, /api/manage, /api/motion-settings).
+// The DataStore backed by the Pi's API routes (/api/data, /api/manage, /api/motion-settings), with backups
+// (/api/sync). The phone app uses it too, pointed at a timer, to sync with it.
 
+import type { Bundle } from "@/domain/sync/bundle";
+import type { MergeSummary } from "@/domain/sync/merge";
 import type { Car, Driver, Lap, Location, MotionSettings, PenaltyData, SessionRecord } from "@/domain/types";
 import { newId } from "@/lib/utils";
-import { DataStoreError, type DataErrorKind, type DataStore } from "./types";
+import { DataStoreError, type BackupStore, type DataErrorKind, type DataStore } from "./types";
 
 export interface ApiDataStoreOptions {
   // Prefix for the API paths: "" in the browser, the server's address in tests.
@@ -96,7 +99,7 @@ export function createApiDataStore({
   baseUrl = "",
   // Wrapped: calling a stored reference to window.fetch throws "Illegal invocation".
   fetch: fetchImpl = (...args) => fetch(...args),
-}: ApiDataStoreOptions = {}): DataStore {
+}: ApiDataStoreOptions = {}): DataStore & BackupStore {
   // Sends a request and returns the JSON body. A 404 on a delete counts as done: the record is gone either way.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- response bodies are checked by the to* mappers
   async function request(method: string, path: string, body?: unknown): Promise<any> {
@@ -182,6 +185,19 @@ export function createApiDataStore({
     },
     async deleteMotionSettings(id) {
       await request("DELETE", `/api/motion-settings?id=${encodeURIComponent(id)}`);
+    },
+
+    async exportBundle(): Promise<Bundle> {
+      return request("GET", "/api/sync");
+    },
+    async importBundle(bundle, { dryRun = false } = {}): Promise<MergeSummary> {
+      return (await request("POST", "/api/sync", { bundle, dryRun })).summary;
+    },
+    async lastBackupAt() {
+      return (await request("GET", "/api/sync/last-backup")).lastBackupAt ?? null;
+    },
+    async markBackedUp(at) {
+      await request("PUT", "/api/sync/last-backup", { at });
     },
   };
 }

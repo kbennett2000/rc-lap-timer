@@ -17,6 +17,17 @@ export function conflict(message: string) {
   return NextResponse.json({ error: message }, { status: 409 });
 }
 
+// A body that isn't JSON. Routes that take one only from the app's own code insist on JSON: another website can send
+// a plain-text form post to the timer, but not a JSON one without asking first.
+export function notJson() {
+  return NextResponse.json({ error: "Send the request body as JSON" }, { status: 415 });
+}
+
+export function isJsonRequest(request: Request): boolean {
+  const type = request.headers.get("content-type") ?? "";
+  return type.split(";")[0].trim().toLowerCase() === "application/json";
+}
+
 // P2002: a unique constraint failed. P2025: the record to update or delete doesn't exist.
 export function isPrismaError(error: unknown, code: "P2002" | "P2025"): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;

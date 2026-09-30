@@ -215,3 +215,27 @@ describe("errors", () => {
     await expect(store.updateSessionNotes("s1", "x")).rejects.toMatchObject({ kind: "not-found" });
   });
 });
+
+describe("backups", () => {
+  it("save, restore and remember backups through /api/sync", async () => {
+    const summary = { driver: { added: 1, updated: 0, merged: 0, deleted: 0, skipped: 0 } };
+    const { store, calls } = fakeApi(
+      { body: { format: "rc-lap-timer", deviceId: "pi" } },
+      { body: { summary, dropped: 0 } },
+      { body: { lastBackupAt: null } },
+      { body: { lastBackupAt: stamps.createdAt } },
+    );
+    expect(await store.exportBundle()).toMatchObject({ deviceId: "pi" });
+    expect(await store.importBundle({ deviceId: "phone" } as never, { dryRun: true })).toEqual(summary);
+    expect(await store.lastBackupAt()).toBeNull();
+    await store.markBackedUp(stamps.createdAt);
+    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
+      "GET http://pi/api/sync",
+      "POST http://pi/api/sync",
+      "GET http://pi/api/sync/last-backup",
+      "PUT http://pi/api/sync/last-backup",
+    ]);
+    expect(calls[1].body).toEqual({ bundle: { deviceId: "phone" }, dryRun: true });
+    expect(calls[3].body).toEqual({ at: stamps.createdAt });
+  });
+});

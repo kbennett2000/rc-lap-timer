@@ -63,7 +63,7 @@ test("Manager: new drivers, cars and locations show at once, and on Practice", a
   const location = `Manager Track ${stamp}`;
   await page.goto("/");
   await page.getByRole("tab", { name: "Manager" }).click();
-  await expect(page.getByRole("tab", { name: "Data" }), "the phone-only app's Data tab").toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "System Settings" }), "the Pi's own settings").toBeVisible();
 
   await addInManager(page, "Add New Driver", driver);
   await expect(page.getByRole("combobox").filter({ hasText: driver }), "the new driver is selected").toBeVisible();

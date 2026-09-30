@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { describe, expect, it } from "vitest";
+import { describeBackupStore } from "../../../tests/datastore/backup-conformance";
 import { describeDataStore } from "../../../tests/datastore/conformance";
 import { LapTimerDB } from "./db";
 import { createLocalDataStore } from "./local-data-store";
@@ -9,6 +10,7 @@ import { createLocalDataStore } from "./local-data-store";
 const freshDb = (indexedDB = new IDBFactory()) => new LapTimerDB({ indexedDB, IDBKeyRange });
 
 describeDataStore("the phone's on-device store", () => createLocalDataStore(freshDb()));
+describeBackupStore("the phone's on-device store", () => createLocalDataStore(freshDb()));
 
 async function setUp(store = createLocalDataStore(freshDb())) {
   const driver = await store.createDriver("Amy");
@@ -31,20 +33,6 @@ async function setUp(store = createLocalDataStore(freshDb())) {
 }
 
 describe("the phone's on-device store", () => {
-  it("leaves tombstones for a delete and everything it cascades to", async () => {
-    const db = freshDb();
-    const { store, driver, car, session } = await setUp(createLocalDataStore(db));
-    await store.deleteDriver(driver.id);
-    const tombstones = await db.tombstones.toArray();
-    expect(tombstones.map(({ kind, id }) => [kind, id]).sort()).toEqual(
-      [
-        ["car", car.id],
-        ["driver", driver.id],
-        ["session", session.id],
-      ].sort(),
-    );
-  });
-
   it("treats names that differ only in accents as the same", async () => {
     const store = createLocalDataStore(freshDb());
     await store.createDriver("José");
@@ -91,48 +79,5 @@ describe("backups on the phone", () => {
     expect(summary.session.added).toBe(1);
     expect(await fresh.loadSnapshot()).toEqual(await store.loadSnapshot());
     expect(await fresh.listMotionSettings()).toEqual(await store.listMotionSettings());
-  });
-
-  it("previews without writing, and a second restore changes nothing", async () => {
-    const { store } = await setUp();
-    const bundle = await store.exportBundle();
-    const fresh = createLocalDataStore(freshDb());
-
-    expect((await fresh.importBundle(bundle, { dryRun: true })).driver.added).toBe(1);
-    expect((await fresh.loadSnapshot()).drivers).toEqual([]);
-
-    await fresh.importBundle(bundle);
-    const again = await fresh.importBundle(bundle);
-    expect(Object.values(again).every((kind) => kind.added + kind.updated + kind.merged + kind.deleted === 0)).toBe(
-      true,
-    );
-  });
-
-  it("names itself once, and remembers the last backup", async () => {
-    const store = createLocalDataStore(freshDb());
-    const first = await store.exportBundle();
-    expect((await store.exportBundle()).deviceId).toBe(first.deviceId);
-    expect(await store.lastBackupAt()).toBeNull();
-    await store.markBackedUp("2026-09-30T12:00:00.000Z");
-    expect(await store.lastBackupAt()).toBe("2026-09-30T12:00:00.000Z");
-  });
-
-  it("saves a waiting session for records a restore moved to other ids", async () => {
-    // Another phone folded this phone's Amy, Slash and Backyard into its own; restoring its backup moves them here too.
-    const { store, driver, car, location, session } = await setUp();
-    const other = await setUp();
-    const bundle = await other.store.exportBundle();
-    bundle.aliases = [
-      { kind: "driver", fromId: driver.id, toId: other.driver.id },
-      { kind: "car", fromId: car.id, toId: other.car.id },
-      { kind: "location", fromId: location.id, toId: other.location.id },
-    ];
-    await store.importBundle(bundle);
-    expect((await store.loadSnapshot()).drivers.map((d) => d.id)).toEqual([other.driver.id]);
-
-    const pending = { ...session, id: randomUUID() };
-    expect(await store.saveSession(pending)).toEqual({ created: true });
-    const saved = (await store.loadSnapshot()).sessions.find((s) => s.id === pending.id);
-    expect(saved).toMatchObject({ driverId: other.driver.id, carId: other.car.id, locationId: other.location.id });
   });
 });
