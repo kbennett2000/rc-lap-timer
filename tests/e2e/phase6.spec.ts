@@ -1,5 +1,5 @@
 // Browser tests for the timer's backups (Manager → Data): the same backup file as the phone app, saved from the timer
-// and restored into it. Setup is the same as phase0.spec.ts.
+// and restored into it. Also, the timer's pages tell it the time. Setup is the same as phase0.spec.ts.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { expect, request, test, type Page } from "@playwright/test";
@@ -87,4 +87,13 @@ test("restores a backup into the timer, after showing what it will do", async ({
   await page.getByRole("tab", { name: "Practice" }).click();
   await page.getByRole("combobox").filter({ hasText: "Select Driver" }).first().click();
   await expect(page.getByRole("option", { name: driver.name, exact: true })).toBeVisible();
+});
+
+test("tells the timer the time as the page opens", async ({ page }) => {
+  const told = page.waitForRequest((r) => r.url().endsWith("/api/sync/clock") && r.method() === "POST");
+  await page.goto("/");
+  const request = await told;
+  expect(Math.abs(request.postDataJSON().now - Date.now())).toBeLessThan(60_000);
+  // The test server has no helper to set the clock, and its clock is right anyway.
+  expect(await (await request.response())?.json()).toEqual({ changed: false, reason: "close" });
 });

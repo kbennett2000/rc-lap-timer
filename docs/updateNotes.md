@@ -35,6 +35,9 @@ What the upgrade does to your data and app:
 - The web server's settings (`/etc/nginx/sites-available/rc-lap-timer`) are replaced with the app's
   (`scripts/system/nginx/rc-lap-timer.conf`), which let the phone app sync over plain HTTP. The old file
   is kept as `rc-lap-timer.bak`, and goes back if nginx rejects the new one.
+- The System Settings helper is reinstalled. It can now set the Pi's clock, which the app does from the first
+  phone or browser that opens it after a boot (see "The timer's clock" in the README). The upgrade says so if
+  `fake-hwclock`, which keeps that time across a power cut, isn't installed.
 - The app is restarted and checked before the reboot prompt. If it doesn't come up, nothing is
   rebooted and the script prints the rollback command:
 ```bash

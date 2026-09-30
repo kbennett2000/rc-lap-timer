@@ -129,6 +129,7 @@ export function SyncCard() {
         {result && (
           <div role="status" className="space-y-2 rounded bg-muted p-3">
             <p>Synced with the timer.</p>
+            {result.clockSet && <p>Set the timer&apos;s clock to this phone&apos;s time.</p>}
             <p className="font-medium">On the timer:</p>
             <ul className="list-disc pl-5">
               {describeMerge(result.timer, "did", TIMER_WORDS).map((line) => (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Car as CarIcon, UserCog, Flag } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import DriverCarManager from "@/components/driver-car-manager";
 import PracticeControl from "./practice-control";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { watchTimerClock } from "@/integrations/timer-clock";
 import { gridCols } from "@/lib/utils";
 import { CAPABILITIES } from "@/platform/capabilities";
 
@@ -29,6 +30,9 @@ const AppShell =
 
 export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("practice");
+
+  // The timer's pages set its clock when it's behind; the phone-only app has no timer to tell.
+  useEffect(() => (process.env.NEXT_PUBLIC_TARGET === "standalone" ? undefined : watchTimerClock()), []);
 
   // ****************************************
   // return

@@ -136,6 +136,12 @@ The certificate authority can only vouch for this timer: its key is deleted as s
 certificate. A timer makes a new certificate about every two years (and once when it's upgraded from the old SD
 image); install the new one then.
 
+## The timer's clock
+The Pi has no clock battery and no internet, so its clock stops while it's switched off. The timer's pages set it
+forward to the phone's time as they open, and the phone app does the same when it syncs, so what the timer saves is
+dated right. It only moves forward, once per boot, and never during a race. If a phone with a wrong clock ever sets it
+ahead, set it back over SSH: `sudo date -s '2026-09-30 14:00' && sudo fake-hwclock save force`.
+
 
 
 # 📊 Usage Guide

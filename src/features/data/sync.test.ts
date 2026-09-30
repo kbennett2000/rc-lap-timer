@@ -10,15 +10,25 @@ import { SyncError, syncWithTimer, timerUrls } from "./sync";
 const newStore = () => createLocalDataStore(new LapTimerDB({ indexedDB: new IDBFactory(), IDBKeyRange }));
 type Store = ReturnType<typeof newStore>;
 
-// A timer at http://timer, answering the sync routes the way the Pi does, with another store behind them.
-function fakeTimer(timer: Store, status: object = { app: "rc-lap-timer", schemaVersion: 1, deviceId: "pi" }) {
+// A timer at http://timer, answering the sync routes the way the Pi does, with another store behind them. Without a
+// clock answer it's an older timer that can't set its clock.
+function fakeTimer(
+  timer: Store,
+  status: object = { app: "rc-lap-timer", schemaVersion: 1, deviceId: "pi" },
+  clock?: object,
+) {
   const urls: string[] = [];
+  const clockTimes: number[] = [];
   const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     urls.push(`${init?.method ?? "GET"} ${url}`);
     if (!url.startsWith("http://timer/")) throw new TypeError("Failed to fetch");
     const path = url.slice("http://timer".length);
     if (path === "/api/sync/status") return Response.json(status);
+    if (path === "/api/sync/clock" && clock && init?.method === "POST") {
+      clockTimes.push(JSON.parse(String(init.body)).now);
+      return Response.json(clock);
+    }
     if (path === "/api/sync" && init?.method === "POST") {
       const parsed = parseBundle(JSON.parse(String(init.body)).bundle);
       if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
@@ -27,7 +37,7 @@ function fakeTimer(timer: Store, status: object = { app: "rc-lap-timer", schemaV
     if (path === "/api/sync") return Response.json(await timer.exportBundle());
     return Response.json({ error: "Not found" }, { status: 404 });
   };
-  return { fetch: fetch as typeof globalThis.fetch, urls };
+  return { fetch: fetch as typeof globalThis.fetch, urls, clockTimes };
 }
 
 async function addSession(store: Store, driverName: string) {
@@ -104,6 +114,29 @@ describe("syncing with the timer", () => {
     const result = await syncWithTimer(phone, { address: "timer", fetch });
     expect(result.phone.session.deleted).toBe(1);
     expect((await phone.loadSnapshot()).sessions).toEqual([]);
+  });
+
+  it("tells the timer the time before sending this phone's data", async () => {
+    const { fetch, urls, clockTimes } = fakeTimer(newStore(), undefined, { changed: true, reason: "set" });
+    const before = Date.now();
+    const result = await syncWithTimer(newStore(), { address: "timer", fetch });
+    expect(result.clockSet).toBe(true);
+    expect(clockTimes).toHaveLength(1);
+    expect(clockTimes[0]).toBeGreaterThanOrEqual(before);
+    expect(clockTimes[0]).toBeLessThanOrEqual(Date.now());
+    expect(urls.indexOf("POST http://timer/api/sync/clock")).toBeLessThan(urls.indexOf("POST http://timer/api/sync"));
+
+    const unchanged = fakeTimer(newStore(), undefined, { changed: false, reason: "close" });
+    expect((await syncWithTimer(newStore(), { address: "timer", fetch: unchanged.fetch })).clockSet).toBe(false);
+  });
+
+  it("syncs with an older timer that can't set its clock", async () => {
+    const phone = newStore();
+    await addSession(phone, "Amy");
+    const timer = newStore();
+    const result = await syncWithTimer(phone, { address: "timer", fetch: fakeTimer(timer).fetch });
+    expect(result.clockSet).toBe(false);
+    expect(result.timer.session.added).toBe(1);
   });
 
   it("tries plain HTTP, then HTTPS, starting with the address that worked last time", async () => {

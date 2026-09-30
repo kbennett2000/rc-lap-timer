@@ -212,3 +212,66 @@ describe("merging into the timer", () => {
     expect(await prisma.driver.findUnique({ where: { id: driverId } })).not.toBeNull();
   });
 });
+
+describe("the timer's clock (/api/sync/clock)", () => {
+  const HOUR = 60 * 60_000;
+  const tell = (now: unknown) => call("POST", "/api/sync/clock", { now });
+
+  it("is left alone by a device whose clock is close or behind", async () => {
+    expect((await tell(Date.now())).json).toEqual({ changed: false, reason: "close" });
+    expect((await tell(Date.now() - HOUR)).json).toEqual({ changed: false, reason: "behind" });
+  });
+
+  it("isn't set during a race that started since boot", async () => {
+    const locationId = await createLocation(named("Clock Track"));
+    const race = await prisma.race.create({
+      data: { name: "R", date: new Date(), locationId, status: "RACING", startDelay: 5 },
+    });
+    try {
+      expect((await tell(Date.now() + HOUR)).json).toEqual({ changed: false, reason: "race" });
+    } finally {
+      await prisma.race.update({ where: { id: race.id }, data: { status: "FINISHED" } });
+    }
+  });
+
+  it("is set by the helper, which this test server doesn't have", async () => {
+    expect((await tell(Date.now() + HOUR)).json).toEqual({ changed: false, reason: "unavailable" });
+  });
+
+  it("takes only a time in milliseconds, as JSON, from the timer's pages or the phone app", async () => {
+    for (const now of ["2026-09-30", null, Date.now() / 1000, Date.UTC(2100, 0, 1)]) {
+      expect((await tell(now)).status).toBe(400);
+    }
+    const asText = await fetch(`${BASE}/api/sync/clock`, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ now: Date.now() }),
+    });
+    expect(asText.status).toBe(415);
+
+    const app = "https://kbennett2000.github.io";
+    const asked = await fetch(`${BASE}/api/sync/clock`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: app,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type",
+      },
+    });
+    expect(asked.status).toBe(204);
+    const fromApp = await fetch(`${BASE}/api/sync/clock`, {
+      method: "POST",
+      headers: { Origin: app, "Content-Type": "application/json" },
+      body: JSON.stringify({ now: Date.now() }),
+    });
+    expect(fromApp.headers.get("access-control-allow-origin")).toBe(app);
+    expect(await fromApp.json()).toEqual({ changed: false, reason: "close" });
+
+    const other = await fetch(`${BASE}/api/sync/clock`, {
+      method: "POST",
+      headers: { Origin: "https://example.com", "Content-Type": "application/json" },
+      body: JSON.stringify({ now: Date.now() + HOUR }),
+    });
+    expect(other.status).toBe(403);
+  });
+});
