@@ -10,6 +10,7 @@ import { RacingSession } from "../racing-session";
 import { RaceHistory } from "../racing-session/race-history";
 import PracticeControl from "./practice-control";
 import { logger } from "@/lib/logger";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("practice");
@@ -48,31 +49,36 @@ export default function LapTimer() {
           <TabsContent
             value="practice"
             forceMount
-            className="px-4 space-y-4 h-full overflow-y-auto data-[state=inactive]:hidden"
+            className="px-0 sm:px-4 space-y-4 h-full overflow-y-auto data-[state=inactive]:hidden"
           >
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
-              <PracticeControl isActive={activeTab === "practice"} />
+              <ErrorBoundary>
+                <PracticeControl isActive={activeTab === "practice"} />
+              </ErrorBoundary>
             </motion.div>
           </TabsContent>
 
           {/* Race Session Tab */}
-          <TabsContent value="race" className="px-4 space-y-4 h-full overflow-y-auto">
+          <TabsContent value="race" className="px-0 sm:px-4 space-y-4 h-full overflow-y-auto">
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
-              <RacingSession />
-              <RaceHistory />
+              <ErrorBoundary>
+                <RacingSession />
+                <RaceHistory />
+              </ErrorBoundary>
             </motion.div>
           </TabsContent>
 
           {/* Driver Car Manager Tab */}
           <TabsContent value="drivercarmanager" className="space-y-4">
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
-              {/* Driver Car Manager */}
-              <DriverCarManager
-                drivers={drivers}
-                locations={locations}
-                onDriversUpdate={setDrivers}
-                onLocationsUpdate={setLocations}
-              />
+              <ErrorBoundary>
+                <DriverCarManager
+                  drivers={drivers}
+                  locations={locations}
+                  onDriversUpdate={setDrivers}
+                  onLocationsUpdate={setLocations}
+                />
+              </ErrorBoundary>
             </motion.div>
           </TabsContent>
 

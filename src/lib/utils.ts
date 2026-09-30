@@ -26,10 +26,3 @@ export async function fetchOk(url: string, init?: RequestInit): Promise<Response
   }
   return response;
 }
-
-// Safari before 14.1 only has the prefixed webkitAudioContext.
-export function createAudioContext(): AudioContext {
-  const AudioContextClass = (window.AudioContext ||
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext) as typeof AudioContext;
-  return new AudioContextClass();
-}
