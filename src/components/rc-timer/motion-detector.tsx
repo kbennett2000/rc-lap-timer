@@ -1,16 +1,26 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+"use client";
+
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { RotateCw } from "lucide-react";
+import { beep } from "@/audio";
+import { useCamera } from "@/camera/use-camera";
 import { logger } from "@/lib/logger";
-import { createAudioContext } from "@/lib/utils";
+import { now } from "@/timing/clock";
+
+export interface MotionDetectorHandle {
+  start: () => Promise<void>;
+  stop: () => void;
+}
 
 interface MotionDetectorProps {
-  onMotionDetected?: (changePercent: number) => void;
+  // Called for each detection while the camera is on (not in preview), with the frame's timestamp.
+  onMotionDetected?: (changePercent: number, at: number) => void;
+  // Called inside the Preview and Cam On taps, so the caller can unlock audio and keep the screen on.
+  onUserStart?: () => void;
+  onCameraChange?: (on: boolean) => void;
+  // Beep on detections while previewing (during a run, the practice screen plays the lap sound).
+  soundOn?: boolean;
   className?: string;
-  // Add ref for external control
-  controlRef?: React.MutableRefObject<{
-    stop: () => void;
-    start: () => Promise<void>;
-  } | null>;
-  playBeeps?: boolean;
 }
 
 interface DetectorSettings {
@@ -18,17 +28,11 @@ interface DetectorSettings {
   threshold: number;
   cooldown: number;
   framesToSkip: number;
-  enableAudio: boolean;
-  enableDebugView: boolean;
 }
 
-interface MotionSettings {
+interface MotionSettings extends DetectorSettings {
   id: string;
   name: string;
-  sensitivity: number;
-  threshold: number;
-  cooldown: number;
-  framesToSkip: number;
 }
 
 const DEFAULT_SETTINGS: DetectorSettings = {
@@ -36,78 +40,52 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   threshold: 1.0,
   cooldown: 10000,
   framesToSkip: 60,
-  enableAudio: true,
-  enableDebugView: true,
 };
 
-export const MotionDetector: React.FC<MotionDetectorProps> = ({
-  onMotionDetected,
-  className = "",
-  controlRef,
-  playBeeps,
-}) => {
-  // Refs
+const ROTATIONS = [0, 90, 180, 270];
+
+export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorProps>(function MotionDetector(
+  { onMotionDetected, onUserStart, onCameraChange, soundOn = false, className = "" },
+  ref,
+) {
+  const camera = useCamera();
+  const { start: startCamera, stop: stopCamera } = camera;
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const debugCanvasRef = useRef<HTMLCanvasElement>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
   const previousFrameRef = useRef<ImageData | null>(null);
-  const lastMotionTimeRef = useRef<number>(0);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const lastMotionTimeRef = useRef(0);
+  const frameCountRef = useRef(0);
   const animationFrameRef = useRef<number>();
+  const activeRef = useRef(false);
 
-  // Ref for settings to access latest values in callbacks
-  const settingsRef = useRef<DetectorSettings>(DEFAULT_SETTINGS);
-
-  // Add ref for initial frames skip
-  const frameCountRef = useRef<number>(0);
-
-  // State
   const [settings, setSettings] = useState<DetectorSettings>(DEFAULT_SETTINGS);
   const [isRunning, setIsRunning] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [savedSettings, setSavedSettings] = useState<MotionSettings[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newSettingsName, setNewSettingsName] = useState("");
   const [saveError, setSaveError] = useState("");
-
   const [detectedMotionStats, setDetectedMotionStats] = useState("");
-
   const [saveMDImages, setSaveMDImages] = useState(false);
-  const saveMDImagesRef = useRef(saveMDImages);
-  // Sync with the ref whenever it changes
-  useEffect(() => {
-    saveMDImagesRef.current = saveMDImages;
-  }, [saveMDImages]);
+  const [rotation, setRotation] = useState(0);
 
-  const isActiveRef = useRef(true);
-  const isPreviewingRef = useRef(isPreviewing);
-
-  useEffect(() => {
-    isPreviewingRef.current = isPreviewing;
-  }, [isPreviewing]);
+  // Latest values for the frame loop, which outlives any single render.
+  const latest = useRef({ settings, isPreviewing, saveMDImages, soundOn, onMotionDetected, onCameraChange });
+  latest.current = { settings, isPreviewing, saveMDImages, soundOn, onMotionDetected, onCameraChange };
 
   useEffect(() => {
     loadSavedSettings();
   }, []);
 
-  // Keep settingsRef in sync with settings
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
   const loadSavedSettings = async () => {
     try {
       const response = await fetch("/api/motion-settings");
-      if (response.ok) {
-        const data = await response.json();
-        setSavedSettings(data);
-      }
-    } catch (error) {
-      logger.error("Error loading settings:", error);
+      if (response.ok) setSavedSettings(await response.json());
+    } catch (err) {
+      logger.error("Error loading settings:", err);
     }
   };
 
@@ -116,240 +94,104 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
       setSaveError("Please enter a name");
       return;
     }
-
     if (savedSettings.some((s) => s.name === newSettingsName)) {
       setSaveError("This name already exists");
       return;
     }
-
     try {
       const response = await fetch("/api/motion-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newSettingsName,
-          sensitivity: settings.sensitivity,
-          threshold: settings.threshold,
-          cooldown: settings.cooldown,
-          framesToSkip: settings.framesToSkip,
-        }),
+        body: JSON.stringify({ name: newSettingsName, ...settings }),
       });
-
       if (response.ok) {
         await loadSavedSettings();
         setShowSaveDialog(false);
         setNewSettingsName("");
         setSaveError("");
       }
-    } catch (error) {
-      logger.error("Error saving settings:", error);
+    } catch (err) {
+      logger.error("Error saving settings:", err);
     }
   };
 
-  const handleLoadSettings = (savedSettings: MotionSettings) => {
-    setSettings((prev) => ({
-      ...prev,
-      sensitivity: savedSettings.sensitivity,
-      threshold: savedSettings.threshold,
-      cooldown: savedSettings.cooldown,
-      framesToSkip: savedSettings.framesToSkip,
-    }));
+  const handleLoadSettings = (saved: MotionSettings) => {
+    setSettings({
+      sensitivity: saved.sensitivity,
+      threshold: saved.threshold,
+      cooldown: saved.cooldown,
+      framesToSkip: saved.framesToSkip,
+    });
   };
 
-  // Audio handling
-  const initAudio = useCallback(async () => {
-    if (!settings.enableAudio) return;
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = createAudioContext();
-      }
-      if (audioContextRef.current.state === "suspended") {
-        await audioContextRef.current.resume();
-      }
-    } catch (err) {
-      logger.error("Audio initialization error:", err);
-    }
-  }, [settings.enableAudio]);
-
-  const playBeep = useCallback(() => {
-    if (!settings.enableAudio || !audioContextRef.current) return;
-
-    if (!playBeeps) return;
-
-    try {
-      const context = audioContextRef.current;
-      const oscillator = context.createOscillator();
-      const gainNode = context.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(context.destination);
-
-      oscillator.type = "square";
-      oscillator.frequency.setValueAtTime(440, context.currentTime);
-      gainNode.gain.setValueAtTime(0.5, context.currentTime);
-
-      oscillator.start();
-      oscillator.stop(context.currentTime + 0.2);
-    } catch (err) {
-      logger.error("Error playing beep:", err);
-    }
-  }, [settings.enableAudio]);
-
-  // Camera setup
-  const setupCamera = useCallback(async () => {
-    try {
-      // Clean up any existing stream
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-      }
-
-      // Good distance detection, can't handle motion
-      //const myWidth = 2880;
-      //const myHeight = 1620;
-
-      //const myWidth = 1920;
-      //const myHeight = 1080;
-
-      // default
-      const myWidth = 1280;
-      const myHeight = 720;
-
-      // res too low, won't detect well from far away
-      //const myWidth = 424;
-      //const myHeight = 240;
-
-      // res too low, won't detect at all from far away
-      //const myWidth = 212;
-      //const myHeight = 120;
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: myWidth },
-          height: { ideal: myHeight },
-        },
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        mediaStreamRef.current = stream;
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Camera access error");
-      throw err;
-    }
-  }, []);
-
-  // Motion detection
-  // Modified motion detection to handle frame skipping
   const detectMotion = useCallback(() => {
-    if (!isActiveRef.current) {
-      return;
-    }
-
-    if (!videoRef.current || !canvasRef.current || !debugCanvasRef.current) {
-      return;
-    }
-
+    if (!activeRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const debugCanvas = debugCanvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const debugCtx = debugCanvas.getContext("2d");
-
-    if (!ctx || !debugCtx) {
+    const ctx = canvas?.getContext("2d", { willReadFrequently: true });
+    if (!video || !canvas || !ctx || video.videoWidth === 0) {
+      animationFrameRef.current = requestAnimationFrame(detectMotion);
       return;
     }
 
-    // Make sure we're drawing the current video frame
+    // Follow the video size, which changes when the phone rotates.
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      previousFrameRef.current = null;
+    }
     ctx.drawImage(video, 0, 0);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const at = now();
+    const { settings: current, isPreviewing: previewing } = latest.current;
 
     frameCountRef.current++;
-
-    if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
+    const previous = previousFrameRef.current;
+    if (previous && frameCountRef.current > current.framesToSkip) {
       let changedPixels = 0;
-
       for (let i = 0; i < currentFrame.data.length; i += 4) {
-        const rDiff = Math.abs(currentFrame.data[i] - previousFrameRef.current.data[i]);
-        const gDiff = Math.abs(currentFrame.data[i + 1] - previousFrameRef.current.data[i + 1]);
-        const bDiff = Math.abs(currentFrame.data[i + 2] - previousFrameRef.current.data[i + 2]);
-
         if (
-          rDiff > settingsRef.current.sensitivity ||
-          gDiff > settingsRef.current.sensitivity ||
-          bDiff > settingsRef.current.sensitivity
+          Math.abs(currentFrame.data[i] - previous.data[i]) > current.sensitivity ||
+          Math.abs(currentFrame.data[i + 1] - previous.data[i + 1]) > current.sensitivity ||
+          Math.abs(currentFrame.data[i + 2] - previous.data[i + 2]) > current.sensitivity
         ) {
           changedPixels++;
         }
       }
-
-      const frameSize = currentFrame.width * currentFrame.height;
-      const changePercent = (changedPixels / frameSize) * 100;
+      const changePercent = (changedPixels / (currentFrame.width * currentFrame.height)) * 100;
       setLastChangePercent(changePercent);
 
-      if (changePercent > settingsRef.current.threshold) {
-        const now = Date.now();
-        if (now - lastMotionTimeRef.current > settingsRef.current.cooldown) {
-          setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
-
-          playBeep();
-
-          if (saveMDImagesRef.current) {
-            // Save the frame to device gallery
-            saveToGallery(canvas, changePercent);
-          }
-
-          if (!isPreviewingRef.current) {
-            onMotionDetected?.(changePercent);
-          }
-
-          lastMotionTimeRef.current = now;
+      if (changePercent > current.threshold && at - lastMotionTimeRef.current > current.cooldown) {
+        lastMotionTimeRef.current = at;
+        setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
+        if (latest.current.saveMDImages) saveToGallery(canvas, changePercent);
+        if (previewing) {
+          if (latest.current.soundOn) void beep();
+        } else {
+          latest.current.onMotionDetected?.(changePercent, at);
         }
       }
     }
-
     previousFrameRef.current = currentFrame;
+    animationFrameRef.current = requestAnimationFrame(detectMotion);
+  }, []);
 
-    if (isActiveRef.current) {
-      animationFrameRef.current = requestAnimationFrame(detectMotion);
-    }
-  }, [settingsRef, playBeep, onMotionDetected]);
-
-  // Function to save image to device gallery
   const saveToGallery = async (canvas: HTMLCanvasElement, changePercent: number) => {
     try {
-      // Convert the canvas to a blob
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob(
-          (blob) => {
-            resolve(blob!);
-          },
-          "image/jpeg",
-          0.8,
-        );
-      });
-
-      // Create timestamp for filename
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
+      if (!blob) return;
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const filename = `rc-lap-${timestamp}-${changePercent.toFixed(1)}pct.jpg`;
 
-      // Try to use the Web Share API first (works on most mobile browsers)
+      // The Web Share API saves to the photo library on most phones.
       if (typeof navigator.share === "function" && typeof navigator.canShare === "function") {
-        const file = new File([blob], filename, { type: "image/jpeg" });
         try {
-          await navigator.share({
-            files: [file],
-          });
+          await navigator.share({ files: [new File([blob], filename, { type: "image/jpeg" })] });
           return;
-        } catch (error) {
-          // If share fails, fall back to download method
-          logger.error("Share failed, falling back to download:", error);
+        } catch (err) {
+          logger.error("Share failed, falling back to download:", err);
         }
       }
-
-      // Fallback: Create a download link
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -358,150 +200,105 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      logger.error("Error saving image to gallery:", error);
+    } catch (err) {
+      logger.error("Error saving image to gallery:", err);
     }
   };
 
-  const handleStop = useCallback(() => {
-    isActiveRef.current = false;
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = undefined;
-    }
-
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-
+  const stopLoop = () => {
+    activeRef.current = false;
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = undefined;
     previousFrameRef.current = null;
     lastMotionTimeRef.current = 0;
-    frameCountRef.current = 0; // Reset frame counter
+    frameCountRef.current = 0;
+  };
 
+  const handleStop = useCallback(() => {
+    stopLoop();
+    stopCamera();
+    if (videoRef.current) videoRef.current.srcObject = null;
     setIsRunning(false);
     setIsPreviewing(false);
-  }, []);
+    latest.current.onCameraChange?.(false);
+  }, [stopCamera]);
 
   const handleStart = useCallback(async () => {
+    setError("");
     try {
-      setError("");
-      isActiveRef.current = true;
-      frameCountRef.current = 0; // Reset frame counter
-
-      await setupCamera();
-
-      // Wait for video to be ready
-      if (videoRef.current) {
-        await new Promise<void>((resolve) => {
-          if (videoRef.current!.readyState === 4) {
-            resolve();
-          } else {
-            videoRef.current!.addEventListener("loadeddata", () => resolve(), { once: true });
-          }
-        });
+      const stream = await startCamera();
+      const video = videoRef.current;
+      if (!video) return;
+      if (video.srcObject !== stream) video.srcObject = stream;
+      if (video.readyState < 2) {
+        await new Promise<void>((resolve) => video.addEventListener("loadeddata", () => resolve(), { once: true }));
       }
-
-      await initAudio();
-
       setIsRunning(true);
-      detectMotion();
+      latest.current.onCameraChange?.(true);
+      if (!activeRef.current) {
+        activeRef.current = true;
+        frameCountRef.current = 0;
+        detectMotion();
+      }
     } catch (err) {
       logger.error("Start error:", err);
       setError("Failed to start: " + (err instanceof Error ? err.message : String(err)));
-      isActiveRef.current = false;
       handleStop();
+      throw err;
     }
-  }, [setupCamera, initAudio, detectMotion, handleStop]);
+  }, [startCamera, detectMotion, handleStop]);
 
-  const handlePreviewToggle = useCallback(async () => {
-    if (isPreviewingRef.current) {
+  useImperativeHandle(ref, () => ({ start: handleStart, stop: handleStop }), [handleStart, handleStop]);
+
+  // Stop the frame loop on unmount (useCamera stops the stream).
+  useEffect(() => stopLoop, []);
+
+  const handlePreviewToggle = async () => {
+    if (isPreviewing) {
       handleStop();
-    } else {
-      try {
-        setError("");
-        setIsLoading(true);
-        setIsPreviewing(true);
-        await handleStart();
-      } catch (err) {
-        setError("Failed to start preview: " + (err instanceof Error ? err.message : String(err)));
-      } finally {
-        setIsLoading(false);
-      }
+      return;
     }
-  }, [isPreviewing, setupCamera, handleStop]);
-
-  // Expose control methods via ref
-  useEffect(() => {
-    if (controlRef) {
-      controlRef.current = {
-        stop: handleStop,
-        start: handleStart, // Add this line
-      };
+    onUserStart?.();
+    setIsLoading(true);
+    setIsPreviewing(true);
+    try {
+      await handleStart();
+    } catch {
+      // error shown by handleStart
+    } finally {
+      setIsLoading(false);
     }
-  }, [controlRef, handleStop, handleStart]);
+  };
 
-  // ... (previous useEffect hooks remain the same)
-  useEffect(() => {
-    if (!videoRef.current) return;
-
-    const video = videoRef.current;
-
-    const handleVideoMetadata = () => {
-      if (!videoRef.current || !canvasRef.current || !debugCanvasRef.current) return;
-      const { videoWidth, videoHeight } = videoRef.current;
-      canvasRef.current.width = videoWidth;
-      canvasRef.current.height = videoHeight;
-      debugCanvasRef.current.width = videoWidth;
-      debugCanvasRef.current.height = videoHeight;
-    };
-
-    video.addEventListener("loadedmetadata", handleVideoMetadata);
-
-    return () => {
-      video.removeEventListener("loadedmetadata", handleVideoMetadata);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!videoRef.current) return;
-
-    const video = videoRef.current;
-
-    const handleVideoMetadata = () => {
-      if (!videoRef.current || !canvasRef.current || !debugCanvasRef.current) return;
-
-      const { videoWidth, videoHeight } = videoRef.current;
-
-      canvasRef.current.width = videoWidth;
-      canvasRef.current.height = videoHeight;
-      debugCanvasRef.current.width = videoWidth;
-      debugCanvasRef.current.height = videoHeight;
-    };
-
-    video.addEventListener("loadedmetadata", handleVideoMetadata);
-
-    return () => {
-      video.removeEventListener("loadedmetadata", handleVideoMetadata);
-    };
-  }, []);
+  const handleCamOn = async () => {
+    onUserStart?.();
+    setIsLoading(true);
+    try {
+      await handleStart();
+    } catch {
+      // error shown by handleStart
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="relative bg-black rounded-lg overflow-hidden">
-        <video ref={videoRef} autoPlay playsInline className="w-full" />
-        <canvas
-          ref={debugCanvasRef}
-          className={`absolute top-0 left-0 w-full h-full ${settings.enableDebugView && isRunning ? "opacity-50" : "hidden"}`}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full"
+          style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
         />
         <canvas ref={canvasRef} className="hidden" />
       </div>
 
-      {error && <div className="text-red-500 bg-red-50 p-2 rounded">{error}</div>}
+      {(error || camera.error) && <div className="text-red-500 bg-red-50 p-2 rounded">{error || camera.error}</div>}
 
       <div className="space-y-4">
-        {/* Logging */}
         <div className="pt-2 border-t">
           {isPreviewing && <div className="text-sm">Motion Detected Stats: {detectedMotionStats}</div>}
           {isPreviewing && lastChangePercent !== null && (
@@ -510,40 +307,57 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
         </div>
       </div>
 
-      {/* Control Buttons */}
-      <div className="flex gap-2">
-        {/* Preview Button */}
+      <div className="flex flex-wrap gap-2">
         <button onClick={handlePreviewToggle} className="px-4 py-2 bg-gray-500 text-white rounded disabled:bg-gray-300">
           {isPreviewing ? "Stop Preview" : "Preview"}
         </button>
-        {/* Cam On Button */}
         <button
-          onClick={async () => {
-            setIsLoading(true);
-            try {
-              await handleStart();
-            } finally {
-              setIsLoading(false);
-            }
-          }}
+          onClick={handleCamOn}
           disabled={isRunning || isLoading || isPreviewing}
           className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
         >
-          {isLoading ? "Cam On" : "Cam On"}
+          Cam On
         </button>
-        {/* Cam Off Button */}
         <button
           onClick={handleStop}
           disabled={(!isRunning && !isPreviewing) || isLoading}
           className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300"
         >
-          {isLoading ? "Cam Off" : "Cam Off"}
+          Cam Off
+        </button>
+        <button
+          onClick={() => setRotation((r) => ROTATIONS[(ROTATIONS.indexOf(r) + 1) % ROTATIONS.length])}
+          className="px-3 py-2 border rounded flex items-center gap-1 text-sm"
+          title="Rotate the preview if it shows sideways. Detection isn't affected."
+        >
+          <RotateCw className="h-4 w-4" />
+          Rotate preview
         </button>
       </div>
 
+      {camera.cameras.length > 1 && (
+        <div className="space-y-1">
+          <label htmlFor="cameraSelect" className="block text-sm">
+            Camera
+          </label>
+          <select
+            id="cameraSelect"
+            value={camera.cameraId}
+            onChange={(e) => camera.chooseCamera(e.target.value).catch(() => {})}
+            className="px-3 py-2 border rounded w-full"
+          >
+            <option value="">Default (back camera)</option>
+            {camera.cameras.map((device, index) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `Camera ${index + 1}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Control Settings */}
       <div className="space-y-3 p-4 bg-gray-50 rounded">
-        {/* Sensitivity */}
         <div>
           <label className="block text-sm mb-1">Sensitivity ({(205 - settings.sensitivity).toFixed(0)}/200)</label>
           <input
@@ -551,19 +365,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
             min="5"
             max="200"
             value={205 - settings.sensitivity}
-            onChange={(e) => {
-              const displayValue = Number(e.target.value);
-              const internalValue = 205 - displayValue;
-              setSettings((prev) => ({
-                ...prev,
-                sensitivity: internalValue,
-              }));
-            }}
+            onChange={(e) => setSettings((prev) => ({ ...prev, sensitivity: 205 - Number(e.target.value) }))}
             className="w-full"
           />
         </div>
 
-        {/* Threshold */}
         <div>
           <label className="block text-sm mb-1">Threshold ({settings.threshold}%)</label>
           <input
@@ -577,7 +383,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
           />
         </div>
 
-        {/* Cooldown */}
         <div>
           <label className="block text-sm mb-1">Cooldown ({settings.cooldown}ms)</label>
           <input
@@ -591,7 +396,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
           />
         </div>
 
-        {/* Frames to Skip */}
         <div>
           <label className="block text-sm mb-1">Frames to Skip ({settings.framesToSkip})</label>
           <input
@@ -604,7 +408,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
           />
         </div>
 
-        {/* Save / Load Settings */}
         <div>Camera Settings:</div>
         <div className="flex gap-2 pt-4">
           <button onClick={() => setShowSaveDialog(true)} className="px-4 py-2 bg-green-500 text-white rounded">
@@ -613,10 +416,8 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
 
           <select
             onChange={(e) => {
-              if (e.target.value) {
-                const selected = savedSettings.find((s) => s.id === e.target.value);
-                if (selected) handleLoadSettings(selected);
-              }
+              const selected = savedSettings.find((s) => s.id === e.target.value);
+              if (selected) handleLoadSettings(selected);
             }}
             value=""
             className="px-4 py-2 border rounded w-[180px]"
@@ -632,23 +433,19 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
           </select>
         </div>
 
-        {/* Save MD Images */}
-        <div className="flex gap-2 pt-4"></div>
+        <div className="flex items-center gap-2 pt-4">
+          <input
+            type="checkbox"
+            id="saveMDImagesLocally"
+            checked={saveMDImages}
+            onChange={(e) => setSaveMDImages(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <label htmlFor="saveMDImagesLocally" className="text-sm font-medium">
+            Save MD Images
+          </label>
+        </div>
 
-        <input
-          type="checkbox"
-          id="saveMDImagesLocally"
-          checked={saveMDImages}
-          onChange={(e) => {
-            setSaveMDImages(e.target.checked);
-          }}
-          className="h-4 w-4 rounded border-gray-300"
-        />
-        <label htmlFor="saveMDImagesLocally" className="text-sm font-medium">
-          Save MD Images
-        </label>
-
-        {/* Dialog */}
         {showSaveDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <div className="bg-white p-4 rounded-lg space-y-4">
@@ -682,4 +479,4 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({
       </div>
     </div>
   );
-};
+});

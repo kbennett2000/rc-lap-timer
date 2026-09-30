@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchOk, formatTime, newId } from "./utils";
+import { fetchOk, newId } from "./utils";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -25,18 +25,6 @@ describe("newId", () => {
   it("does not repeat", () => {
     const ids = new Set(Array.from({ length: 1000 }, () => newId()));
     expect(ids.size).toBe(1000);
-  });
-});
-
-describe("formatTime", () => {
-  it.each([
-    [0, "00:00.000"],
-    [1234, "00:01.234"],
-    [61_005, "01:01.005"],
-    [59_999.9, "00:59.999"],
-    [3_600_000, "60:00.000"],
-  ])("formats %d ms as %s", (ms, expected) => {
-    expect(formatTime(ms)).toBe(expected);
   });
 });
 

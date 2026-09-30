@@ -1,19 +1,17 @@
 "use client";
 
+import { isWithinRange, todayRange, type DateRange } from "@/domain/date-range";
+import { DateRangeFilter } from "@/features/history/date-range-filter";
 import { useState, useEffect, useMemo } from "react";
+import { formatDateTime, formatLapTime } from "@/domain/format";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Session, ComparisonData } from "@/types/rc-timer";
 import { cn } from "@/lib/utils";
-import { formatTime, formatDateTime } from "@/lib/utils";
-import { format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, BarChart2, Search } from "lucide-react";
-import { logger } from "@/lib/logger";
+import { BarChart2, Search } from "lucide-react";
 
 interface SessionComparisonProps {
   sessions: Session[];
@@ -23,27 +21,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>(() => {
-    // Default to "Today"
-    const today = new Date();
-    return {
-      from: startOfDay(today),
-      to: endOfDay(today),
-    };
-  });
-
-  // Date range presets
-  const DATE_PRESETS: { label: string; days: number | "month" | "year" }[] = [
-    { label: "Today", days: 0 },
-    { label: "Last 7 days", days: 7 },
-    { label: "Last 30 days", days: 30 },
-    { label: "Last 90 days", days: 90 },
-    { label: "This month", days: "month" },
-    { label: "This year", days: "year" },
-  ];
+  const [dateRange, setDateRange] = useState<DateRange>(() => todayRange());
 
   const prepareChartData = () => {
     const selectedSessionData = selectedSessions
@@ -83,66 +61,6 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
   // Add debugging
   useEffect(() => {}, [selectedSessions, chartData]);
 
-  // Function to get preset dates
-  const getPresetDates = (preset: { label: string; days: number | "month" | "year" }) => {
-    let from: Date;
-    let to = new Date();
-
-    if (preset.days === 0) {
-      // Today
-      from = startOfDay(new Date());
-      to = endOfDay(new Date());
-    } else if (preset.days === "month") {
-      from = new Date(to.getFullYear(), to.getMonth(), 1);
-    } else if (preset.days === "year") {
-      from = new Date(to.getFullYear(), 0, 1);
-    } else {
-      from = new Date(to);
-      from.setDate(to.getDate() - preset.days);
-    }
-
-    return { from, to };
-  };
-
-  // Function to check if a date is within the selected range
-  const isWithinDateRange = (sessionDate: string | null): boolean => {
-    // If no date range is selected, show all sessions
-    if (!dateRange.from && !dateRange.to) return true;
-
-    // If session date is null or invalid, don't show the session
-    if (!sessionDate) return false;
-
-    try {
-      const date = parseISO(sessionDate);
-
-      if (dateRange.from && !dateRange.to) {
-        return (
-          isAfter(date, startOfDay(dateRange.from)) ||
-          format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
-        );
-      }
-
-      if (!dateRange.from && dateRange.to) {
-        return (
-          isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
-        );
-      }
-
-      if (dateRange.from && dateRange.to) {
-        return (
-          (isAfter(date, startOfDay(dateRange.from)) ||
-            format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
-        );
-      }
-
-      return true;
-    } catch (error) {
-      logger.error("Error parsing date:", error);
-      return false;
-    }
-  };
-
   // Get unique drivers sorted alphabetically
   const getUniqueDrivers = () => {
     const drivers = new Set(sessions.map((session) => session.driverName));
@@ -176,7 +94,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
     if (filterCar !== "all" && session.carName !== filterCar) return false;
 
     // Apply existing date range filter
-    if (!isWithinDateRange(session.date)) return false;
+    if (!isWithinRange(session.date, dateRange)) return false;
 
     return true;
   });
@@ -239,92 +157,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
             </div>
           </div>
 
-          {/* Date Range Filters */}
-          <div className="space-y-2">
-            {/* Preset Buttons */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {DATE_PRESETS.map((preset) => {
-                const presetDates = getPresetDates(preset);
-                const isActive =
-                  dateRange.from &&
-                  dateRange.to &&
-                  format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") &&
-                  format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
-
-                return (
-                  <Button
-                    key={preset.label}
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "hover:bg-muted",
-                      isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "",
-                    )}
-                    onClick={() => {
-                      const { from, to } = getPresetDates(preset);
-                      setDateRange({ from, to });
-                    }}
-                  >
-                    {preset.label}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Custom Date Range */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="grid gap-2">
-              <Label>Start Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !dateRange.from && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.from}
-                    onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))}
-                    autoFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid gap-2">
-              <Label>End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !dateRange.to && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.to}
-                    onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))}
-                    autoFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
         </div>
 
         {sessions.length === 0 ? (
@@ -391,7 +224,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                         angle: -90,
                         position: "insideLeft",
                       }}
-                      tickFormatter={(value) => formatTime(value)}
+                      tickFormatter={(value) => formatLapTime(value)}
                     />
                     <Tooltip
                       content={({ active, payload, label }) => {
@@ -402,7 +235,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                               {payload.map((entry, index) => (
                                 <div key={index} className="text-sm">
                                   <span style={{ color: entry.color }}>{entry.name}</span>
-                                  <span className="font-mono ml-2">{formatTime(Number(entry.value))}</span>
+                                  <span className="font-mono ml-2">{formatLapTime(Number(entry.value))}</span>
                                 </div>
                               ))}
                             </div>

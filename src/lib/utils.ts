@@ -5,26 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatTime(ms: number): string {
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.floor((ms % 60000) / 1000);
-  const milliseconds = Math.floor(ms % 1000);
-  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(3, "0")}`;
-}
-
-export function formatDateTime(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-}
-
 // Random RFC 4122 v4 id. crypto.randomUUID only exists in secure contexts (HTTPS or localhost),
 // so fall back to crypto.getRandomValues, which is available everywhere.
 export function newId(): string {
@@ -45,11 +25,4 @@ export async function fetchOk(url: string, init?: RequestInit): Promise<Response
     throw new Error(`${init?.method ?? "GET"} ${url} failed (${response.status})`);
   }
   return response;
-}
-
-// Safari before 14.1 only has the prefixed webkitAudioContext.
-export function createAudioContext(): AudioContext {
-  const AudioContextClass = (window.AudioContext ||
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext) as typeof AudioContext;
-  return new AudioContextClass();
 }

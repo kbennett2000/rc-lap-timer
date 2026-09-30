@@ -16,7 +16,13 @@ export default defineConfig({
   projects: [
     {
       name: "phone",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 }, hasTouch: true },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        // A synthetic camera (a moving test pattern) with the permission prompt auto-accepted, for motion timing.
+        launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
+      },
     },
   ],
 });

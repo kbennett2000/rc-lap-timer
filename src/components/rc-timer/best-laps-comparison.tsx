@@ -1,32 +1,14 @@
 "use client";
 
+import { isWithinRange, todayRange, type DateRange } from "@/domain/date-range";
+import { DateRangeFilter } from "@/features/history/date-range-filter";
 import { useState, useEffect } from "react";
+import { formatDateTime, formatLapTime } from "@/domain/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Session, BestLapRecord } from "@/types/rc-timer";
-import { format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Trophy, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatTime, formatDateTime } from "@/lib/utils";
-import { logger } from "@/lib/logger";
-
-interface DatePreset {
-  label: string;
-  days: number | "month" | "year";
-}
-
-const DATE_PRESETS: DatePreset[] = [
-  { label: "Today", days: 0 },
-  { label: "Last 7 days", days: 7 },
-  { label: "Last 30 days", days: 30 },
-  { label: "Last 90 days", days: 90 },
-  { label: "This month", days: "month" },
-  { label: "This year", days: "year" },
-];
+import { Trophy, Search } from "lucide-react";
 
 interface BestLapsComparisonProps {
   sessions: Session[];
@@ -36,73 +18,7 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
   const [filterDriver, setFilterDriver] = useState<string>("all");
   const [filterCar, setFilterCar] = useState<string>("all");
 
-  const [dateRange, setDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>(() => ({
-    from: startOfDay(new Date()),
-    to: endOfDay(new Date()),
-  }));
-
-  const getPresetDates = (preset: DatePreset) => {
-    let from: Date;
-    const to = new Date(); // Always use current date as end date
-
-    if (preset.days === 0) {
-      // Today
-      from = startOfDay(new Date());
-    } else if (preset.days === "month") {
-      // This month
-      from = new Date(to.getFullYear(), to.getMonth(), 1);
-    } else if (preset.days === "year") {
-      // This year
-      from = new Date(to.getFullYear(), 0, 1);
-    } else {
-      // Last X days
-      from = new Date(to);
-      from.setDate(to.getDate() - preset.days);
-    }
-
-    return {
-      from: startOfDay(from),
-      to: endOfDay(to),
-    };
-  };
-
-  const isWithinDateRange = (sessionDate: string | null): boolean => {
-    if (!dateRange.from && !dateRange.to) return true;
-    if (!sessionDate) return false;
-
-    try {
-      const date = parseISO(sessionDate);
-
-      if (dateRange.from && !dateRange.to) {
-        return (
-          isAfter(date, startOfDay(dateRange.from)) ||
-          format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
-        );
-      }
-
-      if (!dateRange.from && dateRange.to) {
-        return (
-          isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
-        );
-      }
-
-      if (dateRange.from && dateRange.to) {
-        return (
-          (isAfter(date, startOfDay(dateRange.from)) ||
-            format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) &&
-          (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
-        );
-      }
-
-      return true;
-    } catch (error) {
-      logger.error("Error parsing date:", error);
-      return false;
-    }
-  };
+  const [dateRange, setDateRange] = useState<DateRange>(() => todayRange());
 
   const findBestLaps = (sessions: Session[]): BestLapRecord[] => {
     const bestLaps: BestLapRecord[] = [];
@@ -154,7 +70,7 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
   const filteredBestLaps = bestLaps.filter((lap) => {
     if (filterDriver !== "all" && lap.driverName !== filterDriver) return false;
     if (filterCar !== "all" && lap.carName !== filterCar) return false;
-    if (!isWithinDateRange(lap.date)) return false;
+    if (!isWithinRange(lap.date, dateRange)) return false;
     return true;
   });
 
@@ -210,125 +126,7 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
               </Select>
             </div>
 
-            {/* Date Range Filter */}
-            <div className="space-y-2">
-              <Label>Filter by Date Range</Label>
-
-              {/* Preset Buttons */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {DATE_PRESETS.map((preset) => {
-                  const presetDates = getPresetDates(preset);
-                  const isActive =
-                    dateRange.from &&
-                    dateRange.to &&
-                    format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") &&
-                    format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
-
-                  return (
-                    <Button
-                      key={preset.label}
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "hover:bg-muted",
-                        isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "",
-                      )}
-                      onClick={() => {
-                        const { from, to } = getPresetDates(preset);
-                        setDateRange({ from, to });
-                      }}
-                    >
-                      {preset.label}
-                    </Button>
-                  );
-                })}
-              </div>
-
-              {/* Custom Date Range Selectors */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !dateRange.from && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.from ? format(dateRange.from, "PPP") : "Select start date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.from}
-                      onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))}
-                      autoFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !dateRange.to && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.to ? format(dateRange.to, "PPP") : "Select end date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.to}
-                      onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))}
-                      disabled={(date) => (dateRange.from ? isBefore(date, dateRange.from) : false)}
-                      autoFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <Button
-                  variant="outline"
-                  onClick={() => setDateRange({ from: undefined, to: undefined })}
-                  className="w-full sm:w-auto"
-                >
-                  Reset Dates
-                </Button>
-              </div>
-
-              {/* Date Range Summary */}
-              {(dateRange.from || dateRange.to) && (
-                <div className="text-sm text-muted-foreground">
-                  {dateRange.from &&
-                  dateRange.to &&
-                  format(dateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") &&
-                  format(dateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
-                    "Showing sessions from today"
-                  ) : dateRange.from &&
-                    dateRange.to &&
-                    format(dateRange.from, "yyyy-MM-dd") ===
-                      format(getPresetDates(DATE_PRESETS[1]).from, "yyyy-MM-dd") &&
-                    format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).to, "yyyy-MM-dd") ? (
-                    "Showing sessions from the last 7 days"
-                  ) : (
-                    <>
-                      Showing sessions
-                      {dateRange.from && !dateRange.to && ` from ${format(dateRange.from, "PPP")}`}
-                      {!dateRange.from && dateRange.to && ` until ${format(dateRange.to, "PPP")}`}
-                      {dateRange.from &&
-                        dateRange.to &&
-                        ` from ${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}`}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
           </div>
         </div>
 
@@ -385,7 +183,7 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
                         <td className="p-2">{lap.driverName}</td>
                         <td className="p-2">{lap.carName}</td>
                         <td className="p-2 text-right font-mono">
-                          {formatTime(lap.lapTime)}
+                          {formatLapTime(lap.lapTime)}
                           {index === 0 && <span className="ml-2 text-xs text-green-600">⚡ Fastest</span>}
                         </td>
                         <td className="p-2 text-right">{lap.lapNumber}</td>
@@ -434,7 +232,7 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Lap Time</span>
                         <div className="text-right">
-                          <span className="font-mono font-medium">{formatTime(lap.lapTime)}</span>
+                          <span className="font-mono font-medium">{formatLapTime(lap.lapTime)}</span>
                           {index === 0 && <span className="ml-2 text-xs text-green-600">⚡ Fastest</span>}
                         </div>
                       </div>
