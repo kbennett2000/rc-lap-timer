@@ -278,7 +278,11 @@ npm run dev
 
 `NEXT_PUBLIC_TARGET=standalone npm run dev` runs the phone-only build instead: the Pi's features (Race, IR timing,
 remote control, the live view, LEDs and System Settings) are hidden. For now it still stores its data through the
-Pi's API.
+Pi's API. `npm run build:pages` builds it as a static site in `out/` (what GitHub Pages serves), and
+`npm run serve:pages` serves that at http://127.0.0.1:3100/rc-lap-timer/.
+
+The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi build treats `.pi.ts` files as pages and
+routes (see `next.config.js`), so the static build leaves them out.
 
 Screens read and change data only through the `DataStore` in [src/data/types.ts](src/data/types.ts).
 [tests/datastore/conformance.ts](tests/datastore/conformance.ts) lists the rules every store follows, as tests.

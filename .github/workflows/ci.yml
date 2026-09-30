@@ -53,14 +53,8 @@ jobs:
           exit 1
 
   integration:
-    # pi: the Pi build, with the API tests (including the DataStore contract) and its browser tests.
-    # standalone: the phone-only build (NEXT_PUBLIC_TARGET=standalone), with its own browser tests.
-    name: Migrations, API and browser tests (${{ matrix.target }} build, MariaDB)
+    name: Migrations, API and browser tests (MariaDB)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [pi, standalone]
     services:
       mariadb:
         # The MariaDB version Raspberry Pi OS (bookworm) ships.
@@ -79,8 +73,6 @@ jobs:
       DATABASE_URL: mysql://root:ci@127.0.0.1:3306/rc_lap_timer
       ADMIN_PIN: test1234
       API_ADMIN_PIN: test1234
-      NEXT_PUBLIC_TARGET: ${{ matrix.target }}
-      E2E_TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -104,15 +96,33 @@ jobs:
           cat server.log
           exit 1
       - run: npm run test:api
-        if: matrix.target == 'pi'
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - name: Keep traces and the server log
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: integration-results-${{ matrix.target }}
+          name: integration-results
           path: |
             test-results/
             server.log
           retention-days: 7
+
+  phone-app:
+    # The phone-only app (NEXT_PUBLIC_TARGET=standalone): a static site for GitHub Pages, with no server or database.
+    name: Phone app (static build)
+    runs-on: ubuntu-latest
+    env:
+      PAGES_BASE_PATH: /rc-lap-timer
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The type check still covers the Pi's API routes, which use the Prisma client.
+      - run: npx prisma generate
+      - run: npm run build:pages
+      - name: The export has no API routes
+        run: test ! -e out/api
