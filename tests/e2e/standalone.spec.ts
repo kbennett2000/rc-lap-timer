@@ -4,6 +4,7 @@
 // Every test starts with an empty browser, so each one adds its own driver, car and location through the app.
 
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 type Fixture = { driver: string; car: string; location: string };
@@ -217,4 +218,59 @@ test("opens with its data when the site can't be reached", async ({ page }) => {
   } finally {
     server.kill();
   }
+});
+
+async function openDataTab(page: Page) {
+  await page.getByRole("tab", { name: "Manager" }).click();
+  await page.getByRole("tab", { name: "Data" }).click();
+}
+
+test("saves a backup, and restores it into an empty app", async ({ page, browser }, testInfo) => {
+  await page.goto("./");
+  const fixture = await addFixtures(page, "Backup");
+  await runSession(page);
+  await expect(sessionCard(page, fixture)).toBeVisible();
+
+  await openDataTab(page);
+  await expect(page.getByText("Last backup: never.")).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Save a backup" }).click();
+  const file = testInfo.outputPath("backup.json");
+  await (await download).saveAs(file);
+  await expect(page.getByText("Backup saved to your downloads.")).toBeVisible();
+  await expect(page.getByText("Last backup: today.")).toBeVisible();
+  const backup = JSON.parse(readFileSync(file, "utf8"));
+  expect(backup).toMatchObject({ format: "rc-lap-timer", schemaVersion: 1 });
+  expect(backup.data.sessions).toHaveLength(1);
+
+  // Another browser, so an empty app.
+  const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+  const other = await context.newPage();
+  await other.goto("./");
+  await openDataTab(other);
+  await other.getByLabel("Backup file").setInputFiles(file);
+  await expect(other.getByText("This backup holds 1 session, 1 driver, 1 car and 1 location.")).toBeVisible();
+  await expect(other.getByText("Adds 1 session, 1 driver, 1 car and 1 location.")).toBeVisible();
+  await other.getByRole("button", { name: "Restore", exact: true }).click();
+  await expect(other.getByText("Backup restored.")).toBeVisible();
+
+  await other.getByLabel("Backup file").setInputFiles(file);
+  await expect(other.getByText("Nothing new: this app already has everything in the backup.")).toBeVisible();
+  await other.getByRole("button", { name: "Cancel" }).click();
+
+  await other.getByRole("tab", { name: "Practice" }).click();
+  await expect(sessionCard(other, fixture), "the restored session").toBeVisible();
+  await context.close();
+});
+
+test("won't restore a backup while a session is running", async ({ page }) => {
+  const messages: string[] = [];
+  page.on("dialog", (dialog) => messages.push(dialog.message()));
+  await page.goto("./");
+  await addFixtures(page, "Running");
+  await page.getByRole("button", { name: "Start Lap Timer" }).click();
+
+  await openDataTab(page);
+  await page.getByRole("button", { name: "Restore a backup" }).click();
+  await expect.poll(() => messages).toContain("Finish the running session before restoring a backup.");
 });

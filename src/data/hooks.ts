@@ -2,11 +2,20 @@
 
 import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import type { Bundle } from "@/domain/sync/bundle";
 import type { MotionSettings } from "@/domain/types";
 import * as patch from "./cache-patches";
 import { toAppData, type AppData } from "./cache-patches";
 import { useDataStore } from "./provider";
-import { DataStoreError, type CarChanges, type DataStore, type MotionSettingsInput, type NewCar } from "./types";
+import {
+  DataStoreError,
+  isBackupStore,
+  type BackupStore,
+  type CarChanges,
+  type DataStore,
+  type MotionSettingsInput,
+  type NewCar,
+} from "./types";
 
 export type { AppData };
 
@@ -19,20 +28,31 @@ const EMPTY_DATA: AppData = { drivers: [], locations: [], sessions: [] };
 const NO_MOTION_SETTINGS: MotionSettings[] = [];
 
 // Drivers (with their cars), locations and saved sessions, shared by every screen. Empty until the first load.
-export function useAppData(): AppData {
+function useAppDataQuery() {
   const store = useDataStore();
-  const { data } = useQuery({ queryKey: DATA_KEY, queryFn: async () => toAppData(await store.loadSnapshot()) });
-  return data ?? EMPTY_DATA;
+  return useQuery({ queryKey: DATA_KEY, queryFn: async () => toAppData(await store.loadSnapshot()) });
+}
+
+export function useAppData(): AppData {
+  return useAppDataQuery().data ?? EMPTY_DATA;
 }
 
 export const useDrivers = () => useAppData().drivers;
 export const useLocations = () => useAppData().locations;
 export const useSessions = () => useAppData().sessions;
 
-export function useMotionSettings(): MotionSettings[] {
+function useMotionSettingsQuery() {
   const store = useDataStore();
-  const { data } = useQuery({ queryKey: MOTION_SETTINGS_KEY, queryFn: () => store.listMotionSettings() });
-  return data ?? NO_MOTION_SETTINGS;
+  return useQuery({ queryKey: MOTION_SETTINGS_KEY, queryFn: () => store.listMotionSettings() });
+}
+
+export function useMotionSettings(): MotionSettings[] {
+  return useMotionSettingsQuery().data ?? NO_MOTION_SETTINGS;
+}
+
+// Changes whenever the stored data might have: each time the shared data is loaded or changed.
+export function useDataVersion(): number {
+  return useAppDataQuery().dataUpdatedAt + useMotionSettingsQuery().dataUpdatedAt;
 }
 
 // Reloads the shared data, resolving once the new data is in: for steps that need the very latest drivers and cars.
@@ -170,3 +190,51 @@ export const useDeleteMotionSettings = () =>
     (store, id: string) => store.deleteMotionSettings(id),
     (list: MotionSettings[], _result, id) => patch.removeMotionSettings(list, id),
   );
+
+// --- Backups (the phone-only app, where the data lives on the phone) ---
+
+export const LAST_BACKUP_KEY = ["last-backup"] as const;
+
+// The store's backups, or null where the data lives elsewhere (on the Pi).
+export function useBackupStore(): (DataStore & BackupStore) | null {
+  const store = useDataStore();
+  return isBackupStore(store) ? store : null;
+}
+
+// When the last backup was saved: null if never, undefined until known.
+export function useLastBackup(): string | null | undefined {
+  const store = useBackupStore();
+  const { data } = useQuery({
+    queryKey: LAST_BACKUP_KEY,
+    queryFn: () => store!.lastBackupAt(),
+    enabled: store !== null,
+  });
+  return data;
+}
+
+export function useMarkBackedUp() {
+  const store = useBackupStore();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (at: string) => {
+      await store!.markBackedUp(at);
+      return at;
+    },
+    onSuccess: (at) => queryClient.setQueryData(LAST_BACKUP_KEY, at),
+  });
+}
+
+// Merges a backup into the app, then reloads everything it may have changed.
+export function useRestoreBackup() {
+  const store = useBackupStore();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (bundle: Bundle) => store!.importBundle(bundle),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: DATA_KEY }),
+        queryClient.invalidateQueries({ queryKey: MOTION_SETTINGS_KEY }),
+      ]);
+    },
+  });
+}

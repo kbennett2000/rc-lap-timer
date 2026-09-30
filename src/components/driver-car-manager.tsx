@@ -46,7 +46,6 @@ import {
   useUpdateMotionSettings,
 } from "@/data/hooks";
 import { sameName } from "@/domain/rules";
-import { DataTab } from "@/features/data/data-tab";
 import { gridCols } from "@/lib/utils";
 import { CAPABILITIES } from "@/platform/capabilities";
 import TrackMeasurer from "./track-measurer";
@@ -55,6 +54,13 @@ import TrackMeasurer from "./track-measurer";
 const TAB_COUNT = 4 + Number(CAPABILITIES.piSystemConfig) + Number(CAPABILITIES.onDeviceData);
 // A car's default number is for IR timing, in practice and races.
 const SHOW_CAR_NUMBER = CAPABILITIES.irTiming || CAPABILITIES.races;
+
+// The phone-only app's Data tab (installing, backups, storage), loaded when it's first opened; the Pi build leaves it
+// out.
+const DataTab =
+  process.env.NEXT_PUBLIC_TARGET === "standalone"
+    ? dynamic(() => import("@/features/data/data-tab").then((module) => module.DataTab))
+    : null;
 
 // The Pi's System Settings, loaded when its tab is first opened; the phone-only build leaves them out.
 const PiConfiguration =
@@ -527,7 +533,7 @@ const DriverCarManager: React.FC = () => {
           </TabsContent>
 
           {/* Data Tab: installing the phone-only app, and its storage */}
-          {CAPABILITIES.onDeviceData && (
+          {DataTab && (
             <TabsContent value="data" className="space-y-4">
               <DataTab />
             </TabsContent>

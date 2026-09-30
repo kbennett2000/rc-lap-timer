@@ -9,6 +9,8 @@
 // - Failures are DataStoreErrors; their message is what the user sees.
 
 import type { MotionSettingsInput } from "@/domain/rules";
+import type { Bundle } from "@/domain/sync/bundle";
+import type { MergeSummary } from "@/domain/sync/merge";
 import type { Car, Driver, Location, MotionSettings, NewSession, SessionRecord } from "@/domain/types";
 
 export type { MotionSettingsInput };
@@ -58,6 +60,20 @@ export interface DataStore {
   createMotionSettings(input: MotionSettingsInput): Promise<MotionSettings>;
   updateMotionSettings(id: string, input: MotionSettingsInput): Promise<void>;
   deleteMotionSettings(id: string): Promise<void>;
+}
+
+// Saving and restoring backup files (src/domain/sync), for stores that keep the data themselves: the phone-only app's.
+export interface BackupStore {
+  exportBundle(): Promise<Bundle>;
+  // Merges a backup into the stored data and says what changed. With dryRun, only says what would change.
+  importBundle(bundle: Bundle, options?: { dryRun?: boolean }): Promise<MergeSummary>;
+  // When a backup was last saved, as an ISO date, or null if never.
+  lastBackupAt(): Promise<string | null>;
+  markBackedUp(at: string): Promise<void>;
+}
+
+export function isBackupStore(store: DataStore): store is DataStore & BackupStore {
+  return "exportBundle" in store;
 }
 
 // duplicate: the name is in use. invalid: the request breaks a rule (or refers to a record that's gone).

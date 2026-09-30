@@ -1,12 +1,12 @@
 import { createApiDataStore } from "./api-data-store";
-import { DataStoreError, type DataStore } from "./types";
+import { DataStoreError, type BackupStore, type DataStore } from "./types";
 
 export * from "./types";
 
 // A store that loads its implementation the first time it's used, and never before: the page is also prerendered
 // at build time, where there's no IndexedDB. A failed load is retried on the next call.
-function lazyStore(load: () => Promise<DataStore>): DataStore {
-  let loading: Promise<DataStore> | null = null;
+function lazyStore(load: () => Promise<DataStore & BackupStore>): DataStore & BackupStore {
+  let loading: Promise<DataStore & BackupStore> | null = null;
   const store = () => {
     loading ??= load().catch((error: unknown) => {
       loading = null;
@@ -16,8 +16,9 @@ function lazyStore(load: () => Promise<DataStore>): DataStore {
     return loading;
   };
   // Each method waits for the store, then calls it.
-  const via = <K extends keyof DataStore>(key: K): DataStore[K] =>
-    (async (...args: unknown[]) => ((await store())[key] as (...a: unknown[]) => unknown)(...args)) as DataStore[K];
+  type Store = DataStore & BackupStore;
+  const via = <K extends keyof Store>(key: K): Store[K] =>
+    (async (...args: unknown[]) => ((await store())[key] as (...a: unknown[]) => unknown)(...args)) as Store[K];
 
   return {
     loadSnapshot: via("loadSnapshot"),
@@ -37,6 +38,10 @@ function lazyStore(load: () => Promise<DataStore>): DataStore {
     createMotionSettings: via("createMotionSettings"),
     updateMotionSettings: via("updateMotionSettings"),
     deleteMotionSettings: via("deleteMotionSettings"),
+    exportBundle: via("exportBundle"),
+    importBundle: via("importBundle"),
+    lastBackupAt: via("lastBackupAt"),
+    markBackedUp: via("markBackedUp"),
   };
 }
 
