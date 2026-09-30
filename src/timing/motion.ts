@@ -20,6 +20,16 @@ export const DEFAULT_SETTINGS: DetectorSettings = {
   framesToSkip: 60,
 };
 
+// Frames are compared at this size (the longest side, in pixels): small enough for a phone to compare every frame, and
+// still hundreds of pixels for a car crossing the picture. A smaller picture also averages away the camera's grain.
+export const ANALYSIS_SIZE = 320;
+
+// The size to compare a width × height camera frame at, keeping its shape and never enlarging it.
+export function analysisSize(width: number, height: number): { width: number; height: number } {
+  const scale = Math.min(1, ANALYSIS_SIZE / Math.max(width, height, 1));
+  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+}
+
 // The percentage of pixels whose red, green or blue changed by more than `sensitivity`, between two RGBA frames of
 // the same size.
 export function changedPercent(previous: Uint8ClampedArray, current: Uint8ClampedArray, sensitivity: number): number {

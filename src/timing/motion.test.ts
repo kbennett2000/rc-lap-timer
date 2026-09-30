@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { changedPercent, DEFAULT_SETTINGS, nextFrame, skipping, START, type DetectorState } from "./motion";
+import {
+  analysisSize,
+  changedPercent,
+  DEFAULT_SETTINGS,
+  nextFrame,
+  skipping,
+  START,
+  type DetectorState,
+} from "./motion";
 
 // An RGBA frame of one grey level, with optional rectangles drawn on it.
 function frame(width: number, height: number, grey = 128) {
@@ -13,6 +21,25 @@ function frame(width: number, height: number, grey = 128) {
   const api = { data, fill };
   return api;
 }
+
+describe("analysisSize", () => {
+  it("shrinks the longest side to 320 pixels, keeping the shape", () => {
+    expect(analysisSize(1280, 720)).toEqual({ width: 320, height: 180 });
+    expect(analysisSize(720, 1280)).toEqual({ width: 180, height: 320 });
+    expect(analysisSize(1920, 1080)).toEqual({ width: 320, height: 180 });
+    expect(analysisSize(640, 480)).toEqual({ width: 320, height: 240 });
+  });
+
+  it("never enlarges a small frame", () => {
+    expect(analysisSize(320, 180)).toEqual({ width: 320, height: 180 });
+    expect(analysisSize(160, 120)).toEqual({ width: 160, height: 120 });
+  });
+
+  it("always gives at least one pixel", () => {
+    expect(analysisSize(4000, 1)).toEqual({ width: 320, height: 1 });
+    expect(analysisSize(0, 0)).toEqual({ width: 1, height: 1 });
+  });
+});
 
 describe("changedPercent", () => {
   it("is 0 for the same picture", () => {

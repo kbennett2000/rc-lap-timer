@@ -10,6 +10,7 @@ import type { MotionSettings } from "@/domain/types";
 import { logger } from "@/lib/logger";
 import { now } from "@/timing/clock";
 import {
+  analysisSize,
   changedPercent,
   DEFAULT_SETTINGS,
   nextFrame,
@@ -37,6 +38,19 @@ interface MotionDetectorProps {
 
 const ROTATIONS = [0, 90, 180, 270];
 
+// The preview's numbers are refreshed a few times a second: on every frame they'd re-render the screen 30 times a
+// second, for numbers nobody can read that fast.
+const STATS_INTERVAL_MS = 250;
+
+// The whole camera frame, for saving: the detector's own canvas is scaled down.
+function fullFrame(video: HTMLVideoElement): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d")?.drawImage(video, 0, 0);
+  return canvas;
+}
+
 export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorProps>(function MotionDetector(
   { onMotionDetected, onUserStart, onCameraChange, soundOn = false, className = "" },
   ref,
@@ -47,6 +61,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previousFrameRef = useRef<ImageData | null>(null);
   const detectorRef = useRef<DetectorState>(START);
+  const statsRef = useRef({ shownAt: 0, change: null as number | null });
   const animationFrameRef = useRef<number>();
   const activeRef = useRef(false);
 
@@ -108,13 +123,15 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
       return;
     }
 
-    // Follow the video size, which changes when the phone rotates.
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+    // Compare a scaled-down copy of the frame (see analysisSize). Its size follows the video's, which changes when the
+    // phone rotates.
+    const size = analysisSize(video.videoWidth, video.videoHeight);
+    if (canvas.width !== size.width || canvas.height !== size.height) {
+      canvas.width = size.width;
+      canvas.height = size.height;
       previousFrameRef.current = null;
     }
-    ctx.drawImage(video, 0, 0);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const at = now();
     const { settings: current, isPreviewing: previewing } = latest.current;
@@ -126,10 +143,15 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
         : null;
     const { state, crossing } = nextFrame(detectorRef.current, change, at, current);
     detectorRef.current = state;
-    if (change !== null) setLastChangePercent(change);
+    const stats = statsRef.current;
+    if (change !== null) stats.change = change;
+    if (previewing && performance.now() - stats.shownAt >= STATS_INTERVAL_MS) {
+      stats.shownAt = performance.now();
+      setLastChangePercent(stats.change);
+    }
     if (change !== null && crossing) {
       setDetectedMotionStats("Motion detected: " + change.toFixed(1));
-      if (latest.current.saveMDImages) saveToGallery(canvas, change);
+      if (latest.current.saveMDImages) saveToGallery(fullFrame(video), change);
       if (previewing) {
         if (latest.current.soundOn) void beep();
       } else {
@@ -175,6 +197,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     animationFrameRef.current = undefined;
     previousFrameRef.current = null;
     detectorRef.current = START;
+    statsRef.current = { shownAt: 0, change: null };
   };
 
   const handleStop = useCallback(() => {
