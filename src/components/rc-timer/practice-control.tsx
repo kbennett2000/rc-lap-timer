@@ -3,7 +3,7 @@
 // ****************************************
 // import
 // ****************************************
-import { formatTime, formatDateTime } from "@/lib/utils";
+import { formatTime, formatDateTime, newId } from "@/lib/utils";
 import { SessionComparison } from "./session-comparison";
 import { SessionNotes } from "./session-notes";
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { addDays, format, isBefore, isAfter, startOfDay, endOfDay, parseISO } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -51,7 +52,12 @@ interface CooldownMap {
   [carId: string]: number;
 }
 
-export default function PracticeControl() {
+// Finished sessions that could not be saved are kept here until they are saved or discarded.
+const UNSAVED_SESSIONS_KEY = "rc-lap-timer-unsaved-sessions";
+// Old full-data mirrors from earlier versions. They caused deleted sessions to reappear, so they are removed on load.
+const LEGACY_STORAGE_KEYS = ["rc-lap-timer-sessions", "rc-lap-timer-drivers"];
+
+export default function PracticeControl({ isActive = true }: { isActive?: boolean }) {
   // ****************************************
   // useState
   // ****************************************
@@ -61,7 +67,6 @@ export default function PracticeControl() {
   const [laps, setLaps] = useState<number[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
-  const [sessionStartTime, setSessionStartTime] = useState<string | null>(null);
   const [selectedLapCount, setSelectedLapCount] = useState<"unlimited" | number>("unlimited");
   const [inputLapCount, setInputLapCount] = useState<string>("");
   const [showLapCountInput, setShowLapCountInput] = useState<boolean>(false);
@@ -80,7 +85,6 @@ export default function PracticeControl() {
   const [selectedCar, setSelectedCar] = useState<string>("");
   const [savedSessions, setSavedSessions] = useState<Session[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
   const [timingMode, setTimingMode] = useState<string>("ui");
   const [showMotionDetector, setShowMotionDetector] = useState(false);
   const [isMotionTimingActive, setIsMotionTimingActive] = useState(false);
@@ -92,6 +96,8 @@ export default function PracticeControl() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [remoteControlActive, setRemoteControlActive] = useState(false);
+  const [unsavedSessions, setUnsavedSessions] = useState<Partial<Session>[]>([]);
+  const [isRetryingSave, setIsRetryingSave] = useState(false);
 
   const [addEditDialogState, setAddEditDialogState] = useState<{
     isOpen: boolean;
@@ -115,6 +121,8 @@ export default function PracticeControl() {
   const remoteControlIntervalRef = useRef<NodeJS.Timeout>();
   const motionControlRef = useRef<{ stop: () => void; start: () => Promise<void> }>(null);
   const announceLapNumberRef = useRef(announceLapNumber);
+  const sessionStartedAtRef = useRef<string | null>(null);
+  const unsavedSessionsRef = useRef<Partial<Session>[]>([]);
 
   // ****************************************
   // useEffect
@@ -143,6 +151,12 @@ export default function PracticeControl() {
   useEffect(() => {
     isRunningRef.current = isRunning;
   }, [isRunning]);
+
+  const penaltiesRef = useRef(penalties);
+  // Sync with the ref whenever it changes
+  useEffect(() => {
+    penaltiesRef.current = penalties;
+  }, [penalties]);
 
   const lapsRef = useRef(laps);
   // Sync with the ref whenever it changes
@@ -202,23 +216,16 @@ export default function PracticeControl() {
 
   useEffect(() => {
     try {
-      const storedSessions = localStorage.getItem("rc-lap-timer-sessions");
-      const storedDrivers = localStorage.getItem("rc-lap-timer-drivers");
-
-      if (storedSessions) setSavedSessions(JSON.parse(storedSessions));
-      if (storedDrivers) setDrivers(JSON.parse(storedDrivers));
+      LEGACY_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+      const pending = JSON.parse(localStorage.getItem(UNSAVED_SESSIONS_KEY) ?? "[]");
+      if (Array.isArray(pending) && pending.length > 0) {
+        unsavedSessionsRef.current = pending;
+        setUnsavedSessions(pending);
+      }
     } catch (error) {
-      logger.error("Error loading saved data:", error);
+      logger.error("Error reading unsaved session:", error);
     }
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("rc-lap-timer-sessions", JSON.stringify(savedSessions));
-  }, [savedSessions]);
-
-  useEffect(() => {
-    localStorage.setItem("rc-lap-timer-drivers", JSON.stringify(drivers));
-  }, [drivers]);
 
   useEffect(() => {
     if (isRunning) {
@@ -237,17 +244,23 @@ export default function PracticeControl() {
     };
   }, [isRunning, startTime]);
 
-  // Load data on component mount
+  // Load when the Practice tab becomes active. It stays mounted while hidden, so a running session survives tab switches.
   useEffect(() => {
-    loadSavedData();
-  }, []);
-
-  // Auto-save whenever sessions or drivers change
-  useEffect(() => {
-    if (savedSessions.length > 0 || drivers.length > 0) {
-      saveData();
+    if (isActive) {
+      loadSavedData();
     }
-  }, [savedSessions, drivers]);
+  }, [isActive]);
+
+  // Reload when the app returns to the foreground, so changes made on other devices show up.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadSavedData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   // useEffect to initialize the date range
   useEffect(() => {
@@ -255,23 +268,6 @@ export default function PracticeControl() {
       from: startOfDay(new Date()),
       to: endOfDay(new Date()),
     });
-  }, []);
-
-  // Set up auto-refresh on mount
-  useEffect(() => {
-    // Initial load
-    loadSavedData();
-
-    // Set up polling interval (every 5 seconds)
-    const interval = setInterval(refreshData, 5000);
-    setRefreshInterval(interval);
-
-    // Cleanup on unmount
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
   }, []);
 
   // Update the useEffect for voice handling
@@ -838,7 +834,7 @@ export default function PracticeControl() {
         recordLap_MD();
       }
     },
-    [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, sessionStartTime, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
+    [selectedDriver, selectedCar, startTime, currentTime, laps, currentSession, selectedLapCount, inputLapCount, showLapCountInput, startAnimation, lapAnimation, stopAnimation, penalties, penaltyAnimation, isMobile, timingMode, showMotionDetector, isMotionTimingActive]
   );
 
   const driversRef = useRef(drivers);
@@ -861,12 +857,11 @@ export default function PracticeControl() {
       clearInterval(timerRef.current);
     }
 
-    //const driver = drivers.find((d) => d.id === selectedDriverRef.current);
+    // The names are only for display here: the server checks the ids and stores its own names. If this device's
+    // driver list is out of date (e.g. a driver added on another device), the session is still sent, and kept for
+    // retry if the server rejects it, so no laps are lost.
     const driver = driversRef.current.find((d) => d.id === selectedDriverRef.current);
     const car = driver?.cars.find((c) => c.id === selectedCarRef.current);
-    if (!driver || !car) {
-      return;
-    }
 
     // Calculate total time
     const totalTime = completedLaps.reduce((sum, lap) => sum + lap, 0);
@@ -875,7 +870,7 @@ export default function PracticeControl() {
     const stats = calculateStats(completedLaps);
     stats.totalTime = totalTime;
 
-    const sessionId = Date.now().toString();
+    const sessionId = newId();
 
     // Format laps with proper structure
     const formattedLaps = completedLaps.map((lapTime, index) => ({
@@ -885,46 +880,88 @@ export default function PracticeControl() {
 
     const newSession: Partial<Session> = {
       id: sessionId,
-      date: sessionStartTime ?? new Date().toISOString(),
+      date: sessionStartedAtRef.current ?? new Date().toISOString(),
       driverId: selectedDriverRef.current,
-      driverName: driver.name,
+      driverName: driver?.name ?? "Unknown driver",
       carId: selectedCarRef.current,
-      carName: car.name,
+      carName: car?.name ?? "Unknown car",
       locationId: selectedLocationRef.current,
       locationName: locationsRef.current.find((l) => l.id === selectedLocationRef.current)?.name || "",
       laps: formattedLaps,
-      penalties,
-      totalLaps: selectedLapCount === "unlimited" ? completedLaps.length : selectedLapCount,
+      penalties: penaltiesRef.current,
+      totalLaps: selectedLapCountRef.current === "unlimited" ? completedLaps.length : selectedLapCountRef.current,
       stats,
     };
+    sessionStartedAtRef.current = null;
 
+    const saved = await saveCompletedSession(newSession);
+    setCurrentSession(null);
+    setPenalties([]);
+
+    if (saved) {
+      logCurrentSessionFinish();
+      await loadSavedData();
+      ledDevice.displayMessage("Session   Finished", "All laps complete!");
+      flashEnd();
+    } else {
+      alert("The session could not be saved. It has been kept on this device: use Retry save at the top of the Practice screen.");
+    }
+  };
+
+  const setUnsavedSessionList = (next: Partial<Session>[]): void => {
+    unsavedSessionsRef.current = next;
+    setUnsavedSessions(next);
+    try {
+      if (next.length > 0) {
+        localStorage.setItem(UNSAVED_SESSIONS_KEY, JSON.stringify(next));
+      } else {
+        localStorage.removeItem(UNSAVED_SESSIONS_KEY);
+      }
+    } catch (storageError) {
+      logger.error("Could not keep the unsaved sessions in localStorage:", storageError);
+    }
+  };
+
+  // Saves one finished session. On failure it is added to the unsaved list (state and localStorage) for retry;
+  // on success only that session leaves the list. Saving is idempotent: the server ignores an id it already has.
+  const saveCompletedSession = async (session: Partial<Session>): Promise<boolean> => {
+    const others = () => unsavedSessionsRef.current.filter((pending) => pending.id !== session.id);
     try {
       const response = await fetch("/api/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          drivers,
-          sessions: [...savedSessions, newSession],
-        }),
+        body: JSON.stringify({ session }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save session");
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || `Failed to save session (HTTP ${response.status})`);
       }
-
-      logCurrentSessionFinish();
-
-      setCurrentSession(null);
-      setPenalties([]);
-      await loadSavedData();
-
-      ledDevice.displayMessage("Session   Finished", "All laps complete!");
-      flashEnd();
+      setUnsavedSessionList(others());
+      return true;
     } catch (error) {
       logger.error("Error saving session:", error);
-      alert("Failed to save session. Please try again.");
+      setUnsavedSessionList([...others(), session]);
+      return false;
     }
+  };
+
+  const retryUnsavedSessions = async (): Promise<void> => {
+    setIsRetryingSave(true);
+    let failed = 0;
+    for (const session of [...unsavedSessionsRef.current]) {
+      if (!(await saveCompletedSession(session))) failed++;
+    }
+    setIsRetryingSave(false);
+    await loadSavedData();
+    if (failed > 0) {
+      alert(`${failed === 1 ? "A session" : `${failed} sessions`} still could not be saved. Check the connection to the timer and try again.`);
+    }
+  };
+
+  const discardUnsavedSessions = (): void => {
+    const count = unsavedSessionsRef.current.length;
+    if (!confirm(count === 1 ? "Discard this unsaved session? Its laps will be lost." : `Discard these ${count} unsaved sessions? Their laps will be lost.`)) return;
+    setUnsavedSessionList([]);
   };
 
   const handleStart = async () => {
@@ -1153,7 +1190,8 @@ export default function PracticeControl() {
 
   // Update the polling function
   const pollForSessionRequests = useCallback(async () => {
-    if (!remoteControlActive) return;
+    // Never take over a session that is already running.
+    if (!remoteControlActive || isRunningRef.current) return;
 
     try {
       const response = await fetch("/api/session-requests/next", {
@@ -1179,6 +1217,9 @@ export default function PracticeControl() {
 
       if (data.request) {
         const request = data.request;
+
+        // The request may name a driver or car added on another device since this one last loaded its lists.
+        await loadSavedData();
 
         // Set up the session configuration
         setSelectedDriver(request.driverId);
@@ -1325,59 +1366,6 @@ export default function PracticeControl() {
     flashLap();
   };
 
-  // Auto-refresh function
-  const refreshData = async () => {
-    try {
-      const response = await fetch("/api/data");
-      if (!response.ok) throw new Error("Failed to load data");
-
-      const data = await response.json();
-
-      // Transform sessions to include stats
-      const sessionsWithStats = data.sessions.map((session: any) => ({
-        ...session,
-        stats: calculateSessionStats(session),
-      }));
-
-      // Only update if data has changed
-      if (JSON.stringify(sessionsWithStats) !== JSON.stringify(savedSessions)) {
-        setSavedSessions(sessionsWithStats);
-      }
-      if (JSON.stringify(data.drivers) !== JSON.stringify(drivers)) {
-        setDrivers(data.drivers);
-      }
-
-      if (JSON.stringify(data.locations) !== JSON.stringify(locations)) {
-        setLocations(data.locations);
-      }
-    } catch (error) {
-      logger.error("Error refreshing data:", error);
-    }
-  };
-
-  // Save data function
-  const saveData = async () => {
-    try {
-      const data: PersistentData = {
-        sessions: savedSessions,
-        drivers: drivers,
-        lastUpdated: new Date().toISOString(),
-      };
-
-      const response = await fetch("/api/data", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) throw new Error("Failed to save data");
-    } catch (error) {
-      logger.error("Error saving data:", error);
-    }
-  };
-
   const sortSessionsByDate = (sessions: Session[]): Session[] => {
     return [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
@@ -1393,6 +1381,7 @@ export default function PracticeControl() {
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());
+    sessionStartedAtRef.current = new Date().toISOString();
     setIsRunning(true);
     setLaps([]);
     logCurrentSessionStart();
@@ -1403,7 +1392,7 @@ export default function PracticeControl() {
   };
 
   const startTimer_MD = async (): Promise<void> => {
-    if (!selectedDriverRef || !selectedCarRef || !selectedLocationRef) {
+    if (!selectedDriverRef.current || !selectedCarRef.current || !selectedLocationRef.current) {
       alert("Please select a driver, car, and location before starting the timer");
       return;
     }
@@ -1413,6 +1402,7 @@ export default function PracticeControl() {
     setStartAnimation(true);
     setTimeout(() => setStartAnimation(false), 500);
     setStartTime(Date.now());
+    sessionStartedAtRef.current = new Date().toISOString();
     setIsRunning(true);
     setLaps([]);
     logCurrentSessionStart();
@@ -1796,6 +1786,7 @@ export default function PracticeControl() {
     setTimeout(() => setStartAnimation(false), 500);
 
     setStartTime(Date.now());
+    sessionStartedAtRef.current = new Date().toISOString();
     setIsRunning(true);
     setLaps([]);
     logCurrentSessionStart();
@@ -1830,7 +1821,7 @@ export default function PracticeControl() {
     flashLap();
   };
 
-  const renderIRDetector = useCallback(() => {
+  const renderIRDetector = () => {
     if (timingMode !== "ir") return null;
 
     return (
@@ -1844,7 +1835,7 @@ export default function PracticeControl() {
         <p>IR Detection Mode</p>
       </div>
     );
-  }, [timingMode, selectedDriver, selectedCar, selectedLocation, isRunning, handleCarDetected]);
+  };
 
   // Run every 25 milliseconds
   useEffect(() => {
@@ -1944,6 +1935,29 @@ export default function PracticeControl() {
         <CardTitle>Practice</CardTitle>
       </CardHeader>
       <CardContent>
+        {unsavedSessions.length > 0 && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>{unsavedSessions.length === 1 ? "Session not saved" : `${unsavedSessions.length} sessions not saved`}</AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc pl-5">
+                {unsavedSessions.map((pending) => (
+                  <li key={pending.id}>
+                    {pending.driverName} / {pending.carName}, {pending.laps?.length ?? 0} laps{pending.date ? ` (${formatDateTime(pending.date)})` : ""}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" onClick={retryUnsavedSessions} disabled={isRetryingSave}>
+                  {isRetryingSave ? "Saving..." : "Retry save"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={discardUnsavedSessions} disabled={isRetryingSave}>
+                  Discard
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
         <Tabs defaultValue="current" className="h-full" value={activeTab} onValueChange={setActiveTab}>
           {/* Navigation */}
           <TabsList className="grid w-full h-full grid-cols-5">
@@ -2023,7 +2037,7 @@ export default function PracticeControl() {
                       {/* Play Beeps */}
                       <div className="flex items-center space-x-2">
                         <input type="checkbox" id="playBeeps" checked={playBeeps} onChange={(e) => setPlayBeeps(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
-                        <label htmlFor="announceLastLapTime" className="text-sm">
+                        <label htmlFor="playBeeps" className="text-sm">
                           Play Beeps
                         </label>
                       </div>
@@ -2058,7 +2072,7 @@ export default function PracticeControl() {
                   <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
                     <Label>Driver</Label>
                     <div className="flex space-x-2">
-                      <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                      <Select value={selectedDriver} onValueChange={setSelectedDriver} disabled={isRunning}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select Driver" />
                         </SelectTrigger>
@@ -2074,6 +2088,7 @@ export default function PracticeControl() {
                       </Select>
                       <Button
                         variant="outline"
+                        disabled={isRunning}
                         onClick={() =>
                           setAddEditDialogState({
                             isOpen: true,
@@ -2095,7 +2110,7 @@ export default function PracticeControl() {
                       <>
                         <Label>Car</Label>
                         <div className="flex space-x-2">
-                          <Select value={selectedCar} onValueChange={setSelectedCar}>
+                          <Select value={selectedCar} onValueChange={setSelectedCar} disabled={isRunning}>
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select Car" />
                             </SelectTrigger>
@@ -2111,6 +2126,7 @@ export default function PracticeControl() {
                           </Select>
                           <Button
                             variant="outline"
+                            disabled={isRunning}
                             onClick={() =>
                               setAddEditDialogState({
                                 isOpen: true,
@@ -2134,7 +2150,7 @@ export default function PracticeControl() {
                       <>
                         <Label>Location</Label>
                         <div className="flex space-x-2">
-                          <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                          <Select value={selectedLocation} onValueChange={setSelectedLocation} disabled={isRunning}>
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select Location" />
                             </SelectTrigger>
@@ -2150,6 +2166,7 @@ export default function PracticeControl() {
                           </Select>
                           <Button
                             variant="outline"
+                            disabled={isRunning}
                             onClick={() =>
                               setAddEditDialogState({
                                 isOpen: true,
@@ -2276,6 +2293,7 @@ export default function PracticeControl() {
                         <Label>Number of Laps</Label>
                         <div className="flex space-x-2">
                           <Select
+                            disabled={isRunning}
                             value={showLapCountInput ? "custom" : selectedLapCount.toString()}
                             onValueChange={(value) => {
                               if (value === "custom") {
@@ -2308,8 +2326,9 @@ export default function PracticeControl() {
 
                     {showLapCountInput && (
                       <div className="flex space-x-2 mt-2">
-                        <Input type="number" min="1" max="999" placeholder="Enter number of laps" value={inputLapCount} onChange={(e) => setInputLapCount(e.target.value)} />
+                        <Input type="number" min="1" max="999" placeholder="Enter number of laps" value={inputLapCount} onChange={(e) => setInputLapCount(e.target.value)} disabled={isRunning} />
                         <Button
+                          disabled={isRunning}
                           onClick={() => {
                             if (validateLapCount(inputLapCount)) {
                               setSelectedLapCount(parseInt(inputLapCount, 10));
@@ -2331,6 +2350,7 @@ export default function PracticeControl() {
                   <div className={`space-y-2 ${remoteControlActive ? "hidden" : ""}`}>
                     <Label>Timing Mode</Label>
                     <RadioGroup
+                      disabled={isRunning}
                       value={timingMode}
                       onValueChange={(value) => {
                         const newMode = value as "ui" | "motion" | "ir";
@@ -3013,7 +3033,7 @@ export default function PracticeControl() {
           {/* Session Notes Tab */}
           <TabsContent value="notes" className="px-4 space-y-4 h-full overflow-y-auto">
             <motion.div key={activeTab} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
-              <SessionNotes sessions={savedSessions} />
+              <SessionNotes sessions={savedSessions} onNotesSaved={(sessionId, notes) => setSavedSessions((prev) => prev.map((session) => (session.id === sessionId ? { ...session, notes } : session)))} />
             </motion.div>
           </TabsContent>
         </Tabs>

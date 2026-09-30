@@ -1,6 +1,92 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function badRequest(message: string) {
+  return NextResponse.json({ error: message }, { status: 400 });
+}
+
+// Saves one finished practice session with its laps and penalties.
+// Idempotent: posting a session id that already exists succeeds without changing anything, so clients can retry safely.
+async function saveSession(session: any) {
+  if (!isNonEmptyString(session?.id)) return badRequest("Session id is required");
+  if (!isNonEmptyString(session.driverId) || !isNonEmptyString(session.carId) || !isNonEmptyString(session.locationId)) {
+    return badRequest("Session driverId, carId and locationId are required");
+  }
+  const date = new Date(session.date);
+  if (Number.isNaN(date.getTime())) return badRequest("Session date is invalid");
+  if (!Array.isArray(session.laps)) return badRequest("Session laps must be an array");
+
+  const laps = session.laps.map((lap: any, index: number) => ({
+    lapNumber: typeof lap === "object" && Number.isInteger(lap?.lapNumber) ? lap.lapNumber : index + 1,
+    lapTime: Math.round(Number(typeof lap === "object" ? lap?.lapTime : lap)),
+  }));
+  if (laps.some((lap: { lapTime: number }) => !Number.isFinite(lap.lapTime) || lap.lapTime < 0)) {
+    return badRequest("Every lap needs a lap time of 0 ms or more");
+  }
+
+  const penalties = (Array.isArray(session.penalties) ? session.penalties : [])
+    .filter((penalty: any) => Number.isInteger(penalty?.lapNumber) && Number.isInteger(penalty?.count) && penalty.count > 0)
+    .map((penalty: any) => ({ lapNumber: penalty.lapNumber, count: penalty.count }));
+
+  const existing = await prisma.session.findUnique({ where: { id: session.id }, select: { id: true } });
+  if (existing) {
+    return NextResponse.json({ success: true, created: false });
+  }
+
+  const [driver, car, location] = await Promise.all([
+    prisma.driver.findUnique({ where: { id: session.driverId } }),
+    prisma.car.findUnique({ where: { id: session.carId } }),
+    prisma.location.findUnique({ where: { id: session.locationId } }),
+  ]);
+  if (!driver) return badRequest(`Driver ${session.driverId} not found`);
+  if (!car || car.driverId !== driver.id) return badRequest(`Car ${session.carId} not found for this driver`);
+  if (!location) return badRequest(`Location ${session.locationId} not found`);
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.session.create({
+        data: {
+          id: session.id,
+          date,
+          driver: { connect: { id: driver.id } },
+          car: { connect: { id: car.id } },
+          location: { connect: { id: location.id } },
+          driverName: driver.name,
+          carName: car.name,
+          locationName: location.name,
+          totalTime: laps.reduce((sum: number, lap: { lapTime: number }) => sum + lap.lapTime, 0),
+          totalLaps: laps.length,
+        },
+      });
+
+      if (laps.length > 0) {
+        await tx.lap.createMany({
+          data: laps.map((lap: { lapNumber: number; lapTime: number }) => ({ sessionId: session.id, ...lap })),
+        });
+      }
+
+      if (penalties.length > 0) {
+        await tx.penalty.createMany({
+          data: penalties.map((penalty: { lapNumber: number; count: number }) => ({ sessionId: session.id, ...penalty })),
+        });
+      }
+    });
+  } catch (error) {
+    // Two retries of the same session can race; the loser sees a unique-id conflict, which means it is already saved.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ success: true, created: false });
+    }
+    throw error;
+  }
+
+  return NextResponse.json({ success: true, created: true });
+}
 
 export async function GET() {
   try {
@@ -43,7 +129,6 @@ export async function POST(request: Request) {
     if (data.type === "driver") {
       const newDriver = await prisma.driver.create({
         data: {
-          id: Date.now().toString(),
           name: data.name,
         },
         include: {
@@ -57,7 +142,6 @@ export async function POST(request: Request) {
     if (data.type === "car") {
       const newCar = await prisma.car.create({
         data: {
-          id: Date.now().toString(),
           name: data.name,
           driverId: data.driverId,
           defaultCarNumber: data.defaultCarNumber || null,
@@ -73,132 +157,22 @@ export async function POST(request: Request) {
     if (data.type === "location") {
       const newLocation = await prisma.location.create({
         data: {
-          id: Date.now().toString(),
           name: data.name,
         },
       });
       return NextResponse.json({ success: true, location: newLocation });
     }
 
-    if (data.sessions) {
-      // Track processed sessions to prevent duplicates
-      const processedIds = new Set<string>();
-      const errors: Array<{ sessionId: string; error: string }> = [];
-
-      // Process each session
-      for (const session of data.sessions) {
-        const sessionId = session.id?.toString() || Date.now().toString();
-
-        // Skip if we've already processed this session
-        if (processedIds.has(sessionId)) {
-          continue;
-        }
-
-        processedIds.add(sessionId);
-
-        try {
-          // Validate existence of required relations before proceeding
-          const [existingSession, driver, car, location] = await Promise.all([
-            prisma.session.findUnique({
-              where: { id: sessionId },
-            }),
-            prisma.driver.findUnique({
-              where: { id: session.driverId },
-            }),
-            prisma.car.findUnique({
-              where: { id: session.carId },
-            }),
-            prisma.location.findUnique({
-              where: { id: session.locationId },
-            }),
-          ]);
-
-          // Skip if session already exists
-          if (existingSession) {
-            continue;
-          }
-
-          // Validate all required relations exist
-          if (!driver) {
-            errors.push({ sessionId, error: `Driver with id ${session.driverId} not found` });
-            continue;
-          }
-          if (!car) {
-            errors.push({ sessionId, error: `Car with id ${session.carId} not found` });
-            continue;
-          }
-          if (!location) {
-            errors.push({ sessionId, error: `Location with id ${session.locationId} not found` });
-            continue;
-          }
-
-          // Calculate total time
-          const totalTime = Math.floor(typeof session.stats.totalTime === "string" ? parseInt(session.stats.totalTime) : session.stats.totalTime || 0);
-
-          // Use transaction to ensure all related data is created atomically
-          await prisma.$transaction(async (tx) => {
-            // Create the session
-            await tx.session.create({
-              data: {
-                id: sessionId,
-                date: new Date(session.date),
-                driver: {
-                  connect: { id: session.driverId },
-                },
-                car: {
-                  connect: { id: session.carId },
-                },
-                location: {
-                  connect: { id: session.locationId },
-                },
-                driverName: session.driverName,
-                carName: session.carName,
-                locationName: session.locationName,
-                totalTime,
-                totalLaps: session.laps.length,
-              },
-            });
-
-            // Create laps if they exist
-            if (session.laps?.length > 0) {
-              const lapsToCreate = session.laps.map((lap: any, index: number) => ({
-                sessionId,
-                lapNumber: typeof lap === "object" ? lap.lapNumber : index + 1,
-                lapTime: Math.floor(typeof lap === "object" ? lap.lapTime : lap),
-              }));
-
-              await tx.lap.createMany({
-                data: lapsToCreate,
-              });
-            }
-
-            // Create penalties if they exist
-            if (session.penalties?.length > 0) {
-              await tx.penalty.createMany({
-                data: session.penalties.map((penalty: any) => ({
-                  sessionId,
-                  lapNumber: penalty.lapNumber,
-                  count: penalty.count || 0,
-                })),
-              });
-            }
-          });
-        } catch (error) {
-          errors.push({
-            sessionId,
-            error: error instanceof Error ? error.message : "Unknown error occurred",
-          });
-        }
-      }
-
-      // Return success with any errors that occurred
-      return NextResponse.json({
-        success: true,
-        errors: errors.length > 0 ? errors : undefined,
-      });
+    if (data.session) {
+      return await saveSession(data.session);
     }
 
-    return NextResponse.json({ success: true });
+    // Earlier versions re-posted the whole session list on a timer, which brought deleted sessions back.
+    if (data.sessions) {
+      return badRequest("Uploading a list of sessions is no longer supported. Reload the app.");
+    }
+
+    return badRequest("Unknown request");
   } catch (error) {
     logger.error("Error saving data:", error);
     return NextResponse.json(
@@ -217,17 +191,7 @@ export async function DELETE(request: Request) {
     const clonedRequest = request.clone();
     const data = await clonedRequest.json();
 
-    const { id, clearAll } = data;
-
-    if (clearAll) {
-      // Clear all sessions
-      await prisma.$transaction([prisma.penalty.deleteMany({}), prisma.lap.deleteMany({}), prisma.session.deleteMany({})]);
-
-      return NextResponse.json({
-        success: true,
-        message: "All sessions cleared",
-      });
-    }
+    const { id } = data;
 
     if (id) {
       try {
@@ -268,7 +232,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json(
       {
-        error: "Invalid delete request - missing id or clearAll parameter",
+        error: "Invalid delete request - missing id",
       },
       { status: 400 }
     );

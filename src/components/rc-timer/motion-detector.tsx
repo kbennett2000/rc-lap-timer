@@ -605,7 +605,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           }}
           className="h-4 w-4 rounded border-gray-300"
         />
-        <label htmlFor="remoteControl" className="text-sm font-medium">
+        <label htmlFor="saveMDImagesLocally" className="text-sm font-medium">
           Save MD Images
         </label>
 

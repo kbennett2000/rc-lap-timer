@@ -8,12 +8,49 @@ export async function PATCH(request: Request) {
     const { type, id, newName, defaultCarNumber } = data;
 
     if (type === "car") {
-      const updatedCar = await prisma.car.update({
-        where: { id },
-        data: {
-          name: newName,
-          defaultCarNumber: defaultCarNumber || null,
-        },
+      const name = typeof newName === "string" ? newName.trim() : "";
+      if (!name) {
+        return NextResponse.json({ success: false, error: "Car name is required" }, { status: 400 });
+      }
+
+      const updatedCar = await prisma.$transaction(async (tx) => {
+        const car = await tx.car.findUnique({
+          where: { id },
+          select: { driverId: true },
+        });
+
+        if (!car) {
+          throw new Error("Car not found");
+        }
+
+        // Check if name is already taken for this driver
+        const existingCar = await tx.car.findFirst({
+          where: {
+            name,
+            driverId: car.driverId,
+            id: { not: id },
+          },
+        });
+
+        if (existingCar) {
+          throw new Error("This driver already has a car with this name");
+        }
+
+        const updated = await tx.car.update({
+          where: { id },
+          data: {
+            name,
+            defaultCarNumber: defaultCarNumber || null,
+          },
+        });
+
+        // Keep the car name stored on saved sessions in step with the car
+        await tx.session.updateMany({
+          where: { carId: id },
+          data: { carName: name },
+        });
+
+        return updated;
       });
 
       const updatedDrivers = await prisma.driver.findMany({
@@ -105,7 +142,7 @@ export async function PATCH(request: Request) {
       });
     }
 
-    // Handle existing driver and car updates
+    // Handle driver updates (cars are handled above)
     await prisma.$transaction(async (tx) => {
       if (type === "driver") {
         // Check if name is already taken
@@ -130,41 +167,6 @@ export async function PATCH(request: Request) {
         await tx.session.updateMany({
           where: { driverId: id },
           data: { driverName: newName },
-        });
-      } else if (type === "car") {
-        // Get the car first to get its driver ID
-        const car = await tx.car.findUnique({
-          where: { id },
-          select: { driverId: true },
-        });
-
-        if (!car) {
-          throw new Error("Car not found");
-        }
-
-        // Check if name is already taken for this driver
-        const existingCar = await tx.car.findFirst({
-          where: {
-            name: newName,
-            driverId: car.driverId,
-            id: { not: id },
-          },
-        });
-
-        if (existingCar) {
-          throw new Error("This driver already has a car with this name");
-        }
-
-        // Update car name
-        await tx.car.update({
-          where: { id },
-          data: { name: newName },
-        });
-
-        // Update carName in all related sessions
-        await tx.session.updateMany({
-          where: { carId: id },
-          data: { carName: newName },
         });
       }
     });
@@ -244,6 +246,24 @@ export async function DELETE(request: Request) {
           where: { locationId: id },
         });
 
+        // Delete races held at this location, with their entries and laps
+        const races = await tx.race.findMany({
+          where: { locationId: id },
+          select: { id: true },
+        });
+        const raceIds = races.map((r) => r.id);
+        if (raceIds.length > 0) {
+          await tx.raceLap.deleteMany({
+            where: { raceEntry: { raceId: { in: raceIds } } },
+          });
+          await tx.raceEntry.deleteMany({
+            where: { raceId: { in: raceIds } },
+          });
+          await tx.race.deleteMany({
+            where: { id: { in: raceIds } },
+          });
+        }
+
         // Delete all sessions for this location
         await tx.session.deleteMany({
           where: { locationId: id },
@@ -305,6 +325,15 @@ export async function DELETE(request: Request) {
           },
         });
 
+        // Delete this driver's race entries and their laps
+        const raceEntryFilter = { OR: [{ driverId }, { carId: { in: carIds } }] };
+        await tx.raceLap.deleteMany({
+          where: { raceEntry: raceEntryFilter },
+        });
+        await tx.raceEntry.deleteMany({
+          where: raceEntryFilter,
+        });
+
         // Delete all sessions for the cars
         await tx.session.deleteMany({
           where: { carId: { in: carIds } },
@@ -343,6 +372,14 @@ export async function DELETE(request: Request) {
 
         // Delete session requests for this car
         await tx.sessionRequest.deleteMany({
+          where: { carId },
+        });
+
+        // Delete this car's race entries and their laps
+        await tx.raceLap.deleteMany({
+          where: { raceEntry: { carId } },
+        });
+        await tx.raceEntry.deleteMany({
           where: { carId },
         });
 

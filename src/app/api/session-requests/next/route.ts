@@ -2,28 +2,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { convertBigIntToNumber } from "@/lib/utils";
 import { SessionRequestStatus } from "@prisma/client";
 
-// Export config to make this a dynamic route
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Support both GET and HEAD methods
-export async function GET(request: Request) {
+// Returns the oldest pending session request, or null.
+export async function GET() {
   try {
-    // Check raw record count first
-    const recordCount = await prisma.$queryRaw`SELECT COUNT(*) as count FROM SessionRequest`;
-
-    // Raw SQL check with BINARY comparison
-    const rawPendingRecords = await prisma.$queryRaw`
-      SELECT * FROM SessionRequest 
-      WHERE BINARY status = 'PENDING'
-      ORDER BY createdAt ASC
-    `;
-
-    // Prisma check with explicit enum
-    const prismaRecords = await prisma.SessionRequest.findMany({
+    const nextRequest = await prisma.sessionRequest.findFirst({
       where: {
         status: SessionRequestStatus.PENDING,
       },
@@ -37,35 +24,9 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json({
-      request: prismaRecords[0] || null,
-      debug: {
-        recordCount: convertBigIntToNumber(recordCount),
-        rawPendingCount: rawPendingRecords.length,
-        prismaCount: prismaRecords.length,
-        timestamp: new Date().toISOString(),
-      },
-    });
+    return NextResponse.json({ request: nextRequest });
   } catch (error) {
     logger.error("Error in poll request:", error);
-    return NextResponse.json(
-      {
-        error: "Poll request failed",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Poll request failed" }, { status: 500 });
   }
-}
-
-// Support OPTIONS method for CORS
-export async function OPTIONS(request: Request) {
-  return NextResponse.json(
-    {},
-    {
-      headers: {
-        Allow: "GET, HEAD, OPTIONS",
-      },
-    }
-  );
 }
