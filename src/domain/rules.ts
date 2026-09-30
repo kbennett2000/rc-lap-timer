@@ -24,9 +24,19 @@ export function cleanName(value: unknown, kind: EntityKind): Checked<string> {
   return { ok: true, value: name };
 }
 
-// Names are unique ignoring case (car names per driver). The Pi's database collation also ignores accents.
+// Names are unique ignoring case, accents and surrounding spaces (car names per driver), like the Pi's database
+// collation: "José " and "jose" are the same name. This is the form they're compared in. toLowerCase, not
+// toLocaleLowerCase, so the result doesn't depend on the phone's language.
+export function nameKey(name: string): string {
+  return name
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export function sameName(a: string, b: string): boolean {
-  return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+  return nameKey(a) === nameKey(b);
 }
 
 export function duplicateNameMessage(kind: EntityKind, name: string): string {

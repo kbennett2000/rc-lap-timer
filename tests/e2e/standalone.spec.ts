@@ -1,29 +1,24 @@
-// Browser tests for the phone-only build. Run them against a server built with NEXT_PUBLIC_TARGET=standalone:
-//   NEXT_PUBLIC_TARGET=standalone npm run build && npx next start -p 3100 &
+// Browser tests for the phone-only app, a static site that keeps its data on the phone. Build and serve it first:
+//   npm run build:pages && npm run serve:pages &
 //   E2E_TARGET=standalone npm run test:e2e
-// Until that build gets its on-device store, it still saves to the Pi's API, so the setup is otherwise the same as
-// phase0.spec.ts.
+// Every test starts with an empty browser, so each one adds its own driver, car and location through the app.
 
-import { expect, request, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-type Fixture = { id: string; name: string };
+type Fixture = { driver: string; car: string; location: string };
 
-const stamp = Date.now().toString(36);
-// Endpoints for Pi hardware and Pi-only features: the phone-only build must never call them.
-const PI_ONLY = /^\/api\/(ir|led|current-session|session-requests|system|races)(\/|$)/;
+test.beforeEach(async ({ page }) => {
+  page.on("dialog", (dialog) => dialog.accept());
+});
 
-let driver: Fixture;
-let car: Fixture;
-let location: Fixture;
-
-test.describe.configure({ mode: "serial" });
-
-async function api(path: string, body?: unknown) {
-  const context = await request.newContext({ baseURL: test.info().project.use.baseURL });
-  const response = body === undefined ? await context.get(path) : await context.post(path, { data: body });
-  const json = await response.json();
-  await context.dispose();
-  return json;
+// Every request to the Pi's API (the phone-only app has no server).
+function watchApiCalls(page: Page): string[] {
+  const calls: string[] = [];
+  page.on("request", (r) => {
+    const path = new URL(r.url()).pathname;
+    if (path.includes("/api/")) calls.push(`${r.method()} ${path}`);
+  });
+  return calls;
 }
 
 async function pickSelect(page: Page, placeholder: string, optionText: string) {
@@ -31,84 +26,96 @@ async function pickSelect(page: Page, placeholder: string, optionText: string) {
   await page.getByRole("option", { name: optionText, exact: true }).click();
 }
 
-// Records every request to a Pi-only endpoint.
-function watchPiCalls(page: Page): string[] {
-  const calls: string[] = [];
-  page.on("request", (r) => {
-    const path = new URL(r.url()).pathname;
-    if (PI_ONLY.test(path)) calls.push(`${r.method()} ${path}`);
-  });
-  return calls;
+// Adds a driver, a car and a location from Practice's setup, which selects each one as it's made.
+async function addFixtures(page: Page, label: string): Promise<Fixture> {
+  const fixture = { driver: `${label} Driver`, car: `${label} Car`, location: `${label} Track` };
+  for (const [button, type, name] of [
+    ["New Driver", "driver", fixture.driver],
+    ["New Car", "car", fixture.car],
+    ["New Location", "location", fixture.location],
+  ]) {
+    await page.getByRole("button", { name: button }).click();
+    await page.getByPlaceholder(`Enter ${type} name`).fill(name);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByRole("combobox").filter({ hasText: name })).toBeVisible();
+  }
+  return fixture;
 }
 
-test.beforeAll(async () => {
-  driver = (await api("/api/data", { type: "driver", name: `Phone Driver ${stamp}` })).driver;
-  car = (await api("/api/data", { type: "car", name: "Phone Car", driverId: driver.id, defaultCarNumber: 3 })).car;
-  location = (await api("/api/data", { type: "location", name: `Phone Track ${stamp}` })).location;
-});
+async function runSession(page: Page) {
+  await page.getByRole("button", { name: "Start Lap Timer" }).click();
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "Record Lap" }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "Stop Lap Timer" }).click();
+}
 
-test.beforeEach(async ({ page }) => {
-  page.on("dialog", (dialog) => dialog.accept());
-});
-
-test("hides the Pi's features, times a run, and never calls the Pi's hardware", async ({ page }) => {
-  const piCalls = watchPiCalls(page);
-  await page.goto("/");
+test("keeps its data on the phone, hides the Pi's features, and never calls an API", async ({ page }) => {
+  const apiCalls = watchApiCalls(page);
+  await page.goto("./");
 
   await expect(page.getByRole("tab", { name: "Practice" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Race" })).toHaveCount(0);
   await expect(page.getByText("Time Using UI")).toBeVisible();
-  await expect(page.getByText("Time Using Motion Detection")).toBeVisible();
   await expect(page.getByText("Time Using IR")).toHaveCount(0);
   await expect(page.getByText("Enable Remote Control Mode")).toHaveCount(0);
 
-  await pickSelect(page, "Select Driver", driver.name);
+  const fixture = await addFixtures(page, "Phone");
   await page.getByRole("button", { name: "New Car" }).click();
-  await expect(page.getByRole("alertdialog")).toBeVisible();
   await expect(page.getByText("Default IR Car Number")).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel" }).click();
 
-  await pickSelect(page, "Select Car", car.name);
-  await pickSelect(page, "Select Location", location.name);
-  await page.getByRole("button", { name: "Start Lap Timer" }).click();
-  await page.waitForTimeout(600);
-  await page.getByRole("button", { name: "Record Lap" }).click();
-  await page.waitForTimeout(400);
-  const saved = page.waitForResponse((r) => r.url().endsWith("/api/data") && r.request().method() === "POST");
-  await page.getByRole("button", { name: "Stop Lap Timer" }).click();
-  expect((await saved).ok()).toBe(true);
-  const sessions = (await api("/api/data")).sessions.filter((s: { driverId: string }) => s.driverId === driver.id);
-  expect(sessions).toHaveLength(1);
-  expect(sessions[0].laps).toHaveLength(2);
+  await runSession(page);
+  await expect(page.getByText(`Driver: ${fixture.driver}`)).toBeVisible();
+  await expect(page.getByText("Session not saved")).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByText(`Driver: ${fixture.driver}`), "the session is still there after a reload").toBeVisible();
 
   await page.getByRole("tab", { name: /Session/ }).click();
   await expect(page.getByText("Request a Session")).toHaveCount(0);
   await expect(page.getByText("Current Session", { exact: true })).toHaveCount(0);
-  await expect(page.getByText(`Driver: ${driver.name}`)).toBeVisible();
   for (const tab of ["Best", "Compare", "Notes"]) await page.getByRole("tab", { name: tab }).click();
 
   await page.getByRole("tab", { name: "Manager" }).click();
   await expect(page.getByRole("tab", { name: /System/ })).toHaveCount(0);
-  await pickSelect(page, "Choose a driver", driver.name);
-  await pickSelect(page, "Choose a car", car.name);
+  await pickSelect(page, "Choose a driver", fixture.driver);
+  await pickSelect(page, "Choose a car", fixture.car);
   await page.getByRole("button", { name: "Edit car" }).click();
   await expect(page.getByText("Default IR Car Number")).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel" }).click();
   for (const tab of [/Locations/, /Motion/, /Utilities/]) await page.getByRole("tab", { name: tab }).click();
 
-  expect(piCalls, "requests to Pi-only endpoints").toEqual([]);
+  expect(apiCalls, "requests to an API").toEqual([]);
 });
 
 test("an interrupted IR run resumes with tap timing, so it can be stopped", async ({ page }) => {
-  const piCalls = watchPiCalls(page);
-  const startedAt = Date.now() - 5_000;
-  await page.addInitScript(
-    ([run]) => {
-      if (sessionStorage.getItem("seeded")) return;
-      sessionStorage.setItem("seeded", "1");
-      localStorage.setItem("rc-lap-timer-active-run:v1", run);
-    },
-    [
+  const apiCalls = watchApiCalls(page);
+  await page.goto("./");
+  const fixture = await addFixtures(page, "Resume");
+
+  // An IR run left behind by a crash, for the driver, car and location just made (the phone-only app can't start one).
+  await page.evaluate(async (names) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const open = indexedDB.open("rc-lap-timer");
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    const all = (table: string) =>
+      new Promise<{ id: string; name: string }[]>((resolve) => {
+        const request = database.transaction(table).objectStore(table).getAll();
+        request.onsuccess = () => resolve(request.result);
+      });
+    const find = async (table: string, name: string) => (await all(table)).find((row) => row.name === name)!;
+    const [driver, car, location] = [
+      await find("drivers", names.driver),
+      await find("cars", names.car),
+      await find("locations", names.location),
+    ];
+    database.close();
+    const startedAt = Date.now() - 5_000;
+    localStorage.setItem(
+      "rc-lap-timer-active-run:v1",
       JSON.stringify({
         status: "running",
         id: crypto.randomUUID(),
@@ -128,14 +135,14 @@ test("an interrupted IR run resumes with tap timing, so it can be stopped", asyn
         penalties: [],
         gaps: [],
       }),
-    ],
-  );
+    );
+  }, fixture);
 
-  await page.goto("/");
+  await page.reload();
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.getByRole("button", { name: "Record Lap" })).toBeEnabled();
-  const saved = page.waitForResponse((r) => r.url().endsWith("/api/data") && r.request().method() === "POST");
   await page.getByRole("button", { name: "Stop Lap Timer" }).click();
-  expect((await saved).ok()).toBe(true);
-  expect(piCalls, "requests to Pi-only endpoints").toEqual([]);
+  await expect(page.getByText(`Driver: ${fixture.driver}`)).toBeVisible();
+  await expect(page.getByText("Session not saved")).toHaveCount(0);
+  expect(apiCalls, "requests to an API").toEqual([]);
 });

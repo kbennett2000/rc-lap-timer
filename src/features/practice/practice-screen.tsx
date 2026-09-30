@@ -45,7 +45,9 @@ function unsavedMessage(failures: SaveFailure[]): string {
   if (cannotSave) {
     return `${what} could not be saved: ${cannotSave.message}. ${failures.length === 1 ? "It is" : "They are"} kept on this device; use Discard at the top of the Practice screen if you don't need ${failures.length === 1 ? "it" : "them"}.`;
   }
-  return `${what} could not be saved. ${failures.length === 1 ? "It has" : "They have"} been kept on this device: check the connection to the timer, then use Retry save at the top of the Practice screen.`;
+  // On the Pi, a save that can be retried failed to reach it; in the phone-only app, the phone's storage failed.
+  const retryHint = CAPABILITIES.onDeviceData ? "try again" : "check the connection to the timer, then try again";
+  return `${what} could not be saved. ${failures.length === 1 ? "It has" : "They have"} been kept on this device: ${retryHint} with Retry save at the top of the Practice screen.`;
 }
 
 const tabMotion = {

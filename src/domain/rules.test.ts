@@ -7,6 +7,7 @@ import {
   duplicateNameMessage,
   isUuid,
   MAX_NAME_LENGTH,
+  nameKey,
   sameName,
 } from "./rules";
 
@@ -29,9 +30,15 @@ describe("cleanName", () => {
 });
 
 describe("names", () => {
-  it("match ignoring case and surrounding spaces", () => {
+  it("match ignoring case, accents and surrounding spaces", () => {
     expect(sameName("Back Yard", " back yard ")).toBe(true);
+    expect(sameName("José", "jose")).toBe(true);
     expect(sameName("Back Yard", "Backyard")).toBe(false);
+    expect(nameKey(" Crème Brûlée ")).toBe("creme brulee");
+  });
+
+  it("compare the same way whatever the phone's language", () => {
+    expect(nameKey("ISTANBUL")).toBe("istanbul");
   });
 
   it("have clear duplicate messages", () => {

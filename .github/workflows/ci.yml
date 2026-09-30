@@ -126,3 +126,25 @@ jobs:
       - run: npm run build:pages
       - name: The export has no API routes
         run: test ! -e out/api
+      - name: Serve the export the way GitHub Pages does
+        run: |
+          npm run serve:pages > server.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -fs -o /dev/null http://127.0.0.1:3100/rc-lap-timer/ && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          E2E_TARGET: standalone
+      - name: Keep traces and the server log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: phone-app-results
+          path: |
+            test-results/
+            server.log
+          retention-days: 7

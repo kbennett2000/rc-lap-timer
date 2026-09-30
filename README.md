@@ -277,9 +277,9 @@ npm run dev
 ```
 
 `NEXT_PUBLIC_TARGET=standalone npm run dev` runs the phone-only build instead: the Pi's features (Race, IR timing,
-remote control, the live view, LEDs and System Settings) are hidden. For now it still stores its data through the
-Pi's API. `npm run build:pages` builds it as a static site in `out/` (what GitHub Pages serves), and
-`npm run serve:pages` serves that at http://127.0.0.1:3100/rc-lap-timer/.
+remote control, the live view, LEDs and System Settings) are hidden, and the data is stored on the device, in
+IndexedDB ([src/data/local](src/data/local)). `npm run build:pages` builds it as a static site in `out/` (what
+GitHub Pages serves), and `npm run serve:pages` serves that at http://127.0.0.1:3100/rc-lap-timer/.
 
 The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi build treats `.pi.ts` files as pages and
 routes (see `next.config.js`), so the static build leaves them out.
@@ -292,8 +292,8 @@ CI runs all of these on every pull request:
 - `npm run format:check` (fix with `npm run format`), `npm run lint`, `npm run typecheck`
 - `npm test`: unit tests
 - `npm run test:api` and `npm run test:e2e`: API and browser tests against a running server and database.
-  [tests/api/api.test.ts](tests/api/api.test.ts) shows how to start both. For a server built with
-  `NEXT_PUBLIC_TARGET=standalone`, run `E2E_TARGET=standalone npm run test:e2e`.
+  [tests/api/api.test.ts](tests/api/api.test.ts) shows how to start both. For the phone-only app, run
+  `npm run build:pages`, start `npm run serve:pages`, then `E2E_TARGET=standalone npm run test:e2e`.
 
 To change the database schema, edit `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>`, and
 commit the new folder under `prisma/migrations/`. `migrate dev` needs a database user that can create databases.

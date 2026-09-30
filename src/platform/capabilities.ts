@@ -16,6 +16,8 @@ export interface Capabilities {
   ledDisplay: boolean;
   // Wi-Fi, device name and password settings for the Pi.
   piSystemConfig: boolean;
+  // The data lives on the phone itself (the phone-only app): install, storage and backup help.
+  onDeviceData: boolean;
 }
 
 export function capabilitiesFor(target: BuildTarget): Capabilities {
@@ -27,6 +29,7 @@ export function capabilitiesFor(target: BuildTarget): Capabilities {
     liveSessionView: pi,
     ledDisplay: pi,
     piSystemConfig: pi,
+    onDeviceData: !pi,
   };
 }
 
