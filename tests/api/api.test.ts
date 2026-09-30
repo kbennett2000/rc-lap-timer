@@ -7,7 +7,8 @@
 //     -p 127.0.0.1:3307:3306 mariadb:10.11
 //   export DATABASE_URL="mysql://root:devpass@127.0.0.1:3307/rc_lap_timer"
 //   npx prisma migrate deploy && npm run build
-//   ADMIN_PIN=test1234 npx next start -p 3100 &
+//   ADMIN_PIN=test1234 SYNC_ALLOWED_ORIGINS=https://kbennett2000.github.io,http://127.0.0.1:3200 \
+//     npx next start -p 3100 &
 //   npm run test:api
 //
 // The last tests trip the admin PIN lockout, which lives in server memory: restart the server before rerunning.

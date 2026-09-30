@@ -63,6 +63,32 @@ describe("the timer's sync routes", () => {
     expect((await merge({ hello: "there" })).status).toBe(400);
   });
 
+  it("let the phone app's site read them, and refuse other sites' changes", async () => {
+    // The server runs with SYNC_ALLOWED_ORIGINS including the phone app's real site (see api.test.ts).
+    const app = "https://kbennett2000.github.io";
+    const status = await fetch(`${BASE}/api/sync/status`, { headers: { Origin: app } });
+    expect(status.headers.get("access-control-allow-origin")).toBe(app);
+
+    const asked = await fetch(`${BASE}/api/sync`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: app,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type",
+      },
+    });
+    expect(asked.status).toBe(204);
+    expect(asked.headers.get("access-control-allow-headers")).toBe("Content-Type");
+
+    const other = await fetch(`${BASE}/api/sync`, {
+      method: "POST",
+      headers: { Origin: "https://example.com", "Content-Type": "application/json" },
+      body: JSON.stringify({ bundle: bundle({}) }),
+    });
+    expect(other.status).toBe(403);
+    expect(other.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
   it("change nothing on a dry run", async () => {
     const at = new Date().toISOString();
     const driver = { id: randomUUID(), name: named("Dry"), createdAt: at, updatedAt: at };
