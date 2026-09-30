@@ -1,44 +1,52 @@
 // types/race-timer.ts
 
-import { Race as PrismaRace, RaceEntry as PrismaRaceEntry, RaceLap as PrismaRaceLap } from "@prisma/client";
 import { Driver, Car, Location } from "./rc-timer";
 
 export type RaceStatus = "PENDING" | "COUNTDOWN" | "RACING" | "PAUSED" | "FINISHED" | "STOPPED";
 export type RaceEntryStatus = "REGISTERED" | "RACING" | "FINISHED" | "DNF";
 
-export interface RaceLap extends PrismaRaceLap {
+// Shapes of the race data the UI gets from /api/races. JSON, so dates arrive as ISO strings.
+
+export interface RaceLap {
+  id: string;
   raceEntryId: string;
   lapNumber: number;
   lapTime: number;
   position: number;
   gap: number;
-  timestamp: Date;
+  timestamp: string;
 }
 
-export interface RaceEntry extends Omit<PrismaRaceEntry, "createdAt" | "updatedAt"> {
+export interface RaceEntry {
+  id: string;
+  raceId: string;
+  driverId: string;
+  carId: string;
   driver: Driver;
   car: Car;
   carNumber: number;
-  position?: number;
+  position?: number | null;
   lapsCompleted: number;
-  bestLapTime?: number;
-  totalTime?: number;
+  bestLapTime?: number | null;
+  totalTime?: number | null;
   status: RaceEntryStatus;
   laps: RaceLap[];
-  dnfReason?: string;
+  dnfReason?: string | null;
 }
 
-export interface Race extends Omit<PrismaRace, "date" | "startTime" | "endTime" | "createdAt" | "updatedAt"> {
+export interface Race {
+  id: string;
   name: string;
   date: string;
+  locationId: string;
   location: Location;
   status: RaceStatus;
   startDelay: number;
-  totalLaps?: number;
-  startTime?: string;
-  endTime?: string;
+  totalLaps?: number | null;
+  startTime?: string | null;
+  endTime?: string | null;
   entries: RaceEntry[];
-  notes?: string;
+  notes?: string | null;
 }
 
 export interface LiveRaceStats {

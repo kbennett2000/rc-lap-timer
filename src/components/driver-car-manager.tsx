@@ -376,7 +376,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                     </Select>
                     {selectedCar && (
                       <div className="flex gap-2">
-                        <Button variant="outline" size="icon" onClick={() => openEntityDialog("car", "edit", selectedCar, currentCar?.name || "", currentCar?.defaultCarNumber)}>
+                        <Button variant="outline" size="icon" onClick={() => openEntityDialog("car", "edit", selectedCar, currentCar?.name || "", currentCar?.defaultCarNumber ?? undefined)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button

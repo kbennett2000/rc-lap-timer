@@ -117,7 +117,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
   // useRef
   // ****************************************
   const remoteControlIntervalRef = useRef<NodeJS.Timeout>();
-  const motionControlRef = useRef<{ stop: () => void; start: () => Promise<void> }>(null);
+  const motionControlRef = useRef<{ stop: () => void; start: () => Promise<void> } | null>(null);
   const announceLapNumberRef = useRef(announceLapNumber);
   const sessionStartedAtRef = useRef<string | null>(null);
   const unsavedSessionsRef = useRef<Partial<Session>[]>([]);
@@ -504,6 +504,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
         worstLap: 0,
         maxPenaltyLap: null,
         maxPenaltyCount: 0,
+        totalPenalties: 0,
       };
     }
 
@@ -531,6 +532,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
       worstLap,
       maxPenaltyLap,
       maxPenaltyCount,
+      totalPenalties: penalties.reduce((total, penalty) => total + penalty.count, 0),
     };
   };
 
@@ -656,10 +658,9 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     const totalElapsedTime = currentTime;
 
     // Calculate completed laps time with validation
-    const completedLapsTime = laps.reduce((sum, lap) => {
-      const lapTime = typeof lap === "object" ? lap.lapTime : lap;
+    const completedLapsTime = laps.reduce((sum, lapTime) => {
       if (typeof lapTime !== "number" || isNaN(lapTime)) {
-        logger.warn("Invalid lap time:", lap);
+        logger.warn("Invalid lap time:", lapTime);
         return sum;
       }
       return sum + lapTime;
@@ -1091,7 +1092,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
 
   const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
     if (playBeepsRef.current) {
-      return new Promise(async (resolve) => {
+      return new Promise((resolve) => {
         // Create audio context
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
@@ -1121,6 +1122,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
         }, duration);
       });
     }
+    return Promise.resolve();
   };
 
   const playRaceFinish = async (): Promise<void> => {
@@ -1498,7 +1500,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
     }
   };
 
-  const logCurrentSessionRecordLap = async (LastLapEndTime: number, CurrentLapTime: number): void => {
+  const logCurrentSessionRecordLap = async (LastLapEndTime: number, CurrentLapTime: number): Promise<void> => {
     // Type guard to ensure we have a valid session ID
     if (!theCurrentSessionIdRef.current) {
       logger.warn("No current session ID to record laps for");
@@ -2841,7 +2843,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                     from: date,
                                   }))
                                 }
-                                initialFocus
+                                autoFocus
                               />
                             </PopoverContent>
                           </Popover>
@@ -2864,7 +2866,7 @@ export default function PracticeControl({ isActive = true }: { isActive?: boolea
                                   }))
                                 }
                                 disabled={(date) => (previousSessionsDateRange.from ? isBefore(date, previousSessionsDateRange.from) : false)}
-                                initialFocus
+                                autoFocus
                               />
                             </PopoverContent>
                           </Popover>

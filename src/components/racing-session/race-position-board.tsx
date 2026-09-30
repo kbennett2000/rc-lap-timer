@@ -8,6 +8,7 @@ import { Trophy, Zap, Clock, Flag, AlertTriangle } from "lucide-react";
 interface RacePositionBoardProps {
   positions: Array<{
     carNumber: number;
+    driverName?: string;
     position: number;
     lapsCompleted: number;
     lastLapTime?: number;

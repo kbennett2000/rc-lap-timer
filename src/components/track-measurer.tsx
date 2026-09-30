@@ -7,21 +7,29 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+const FEET_PER_METER = 3.28084;
+
+interface GeoPoint {
+  lat: number;
+  lon: number;
+  accuracy: number; // meters, as reported by the Geolocation API
+}
+
 const TrackMeasurer = () => {
   const DEFAULT_DISTANCE = 132;
-  const [startPosition, setStartPosition] = useState(null);
-  const [currentPosition, setCurrentPosition] = useState(null);
+  const [startPosition, setStartPosition] = useState<GeoPoint | null>(null);
+  const [currentPosition, setCurrentPosition] = useState<GeoPoint | null>(null);
   const [distance, setDistance] = useState(0);
   const [heading, setHeading] = useState(0);
-  const [error, setError] = useState(null);
-  const [permissionStatus, setPermissionStatus] = useState("prompt");
+  const [error, setError] = useState<string | null>(null);
+  const [permissionStatus, setPermissionStatus] = useState<PermissionState>("prompt");
   const [targetDistance, setTargetDistance] = useState(DEFAULT_DISTANCE);
 
   const [distanceDialogOpen, setDistanceDialogOpen] = useState(false);
   const [tempDistance, setTempDistance] = useState(DEFAULT_DISTANCE);
 
   // Calculate distance between two points using Haversine formula
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 20902231; // Earth radius in feet
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -42,8 +50,8 @@ const TrackMeasurer = () => {
         const permission = await navigator.permissions.query({ name: "geolocation" });
         setPermissionStatus(permission.state);
 
-        permission.addEventListener("change", (e) => {
-          setPermissionStatus(e.target.state);
+        permission.addEventListener("change", () => {
+          setPermissionStatus(permission.state);
         });
       } catch (err) {
         setError("Error checking location permissions");
@@ -98,7 +106,7 @@ const TrackMeasurer = () => {
 
   // Watch position changes
   useEffect(() => {
-    let watchId;
+    let watchId: number | undefined;
 
     if (startPosition && "geolocation" in navigator) {
       const options = {
@@ -147,7 +155,7 @@ const TrackMeasurer = () => {
     }
 
     return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
+      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
     };
   }, [startPosition]);
 
@@ -158,23 +166,6 @@ const TrackMeasurer = () => {
     setDistance(0);
     setHeading(0);
     setError(null);
-  };
-
-  const handleDistanceSubmit = (e) => {
-    e.preventDefault();
-    const newDistance = parseFloat(tempDistance);
-    if (!isNaN(newDistance) && newDistance > 0) {
-      setTargetDistance(newDistance);
-      setDialogOpen(false);
-    } else {
-      setError("Please enter a valid distance");
-    }
-  };
-
-  const handleDistanceReset = () => {
-    setTempDistance(DEFAULT_DISTANCE);
-    setTargetDistance(DEFAULT_DISTANCE);
-    setDialogOpen(false);
   };
 
   return (
@@ -251,7 +242,7 @@ const TrackMeasurer = () => {
                   </div>
                   <div className="space-y-2">
                     <p className="text-2xl font-bold">{distance.toFixed(1)} ft</p>
-                    {currentPosition && <p className="text-sm text-gray-500">Accuracy: ±{currentPosition.accuracy.toFixed(1)}ft</p>}
+                    {currentPosition && <p className="text-sm text-gray-500">Accuracy: ±{(currentPosition.accuracy * FEET_PER_METER).toFixed(1)}ft</p>}
                     <p className={`text-lg ${Math.abs(distance - targetDistance) < 1 ? "text-green-500" : ""}`}>{distance < targetDistance ? `Keep walking: ${(targetDistance - distance).toFixed(1)} ft to go` : `Too far: ${(distance - targetDistance).toFixed(1)} ft past`}</p>
                     <button onClick={handleReset} className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">
                       Reset

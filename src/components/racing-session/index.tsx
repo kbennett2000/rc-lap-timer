@@ -11,6 +11,13 @@ import { logger } from "@/lib/logger";
 import { LEDDeviceService } from "@/services/ledDevice";
 import { fetchOk } from "@/lib/utils";
 
+interface BeepOptions {
+  frequency?: number;
+  duration?: number;
+  volume?: number;
+  type?: OscillatorType;
+}
+
 interface RacingSessionProps {
   onRaceComplete?: () => void;
 }
@@ -257,18 +264,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       }
 
       setIsPaused(!isPaused); // Using our state
-
-      if (isPaused) {
-        // Resume timer
-        timerRef.current = setInterval(() => {
-          setElapsedTime((prev) => prev + 1000);
-        }, 1000);
-      } else {
-        // Pause timer
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-        }
-      }
     } catch (error) {
       logger.error(`Error ${isPaused ? "resuming" : "pausing"} race:`, error);
     }
@@ -398,7 +393,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     lastLapTime: lastLapTimes.get(carNum),
     bestLapTime: bestLapTimes.get(carNum),
     gap: calculateGapToLeader(carNum),
-    status: "RACING",
+    status: "RACING" as const,
   }));
 
   const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
@@ -433,6 +428,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
         }, duration);
       });
     }
+    return Promise.resolve();
   };
 
   const playRaceFinish = async (): Promise<void> => {

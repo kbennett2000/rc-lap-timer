@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Car, Driver, Location } from "@prisma/client";
+import { Car, Driver, Location } from "@/types/rc-timer";
 import { format } from "date-fns";
 
 interface RaceConfigFormProps {
@@ -192,7 +192,7 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
 
         {carAssignments.map((assignment, index) => (
           <div key={index} className="flex flex-col sm:grid sm:grid-cols-4 gap-4">
-            <Select value={assignment.driverId} onValueChange={(value) => updateCarAssignment(index, "driverId", value)} className="w-full">
+            <Select value={assignment.driverId} onValueChange={(value) => updateCarAssignment(index, "driverId", value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select driver" />
               </SelectTrigger>
@@ -207,7 +207,7 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
               </SelectContent>
             </Select>
 
-            <Select value={assignment.carId} onValueChange={(value) => updateCarAssignment(index, "carId", value)} disabled={!assignment.driverId} className="w-full">
+            <Select value={assignment.carId} onValueChange={(value) => updateCarAssignment(index, "carId", value)} disabled={!assignment.driverId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select car" />
               </SelectTrigger>

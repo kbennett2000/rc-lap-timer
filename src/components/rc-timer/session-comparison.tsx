@@ -36,7 +36,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
   });
 
   // Date range presets
-  const DATE_PRESETS = [
+  const DATE_PRESETS: { label: string; days: number | "month" | "year" }[] = [
     { label: "Today", days: 0 },
     { label: "Last 7 days", days: 7 },
     { label: "Last 30 days", days: 30 },
@@ -266,7 +266,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
+                  <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} autoFocus />
                 </PopoverContent>
               </Popover>
             </div>
@@ -280,7 +280,7 @@ export function SessionComparison({ sessions }: SessionComparisonProps) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} initialFocus />
+                  <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} autoFocus />
                 </PopoverContent>
               </Popover>
             </div>

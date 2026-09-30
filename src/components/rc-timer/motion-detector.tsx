@@ -5,10 +5,10 @@ interface MotionDetectorProps {
   onMotionDetected?: (changePercent: number) => void;
   className?: string;
   // Add ref for external control
-  controlRef?: React.RefObject<{
+  controlRef?: React.MutableRefObject<{
     stop: () => void;
     start: () => Promise<void>;
-  }>;
+  } | null>;
   playBeeps?: boolean;
 }
 
@@ -329,7 +329,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       const filename = `rc-lap-${timestamp}-${changePercent.toFixed(1)}pct.jpg`;
 
       // Try to use the Web Share API first (works on most mobile browsers)
-      if (navigator.share && navigator.canShare) {
+      if (typeof navigator.share === "function" && typeof navigator.canShare === "function") {
         const file = new File([blob], filename, { type: "image/jpeg" });
         try {
           await navigator.share({
