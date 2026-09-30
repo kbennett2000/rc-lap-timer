@@ -163,6 +163,27 @@ if ! sudo grep -q '^ADMIN_PIN=' /etc/rc-lap-timer.env 2> /dev/null; then
   fi
 fi
 
+echo "*** UpgrayeDD updating the web server's settings (nginx)"
+# The site's settings come from the repo. The old file stays as .bak, and goes back if nginx rejects the new one.
+site=/etc/nginx/sites-available/rc-lap-timer
+if [ ! -f "$site" ]; then
+  echo "    $site doesn't exist, so nginx was left alone. See docs/raspberryPiSetup.md."
+elif cmp -s scripts/system/nginx/rc-lap-timer.conf "$site"; then
+  echo "    Already up to date"
+else
+  sudo cp "$site" "$site.bak"
+  sudo install -o root -g root -m 644 scripts/system/nginx/rc-lap-timer.conf "$site"
+  if sudo nginx -t > /dev/null 2>&1; then
+    sudo systemctl reload nginx
+    echo "    Updated (the old settings are in $site.bak)"
+  else
+    sudo nginx -t || true
+    sudo cp "$site.bak" "$site"
+    echo "    nginx rejected the new settings (see above), so the old ones were put back. Sync over plain HTTP"
+    echo "    won't work until that's fixed; everything else does."
+  fi
+fi
+
 echo "*** UpgrayeDD copying system utilities"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=copying%20utilities" 2>/dev/null || true
 # Copy database files to home directory

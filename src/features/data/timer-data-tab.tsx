@@ -22,9 +22,12 @@ export function TimerDataTab() {
             <strong>kbennett2000.github.io/rc-lap-timer</strong>.
           </p>
           <p>
-            Backup files carry data both ways. To bring the app&apos;s data here, save a backup in the app (Manager →
-            Data) and restore it here. To take the timer&apos;s data to the app, save a backup here and restore it in
-            the app. Records with the same name become one, so nothing is doubled.
+            To share data with it, tap <strong>Sync with the timer</strong> in the app (Manager → Data) while the phone
+            is on this timer&apos;s Wi-Fi. Records with the same name become one, so nothing is doubled.
+          </p>
+          <p>
+            Backup files work too, on any phone: save a backup in the app and restore it here, or save one here and
+            restore it in the app.
           </p>
         </CardContent>
       </Card>

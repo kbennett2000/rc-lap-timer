@@ -19,7 +19,7 @@ You don't need a Raspberry Pi to use RC Lap Timer. Open **https://kbennett2000.g
 - **iPhone or iPad:** open the link in Safari, tap **Share**, then **Add to Home Screen**. Do this *before* you record sessions: the Home Screen app keeps its own data, separate from Safari's.
 - **Android:** open the link in Chrome and tap **Install app** in Manager → Data (or use Chrome's menu: **Install app** or **Add to Home screen**).
 
-The phone app times laps with taps (UI mode) or with the camera (Motion Detection mode), and once it's installed it works without an internet connection. Everything you record is stored **on your phone only**. Save a backup from **Manager → Data** every so often: you can restore it if something goes wrong, or use it to move your data to another phone.
+The phone app times laps with taps (UI mode) or with the camera (Motion Detection mode), and once it's installed it works without an internet connection. Everything you record is stored **on your phone only**. Save a backup from **Manager → Data** every so often: you can restore it if something goes wrong, or use it to move your data to another phone. If you also have an RC Lap Timer box (the Raspberry Pi below), **Sync with the timer** in the same place shares everything both ways while the phone is on the timer's Wi-Fi.
 
 Race mode and infrared (IR) timing need the Raspberry Pi setup below.
 
@@ -299,6 +299,10 @@ GitHub Pages (Settings → Pages → Source must be set to "GitHub Actions"). It
 the phone's on-device store in `src/data/local`, and backups and merging in [src/domain/sync](src/domain/sync). The Pi
 merges backups with the same code ([src/lib/sync.ts](src/lib/sync.ts), behind `/api/sync`), and every delete on either
 leaves a tombstone, so a backup can't bring deleted records back.
+
+The phone app syncs with a timer by calling its `/api/sync` routes from GitHub Pages. The timer only answers sites
+listed in `SYNC_ALLOWED_ORIGINS` (in `/etc/rc-lap-timer.env`; the default is `https://kbennett2000.github.io`), so a
+fork that publishes its own phone app adds its Pages site there.
 
 The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi build treats `.pi.ts` files as pages and
 routes (see `next.config.js`), so the static build leaves them out.

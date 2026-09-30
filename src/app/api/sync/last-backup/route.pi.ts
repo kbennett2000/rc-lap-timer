@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { badRequest, isJsonRequest, notJson, readJson } from "@/lib/api-helpers";
+import { forbiddenOrigin, refusedOrigin } from "@/lib/cors";
 import { logger } from "@/lib/logger";
 import { lastBackupAt, markBackedUp } from "@/lib/sync";
 
@@ -18,6 +19,7 @@ export async function GET() {
 
 // { at }: an ISO date.
 export async function PUT(request: Request) {
+  if (refusedOrigin(request)) return forbiddenOrigin();
   if (!isJsonRequest(request)) return notJson();
   const data = await readJson(request);
   const at = typeof data?.at === "string" ? new Date(data.at) : null;

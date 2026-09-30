@@ -114,6 +114,18 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
     [store, latest],
   );
 
+  // A sync with the timer, or a delete on another phone, can take away what's selected: then it's chosen again,
+  // rather than left pointing at nothing.
+  useEffect(() => {
+    if (running) return;
+    const driver = data.drivers.find((d) => d.id === selection.driverId);
+    const gone: Partial<Selection> = {};
+    if (selection.driverId && !driver) Object.assign(gone, { driverId: "", carId: "" });
+    else if (selection.carId && !driver?.cars.some((c) => c.id === selection.carId)) gone.carId = "";
+    if (selection.locationId && !data.locations.some((l) => l.id === selection.locationId)) gone.locationId = "";
+    if (Object.keys(gone).length > 0) setSelection((current) => ({ ...current, ...gone }));
+  }, [data, running, selection.driverId, selection.carId, selection.locationId]);
+
   // Keep the screen on while timing: a run, the camera, or IR timing waiting for the first crossing.
   const keepAwake = running || (cameraOn && selection.timingMode === "motion") || selection.timingMode === "ir";
   const { release: releaseWakeLock } = wakeLock;

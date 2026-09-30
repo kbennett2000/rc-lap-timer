@@ -301,63 +301,11 @@ sudo chmod 644 /etc/ssl/certs/rc-lap-timer.crt
 ```
 
 ### Configure Web Server
+The web server's settings are in the app: [scripts/system/nginx/rc-lap-timer.conf](../scripts/system/nginx/rc-lap-timer.conf).
+They send plain HTTP to HTTPS, except the sync routes the phone app calls, and pass everything else to the app and
+the IR detector. Upgrades (`piUpgrade2.sh`) install them again, so make changes in that file rather than on the Pi.
 ```bash
-sudo nano /etc/nginx/sites-available/rc-lap-timer
-```
-
-Add to nginx configuration:
-```nginx
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name rc-lap-timer rc-lap-timer.local 192.168.4.1;
-
-    # Redirect all HTTP traffic to HTTPS
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
-    server_name rc-lap-timer rc-lap-timer.local 192.168.4.1;
-
-    ssl_certificate /etc/ssl/certs/rc-lap-timer.crt;
-    ssl_certificate_key /etc/ssl/private/rc-lap-timer.key;
-
-    # SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-
-    # The app doesn't use Next.js image optimization; blocking it closes a class of Next.js advisories.
-    location /_next/image {
-        return 404;
-    }
-
-    # Next.js application. No WebSocket upgrade headers are forwarded: the app doesn't use them,
-    # and forwarding them exposes Next.js 14 to advisories that have no 14.x fix.
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # IR Detector API
-    location /api/ir/ {
-        proxy_pass http://127.0.0.1:5000/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
+sudo cp ~/rc-lap-timer/scripts/system/nginx/rc-lap-timer.conf /etc/nginx/sites-available/rc-lap-timer
 ```
 
 Enable the site:

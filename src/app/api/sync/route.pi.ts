@@ -2,26 +2,36 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { parseBundle } from "@/domain/sync/bundle";
 import { badRequest, conflict, isJsonRequest, notJson, readJson } from "@/lib/api-helpers";
+import { forbiddenOrigin, preflight, refusedOrigin, withCors } from "@/lib/cors";
 import { logger } from "@/lib/logger";
 import { exportBundle, importBundle } from "@/lib/sync";
 
 export const dynamic = "force-dynamic";
 
 // The timer's data as a backup file (src/domain/sync/bundle.ts), and a backup merged into it: the Data tab's Save
-// and Restore, and sync with the phone app.
+// and Restore, and sync with the phone app, which calls from its own site (see src/lib/cors.ts).
 
-export async function GET() {
+export function OPTIONS(request: Request) {
+  return preflight(request);
+}
+
+export async function GET(request: Request) {
   try {
-    return NextResponse.json(await exportBundle());
+    return withCors(request, NextResponse.json(await exportBundle()));
   } catch (error) {
     logger.error("Error exporting data:", error);
-    return NextResponse.json({ error: "Couldn't read the timer's data" }, { status: 500 });
+    return withCors(request, NextResponse.json({ error: "Couldn't read the timer's data" }, { status: 500 }));
   }
 }
 
 // { bundle, dryRun? } -> { summary, dropped }: what changed (or would change), and how many records the timer left
 // out because it couldn't read them.
 export async function POST(request: Request) {
+  return withCors(request, await merge(request));
+}
+
+async function merge(request: Request): Promise<Response> {
+  if (refusedOrigin(request)) return forbiddenOrigin();
   if (!isJsonRequest(request)) return notJson();
   const data = await readJson(request);
   if (!data) return badRequest("Request body must be a JSON object");
