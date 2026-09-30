@@ -4,18 +4,18 @@ set -euo pipefail
 # Start the timer
 start_time=$(date +%s)
 
-# Shows progress on the Remote LED display, through the timer, when both are there. The timer takes LED commands as
-# JSON posts. Until the Pi has been upgraded, its older app ignores these (it took them as GETs), and that's fine.
+# Shows progress on the Remote LED display, when it's there. The timer's app is stopped while this runs (the Pi's
+# half of the upgrade stopped it), so this talks to the display directly, as the Pi's upgrade scripts do.
 led() {
-  curl -k -s -o /dev/null -X POST -H 'Content-Type: application/json' --data "$2" "https://rclaptimer.local/api/led/$1" 2>/dev/null || true
+  curl -s -o /dev/null --max-time 2 "http://192.168.4.99/$1" 2>/dev/null || true
 }
 led_says() {
-  led text "{\"title\":\" Johnny 5\",\"message\":\"$1\"}"
+  led "text?title=%20Johnny%205&message=${1// /%20}"
 }
 
-led rgb '{"r":0,"g":255,"b":0}'
+led "rgb?r=0&g=255&b=0"
 led_says "Number 5 alive"
-led pattern '{"name":"johnny5"}'
+led "pattern?name=johnny5"
 
 clear
 echo "*******************************************"
@@ -147,5 +147,5 @@ echo "*** Tell UpgrayeDD the server UpgrayyeDD is done!"
 echo "UpgrayeDD took $minutes minutes and $seconds seconds."
 echo "     -- Love Johnny5"
 led_says "Server UpgrayeDD     Complete"
-led pattern '{"name":"johnny5"}'
-led rgb '{"r":255,"g":0,"b":0}'
+led "pattern?name=johnny5"
+led "rgb?r=255&g=0&b=0"
