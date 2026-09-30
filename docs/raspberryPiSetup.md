@@ -11,37 +11,46 @@
 8. [HTTPS Configuration](#8-https-configuration)
 9. [Service Configuration](#9-service-configuration)
 10. [Testing](#10-testing)
-11. [Maintenance & Troubleshooting](#11-maintenance--troubleshooting)
+11. [Upgrades, Backups and Troubleshooting](#11-upgrades-backups-and-troubleshooting)
 
-## Notes: Total installation time is approximately 30-45 minutes and a working internet connection is required throughout the setup. Both ethernet and WiFi access point will work simultaneously with this configuration.
+## Notes
+- The quickest way to set up a timer is the SD image in the README. This guide builds one from scratch.
+- Setup takes 30-45 minutes and needs an internet connection throughout.
+- Connect the Pi to your network by **Ethernet** for the whole setup: step 4 turns its Wi-Fi into the timer's own
+  network, which ends any SSH session over Wi-Fi. Ethernet and the timer's Wi-Fi work side by side afterwards.
+- ⚠️ This guide hasn't been checked step by step on the current Raspberry Pi OS (bookworm), which manages Wi-Fi with
+  NetworkManager. Steps marked ⚠️ are the ones that may need adjusting there.
 
 ## 1. Hardware Requirements
 - Raspberry Pi Zero 2 W
 - SanDisk 32GB Ultra microSDHC UHS-I card
 - Micro USB power supply (5V, 2.5A recommended)
 - MicroSD card adapter (for initial flashing)
+- A USB Ethernet adapter and a micro-USB OTG adapter, for the setup (see Notes)
 
 ## 2. Initial SD Card Setup
 1. Download the latest Raspberry Pi OS Lite (64-bit) from [Raspberry Pi's website](https://www.raspberrypi.com/software/operating-systems/)
 2. Download and install the Raspberry Pi Imager
 3. Insert the microSD card into your computer
 4. Launch Raspberry Pi Imager
-5. Click "Choose OS" → "Raspberry Pi OS (other)" → "Raspberry Pi OS Lite (64-bit)"
-6. Click "Choose Storage" and select your microSD card
-7. Click the gear icon (⚙️) to access advanced options:
-   - Enable SSH
-   - Set username: pi
-   - Set a password
-   - Configure wireless LAN -- *NOTE: WiFi MUST be configured initially!*
-   - Set locale settings
-8. Click "Save" then "Write"
+5. **Choose Device**: Raspberry Pi Zero 2 W
+6. **Choose OS**: "Raspberry Pi OS (other)" → "Raspberry Pi OS Lite (64-bit)"
+7. **Choose Storage**: your microSD card
+8. Click **Next**, then **Edit Settings** when asked about OS customisation:
+   - Set the hostname: `rclaptimer` (the upgrade scripts and certificates expect this name)
+   - Set username `pi` and a password
+   - Set the wireless LAN country (the Wi-Fi stays switched off until it's set). You don't need to enter a Wi-Fi
+     network: the setup uses Ethernet.
+   - Set the locale settings
+   - On the Services tab, enable SSH
+9. Save, then **Yes** to apply the settings and write the card
 
 ## 3. First Boot Configuration
 1. Insert the microSD card into the Raspberry Pi Zero 2 W
 2. Connect power
 3. Wait 2-3 minutes for first boot
-4. Find the Pi's IP address from your router or use `ping raspberrypi.local`
-5. SSH into the Pi: `ssh pi@<IP_ADDRESS>`
+4. Find the Pi's IP address from your router or use `ping rclaptimer.local`
+5. SSH into the Pi: `ssh pi@rclaptimer.local` (or `ssh pi@<IP_ADDRESS>`)
 
 ## 4. Software Installation
 
@@ -57,7 +66,7 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 
 Install required packages
 ```bash
-sudo apt install -y nodejs git nginx hostapd dnsmasq mariadb-server certbot dhcpcd5
+sudo apt install -y nodejs nginx hostapd dnsmasq mariadb-server dhcpcd5
 ```
 
 Make backup of original dhcpcd configuration
@@ -70,11 +79,17 @@ Edit dhcpcd configuration
 sudo nano /etc/dhcpcd.conf
 ```
 
-Replace the contents with these lines
+Replace the contents with these lines. From here on the Pi's Wi-Fi no longer joins your network (see Notes).
 ```
     interface wlan0
     static ip_address=192.168.4.1/24
     nohook wpa_supplicant
+```
+
+⚠️ On bookworm, NetworkManager manages the Wi-Fi and gets in the way of the timer's network. If the `rc-lap-timer`
+network doesn't appear at the end, tell NetworkManager to leave the Wi-Fi alone, then reboot:
+```bash
+printf '[keyfile]\nunmanaged-devices=interface-name:wlan0\n' | sudo tee /etc/NetworkManager/conf.d/rc-lap-timer.conf
 ```
 
 Enable and start the service:
@@ -109,10 +124,15 @@ Run the database setup script
 sudo mysql < create_rc_timer_database.sql
 ```
 
+Give the database's root user a password. The backup, restore and upgrade scripts log in as root with it:
+```bash
+sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'password1';"
+```
+
 The tables are created later, when you run `npx prisma migrate deploy`.
 
 ## 6. Application Installation
-On your Ubuntu Desktop:
+On your computer (the build box; this guide uses Ubuntu), with Node 22 and [nvm](https://github.com/nvm-sh/nvm):
 Clone the repository
 ```bash
 git clone https://github.com/kbennett2000/rc-lap-timer.git
@@ -124,7 +144,7 @@ cd rc-lap-timer
 
 Install dependencies
 ```bash
-npm install
+nvm use && npm ci
 ```
 
 Create production build
@@ -132,18 +152,18 @@ Create production build
 npm run build
 ```
 
-After the build completes successfully, create a tar archive of the necessary files:
+After the build completes successfully, create a tar archive of the necessary files (as `serverUpgrade.sh` does:
+dotfiles such as `.env`, development certificates and the phone app's `out/` stay behind):
 ```bash
-tar -czf rc-lap-timer-build.tar.gz * .next package.json package-lock.json node_modules public
+tar -czf rc-lap-timer-build.tar.gz --exclude='*.pem' --exclude='rc-lap-timer-build.tar.gz' --exclude='out' * .next
 ```
 
-Transfer the archive to your Raspberry Pi Zero W:
-From your Ubuntu Desktop
+Transfer the archive to your Raspberry Pi Zero 2 W:
 ```bash
-scp rc-lap-timer-build.tar.gz pi@raspberrypi.local:~
+scp rc-lap-timer-build.tar.gz pi@rclaptimer.local:~
 ```
 
-On the Raspberry Pi Zero W:
+On the Raspberry Pi Zero 2 W:
 ```bash
 cd ~
 ```
@@ -165,15 +185,6 @@ cd rc-lap-timer
 Extract the build files
 ```bash
 tar xzf ../rc-lap-timer-build.tar.gz
-```
-
-Create web root directory and copy files
-```bash
-sudo mkdir -p /var/www/rc-lap-timer
-```
-
-```bash
-sudo cp -r .next/* /var/www/rc-lap-timer/
 ```
 
 ## 7. Network Configuration
@@ -204,9 +215,9 @@ Configure hostapd
 sudo nano /etc/hostapd/hostapd.conf
 ```
 
-Add to hostapd.conf:
+Add to hostapd.conf (with your own country code instead of US):
 ```
-country_code=US  # Replace with your country code
+country_code=US
 interface=wlan0
 driver=nl80211
 ssid=rc-lap-timer
@@ -235,7 +246,7 @@ sudo systemctl enable hostapd
 
 Configure hostapd to use this config
 ```bash
-sudo sed -i 's#^#DAEMON_CONF="/etc/hostapd/hostapd.conf"#' /etc/default/hostapd
+echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' | sudo tee /etc/default/hostapd
 ```
 
 Configure dnsmasq
@@ -329,7 +340,7 @@ Add to rc-lap-timer.service:
 ```ini
 [Unit]
 Description=RC Lap Timer Application
-After=network.target mysql.service
+After=network.target mariadb.service
 
 [Service]
 Type=simple
@@ -342,24 +353,14 @@ Restart=always
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
-# Optional settings such as ADMIN_PIN (see "System Configuration Feature Setup")
+# Optional settings such as ADMIN_PIN, SYNC_ALLOWED_ORIGINS and LED_DEVICE_IP (see "System Configuration Feature Setup")
 EnvironmentFile=-/etc/rc-lap-timer.env
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Fix the default hostapd configuration:
-```bash
-sudo nano /etc/default/hostapd
-```
-
-Replace everything in that file with just this line (make sure there are no extra spaces or characters):
-```
-DAEMON_CONF="/etc/hostapd/hostapd.conf"
-```
-
-Verify the permissions and ownership:
+Verify the hostapd configuration's permissions and ownership:
 ```bash
 sudo chown root:root /etc/hostapd/hostapd.conf
 ```
@@ -375,12 +376,12 @@ sudo systemctl restart hostapd
 
 Enable and start all services:
 ```bash
-sudo systemctl enable mysql hostapd dnsmasq rc-lap-timer nginx
+sudo systemctl enable mariadb hostapd dnsmasq rc-lap-timer nginx
 ```
 
 Start services in order with delays:
 ```bash
-sudo systemctl start mysql
+sudo systemctl start mariadb
 ```
 ```bash
 sleep 2
@@ -408,41 +409,6 @@ sudo systemctl start nginx
 ```
 
 
-Make sure nginx user (www-data) has access to the directory:
-```bash
-sudo chown -R www-data:www-data /var/www/rc-lap-timer
-```
-
-```bash
-sudo chmod -R 755 /var/www/rc-lap-timer
-```
-
-Log in to MySQL using sudo:
-```bash
-sudo mysql
-```
-
-In MySQL:
-```sql
--- Set root password
-ALTER USER 'root'@'localhost' IDENTIFIED BY 'password1';
-
-SET PASSWORD FOR 'root'@'localhost' = PASSWORD('password1');
-
--- Drop and recreate rc_timer_user
-DROP USER IF EXISTS 'rc_timer_user'@'localhost';
-
-CREATE USER 'rc_timer_user'@'localhost' IDENTIFIED BY 'password1';
-
--- Make sure database exists
-CREATE DATABASE IF NOT EXISTS rc_lap_timer;
-
--- Grant privileges
-GRANT ALL PRIVILEGES ON rc_lap_timer.* TO 'rc_timer_user'@'localhost';
-
-FLUSH PRIVILEGES;
-```
-
 Create a .env file in your rc-lap-timer directory:
 ```bash
 cd /home/pi/rc-lap-timer
@@ -457,12 +423,7 @@ Add this line:
 DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
 ```
 
-For the immediate command, you can export the variable:
-```bash
-export DATABASE_URL="mysql://rc_timer_user:password1@localhost:3306/rc_lap_timer"
-```
-
-Now try the Prisma commands:
+Create the database's tables:
 ```bash
 npx prisma generate
 ```
@@ -519,7 +480,7 @@ sudo install -o root -g root -m 755 ~/rc-lap-timer/scripts/system/rc-config-help
 The System Settings screen is disabled until you set an admin PIN. Create `/etc/rc-lap-timer.env`
 (it's outside the app folder, so upgrades don't overwrite it) and restart the app:
 ```bash
-echo 'ADMIN_PIN=choose-a-pin' | sudo tee /etc/rc-lap-timer.env > /dev/null
+echo 'ADMIN_PIN=ChooseAPin123' | sudo tee /etc/rc-lap-timer.env > /dev/null
 sudo chmod 600 /etc/rc-lap-timer.env
 sudo systemctl restart rc-lap-timer
 ```
@@ -527,24 +488,21 @@ Use 6-32 letters or numbers. Anyone who knows the PIN can rename the Pi, change 
 password and reboot it, so don't share it with guests on the Wi-Fi. Wrong PINs lock System Settings for a
 while (longer after each lockout); `sudo systemctl restart rc-lap-timer` clears the lock.
 
-Update sudoers:
+The same file takes two other optional settings, one per line:
+- `SYNC_ALLOWED_ORIGINS`: the sites whose phone app may sync with this timer, comma-separated. The default is
+  `https://kbennett2000.github.io`; a fork that publishes its own phone app adds its site here.
+- `LED_DEVICE_IP`: the Remote LED display's address, if it isn't the default `192.168.4.99`.
+
+Let the app run the helper. Edit the sudoers rule with `visudo`, which refuses a rule with a mistake in it (a broken
+sudoers file can lock you out of `sudo`):
 ```bash
-sudo nano /etc/sudoers.d/rc-lap-timer
+sudo visudo -f /etc/sudoers.d/rc-lap-timer
 ```
 
-Replace content with:
+Its content:
 ```
 # Allow pi user to execute configuration helper script without password
 pi ALL=(ALL) NOPASSWD: /usr/local/bin/rc-config-helper.sh *
-```
-
-Set proper permissions:
-```bash
-sudo chmod 440 /etc/sudoers.d/rc-lap-timer
-```
-
-```bash
-sudo chmod 755 /usr/local/bin/rc-config-helper.sh
 ```
 
 The helper also sets the Pi's clock, which needs no PIN. The Pi has no clock battery and no internet, so after being
@@ -572,6 +530,9 @@ cp -f ~/rc-lap-timer/scripts/system/piUpgrade1.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade2.sh ~/
 ```
 ```bash
+cp -f ~/rc-lap-timer/scripts/system/recreateDB.sh ~/
+```
+```bash
 cp -f ~/rc-lap-timer/scripts/system/restoreDB.sh ~/
 ```
 ```bash
@@ -593,7 +554,7 @@ Configure Python and components for IR Detection
 sudo apt install -y python3-pip
 ```
 ```bash
-sudo apt install -y python3-RPi.GPIO
+sudo apt install -y python3-rpi.gpio
 ```
 ```bash
 pip3 install flask --break-system-packages
@@ -645,4 +606,12 @@ sudo reboot now
 2. Look for the "rc-lap-timer" WiFi network on your mobile device
 3. Connect using password: "rclaptimer"
 4. Open a web browser and navigate to: `https://rc-lap-timer`
-5. Accept the self-signed certificate warning in your browser
+5. Accept the certificate warning in your browser, or install the timer's certificate so there's no warning (see
+   "Trusting the timer on a phone" in the README)
+
+## 11. Upgrades, Backups and Troubleshooting
+- **Upgrading:** follow [updateNotes.md](updateNotes.md). It backs up the database first.
+- **Backups:** every upgrade saves one in `~/db-backups`; `~/backupDB.sh` makes one at any time, and `~/restoreDB.sh`
+  restores the newest (or the one you name). The app's Manager → Data saves and restores backups too.
+- **The app's log:** `sudo journalctl -u rc-lap-timer -n 50` (and `-u ir-detector`, `-u nginx`).
+- **Restarting the app:** `sudo systemctl restart rc-lap-timer`. That also clears a System Settings PIN lockout.
