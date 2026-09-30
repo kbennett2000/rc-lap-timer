@@ -13,11 +13,13 @@ import {
   analysisSize,
   changedPercent,
   DEFAULT_SETTINGS,
+  frameTime,
   nextFrame,
   skipping,
   START,
   type DetectorSettings,
   type DetectorState,
+  type FrameTimeSource,
 } from "@/timing/motion";
 
 export interface MotionDetectorHandle {
@@ -42,6 +44,45 @@ const ROTATIONS = [0, 90, 180, 270];
 // second, for numbers nobody can read that fast.
 const STATS_INTERVAL_MS = 250;
 
+// With requestVideoFrameCallback, no frame for this long while the video plays counts as a stall (see startLoop).
+const STALL_MS = 1000;
+
+interface FrameLoop {
+  video?: HTMLVideoElement;
+  videoCallback?: number;
+  animationFrame?: number;
+  watchdog?: ReturnType<typeof setInterval>;
+  onVisible?: () => void;
+  // When the last frame arrived, and whether the loop gave up waiting for frames and runs on screen refreshes.
+  lastFrameAt: number;
+  screenPaced: boolean;
+}
+
+// The preview's numbers, gathered between refreshes.
+function freshStats() {
+  return {
+    since: performance.now(),
+    frames: 0,
+    work: 0,
+    change: null as number | null,
+    source: "checked" as FrameTimeSource,
+  };
+}
+
+interface PreviewStats {
+  change: number | null;
+  framesPerSecond: number;
+  msPerFrame: number;
+  source: FrameTimeSource;
+}
+
+const TIMED_BY: Record<FrameTimeSource, string> = {
+  camera: "timed by the camera",
+  display: "timed by the screen",
+  arrival: "timed as they arrive",
+  checked: "timed when checked",
+};
+
 // The whole camera frame, for saving: the detector's own canvas is scaled down.
 function fullFrame(video: HTMLVideoElement): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
@@ -61,15 +102,15 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previousFrameRef = useRef<ImageData | null>(null);
   const detectorRef = useRef<DetectorState>(START);
-  const statsRef = useRef({ shownAt: 0, change: null as number | null });
-  const animationFrameRef = useRef<number>();
+  const statsRef = useRef<ReturnType<typeof freshStats>>();
+  const loopRef = useRef<FrameLoop>({ lastFrameAt: 0, screenPaced: false });
   const activeRef = useRef(false);
 
   const [settings, setSettings] = useState<DetectorSettings>(DEFAULT_SETTINGS);
   const [isRunning, setIsRunning] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [error, setError] = useState("");
-  const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
+  const [previewStats, setPreviewStats] = useState<PreviewStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const savedSettings = useMotionSettings();
   const createSettings = useCreateMotionSettings();
@@ -113,15 +154,13 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     });
   };
 
-  const detectMotion = useCallback(() => {
-    if (!activeRef.current) return;
+  // Checks one camera frame, which happened at `at` (on now()'s clock).
+  const checkFrame = useCallback((at: number, source: FrameTimeSource) => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d", { willReadFrequently: true });
-    if (!video || !canvas || !ctx || video.videoWidth === 0) {
-      animationFrameRef.current = requestAnimationFrame(detectMotion);
-      return;
-    }
+    if (!video || !canvas || !ctx || video.videoWidth === 0) return;
+    const started = performance.now();
 
     // Compare a scaled-down copy of the frame (see analysisSize). Its size follows the video's, which changes when the
     // phone rotates.
@@ -133,7 +172,6 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const at = now();
     const { settings: current, isPreviewing: previewing } = latest.current;
 
     const previous = previousFrameRef.current;
@@ -143,12 +181,26 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
         : null;
     const { state, crossing } = nextFrame(detectorRef.current, change, at, current);
     detectorRef.current = state;
-    const stats = statsRef.current;
+    previousFrameRef.current = currentFrame;
+
+    const stats = (statsRef.current ??= freshStats());
+    stats.frames++;
+    stats.work += performance.now() - started;
     if (change !== null) stats.change = change;
-    if (previewing && performance.now() - stats.shownAt >= STATS_INTERVAL_MS) {
-      stats.shownAt = performance.now();
-      setLastChangePercent(stats.change);
+    stats.source = source;
+    const elapsed = performance.now() - stats.since;
+    if (elapsed >= STATS_INTERVAL_MS) {
+      if (previewing) {
+        setPreviewStats({
+          change: stats.change,
+          framesPerSecond: (stats.frames * 1000) / elapsed,
+          msPerFrame: stats.work / stats.frames,
+          source,
+        });
+      }
+      statsRef.current = { ...freshStats(), change: stats.change };
     }
+
     if (change !== null && crossing) {
       setDetectedMotionStats("Motion detected: " + change.toFixed(1));
       if (latest.current.saveMDImages) saveToGallery(fullFrame(video), change);
@@ -158,9 +210,34 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
         latest.current.onMotionDetected?.(change, at);
       }
     }
-    previousFrameRef.current = currentFrame;
-    animationFrameRef.current = requestAnimationFrame(detectMotion);
   }, []);
+
+  // The frame loop. Where the browser says when each camera frame arrives (requestVideoFrameCallback: Chrome, and
+  // Safari from 15.4), each frame is checked once and timed by when the camera captured it (frameTime). Elsewhere it
+  // runs on the screen's refreshes, which can check the same frame twice, timed when checked.
+  const scheduleFrame = useCallback(() => {
+    const loop = loopRef.current;
+    const video = videoRef.current;
+    if (!activeRef.current) return;
+    if (video && !loop.screenPaced && typeof video.requestVideoFrameCallback === "function") {
+      loop.video = video;
+      loop.videoCallback = video.requestVideoFrameCallback((arrival, metadata) => {
+        loop.videoCallback = undefined;
+        if (!activeRef.current) return;
+        loop.lastFrameAt = performance.now();
+        const { at, source } = frameTime(metadata, arrival, performance.timeOrigin, performance.now());
+        checkFrame(at, source);
+        scheduleFrame();
+      });
+    } else {
+      loop.animationFrame = requestAnimationFrame(() => {
+        loop.animationFrame = undefined;
+        if (!activeRef.current) return;
+        checkFrame(now(), "checked");
+        scheduleFrame();
+      });
+    }
+  }, [checkFrame]);
 
   const saveToGallery = async (canvas: HTMLCanvasElement, changePercent: number) => {
     try {
@@ -191,13 +268,42 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     }
   };
 
+  const startLoop = useCallback(() => {
+    activeRef.current = true;
+    detectorRef.current = START;
+    statsRef.current = freshStats();
+    const loop: FrameLoop = { lastFrameAt: performance.now(), screenPaced: false };
+    loopRef.current = loop;
+    // A page that was in the background had no frames: don't take that for a stall.
+    loop.onVisible = () => {
+      if (document.visibilityState === "visible") loop.lastFrameAt = performance.now();
+    };
+    document.addEventListener("visibilitychange", loop.onVisible);
+    // If the browser stops calling back with frames while the video plays (some do for a video that isn't on screen),
+    // crossings would be missed: switch to the screen's refreshes until the camera is turned off.
+    loop.watchdog = setInterval(() => {
+      const video = videoRef.current;
+      if (loop.screenPaced || !video || video.readyState < 2 || document.visibilityState !== "visible") return;
+      if (performance.now() - loop.lastFrameAt < STALL_MS) return;
+      logger.warn("Camera frames stopped arriving, so the detector checks on screen refreshes instead");
+      loop.screenPaced = true;
+      if (loop.videoCallback !== undefined) loop.video?.cancelVideoFrameCallback(loop.videoCallback);
+      loop.videoCallback = undefined;
+      scheduleFrame();
+    }, STALL_MS / 2);
+    scheduleFrame();
+  }, [scheduleFrame]);
+
   const stopLoop = () => {
     activeRef.current = false;
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    animationFrameRef.current = undefined;
+    const loop = loopRef.current;
+    if (loop.animationFrame !== undefined) cancelAnimationFrame(loop.animationFrame);
+    if (loop.videoCallback !== undefined) loop.video?.cancelVideoFrameCallback(loop.videoCallback);
+    clearInterval(loop.watchdog);
+    if (loop.onVisible) document.removeEventListener("visibilitychange", loop.onVisible);
+    loopRef.current = { lastFrameAt: 0, screenPaced: false };
     previousFrameRef.current = null;
     detectorRef.current = START;
-    statsRef.current = { shownAt: 0, change: null };
   };
 
   const handleStop = useCallback(() => {
@@ -221,18 +327,14 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
       }
       setIsRunning(true);
       latest.current.onCameraChange?.(true);
-      if (!activeRef.current) {
-        activeRef.current = true;
-        detectorRef.current = START;
-        detectMotion();
-      }
+      if (!activeRef.current) startLoop();
     } catch (err) {
       logger.error("Start error:", err);
       setError("Failed to start: " + (err instanceof Error ? err.message : String(err)));
       handleStop();
       throw err;
     }
-  }, [startCamera, detectMotion, handleStop]);
+  }, [startCamera, startLoop, handleStop]);
 
   useImperativeHandle(ref, () => ({ start: handleStart, stop: handleStop }), [handleStart, handleStop]);
 
@@ -287,8 +389,14 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
       <div className="space-y-4">
         <div className="pt-2 border-t">
           {isPreviewing && <div className="text-sm">Motion Detected Stats: {detectedMotionStats}</div>}
-          {isPreviewing && lastChangePercent !== null && (
-            <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>
+          {isPreviewing && previewStats?.change != null && (
+            <div className="text-sm">Last Change: {previewStats.change.toFixed(1)}%</div>
+          )}
+          {isPreviewing && previewStats && (
+            <div className="text-sm" data-testid="frame-stats">
+              Checking {previewStats.framesPerSecond.toFixed(0)} frames a second, {previewStats.msPerFrame.toFixed(1)}{" "}
+              ms each, {TIMED_BY[previewStats.source]}
+            </div>
           )}
         </div>
       </div>

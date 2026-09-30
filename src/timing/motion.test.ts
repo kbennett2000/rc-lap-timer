@@ -3,6 +3,7 @@ import {
   analysisSize,
   changedPercent,
   DEFAULT_SETTINGS,
+  frameTime,
   nextFrame,
   skipping,
   START,
@@ -117,5 +118,35 @@ describe("nextFrame", () => {
 
   it("counts frames and remembers the last crossing", () => {
     expect(crossings([null, null, 50, 0]).state).toEqual({ frames: 4, lastCrossingAt: 200 });
+  });
+});
+
+describe("frameTime", () => {
+  const ORIGIN = 1_700_000_000_000;
+  const NOW = 50_000; // performance.now() as the frame is checked
+
+  it("uses when the camera captured the frame", () => {
+    expect(frameTime({ captureTime: NOW - 40, expectedDisplayTime: NOW + 16 }, NOW - 5, ORIGIN, NOW)).toEqual({
+      at: ORIGIN + NOW - 40,
+      source: "camera",
+    });
+  });
+
+  it("falls back to when the screen shows it, then to when it arrived, then to now", () => {
+    expect(frameTime({ expectedDisplayTime: NOW + 16 }, NOW - 5, ORIGIN, NOW)).toEqual({
+      at: ORIGIN + NOW + 16,
+      source: "display",
+    });
+    expect(frameTime({}, NOW - 5, ORIGIN, NOW)).toEqual({ at: ORIGIN + NOW - 5, source: "arrival" });
+    expect(frameTime(undefined, undefined, ORIGIN, NOW)).toEqual({ at: ORIGIN + NOW, source: "checked" });
+  });
+
+  it("doesn't believe a time too far in the future or the past", () => {
+    expect(frameTime({ captureTime: NOW + 101 }, undefined, ORIGIN, NOW).source).toBe("checked");
+    expect(frameTime({ captureTime: NOW - 1001 }, undefined, ORIGIN, NOW).source).toBe("checked");
+    expect(frameTime({ captureTime: 0 }, NOW - 5, ORIGIN, NOW).source).toBe("arrival");
+    expect(frameTime({ captureTime: Number.NaN }, NOW - 5, ORIGIN, NOW).source).toBe("arrival");
+    expect(frameTime({ captureTime: NOW + 100 }, undefined, ORIGIN, NOW).source).toBe("camera");
+    expect(frameTime({ captureTime: NOW - 1000 }, undefined, ORIGIN, NOW).source).toBe("camera");
   });
 });

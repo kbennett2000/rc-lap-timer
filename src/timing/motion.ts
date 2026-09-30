@@ -78,3 +78,44 @@ export function nextFrame(
     (state.lastCrossingAt === null || at - state.lastCrossingAt > settings.cooldown);
   return { state: { frames, lastCrossingAt: crossing ? at : state.lastCrossingAt }, crossing };
 }
+
+// Where a frame's time came from, best first: when the camera captured it, when the screen is due to show it, when
+// the browser handed it to the detector, or (when none of those can be believed) when the detector got to it.
+export type FrameTimeSource = "camera" | "display" | "arrival" | "checked";
+
+// What requestVideoFrameCallback says about a frame (the parts used here).
+export interface FrameMetadata {
+  captureTime?: number;
+  expectedDisplayTime?: number;
+}
+
+// A frame time further from now than this isn't believed: a capture is in the past, a display just ahead.
+const AHEAD_MS = 100;
+const BEHIND_MS = 1000;
+
+// When a frame happened, on now()'s clock (src/timing/clock.ts): the browser gives times relative to
+// performance.timeOrigin, as performance.now() does. `arrival` is the time requestVideoFrameCallback passed with the
+// frame, and `performanceNow` is performance.now() as the frame is checked.
+export function frameTime(
+  metadata: FrameMetadata | undefined,
+  arrival: number | undefined,
+  timeOrigin: number,
+  performanceNow: number,
+): { at: number; source: FrameTimeSource } {
+  const candidates: [number | undefined, FrameTimeSource][] = [
+    [metadata?.captureTime, "camera"],
+    [metadata?.expectedDisplayTime, "display"],
+    [arrival, "arrival"],
+  ];
+  for (const [time, source] of candidates) {
+    if (
+      time !== undefined &&
+      Number.isFinite(time) &&
+      time <= performanceNow + AHEAD_MS &&
+      time >= performanceNow - BEHIND_MS
+    ) {
+      return { at: timeOrigin + time, source };
+    }
+  }
+  return { at: timeOrigin + performanceNow, source: "checked" };
+}
