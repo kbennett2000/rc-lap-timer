@@ -1,21 +1,18 @@
-// app/api/led/text/route.ts
-import { NextResponse } from "next/server";
-import { LED_DEVICE_IP } from "../config";
+// Shows a message on the Remote LED display: POST {title?, message}. The display shows "Message" when there's no title.
+import { badRequest, readJson, refuseWrite } from "@/lib/api-helpers";
+import { sendToLed } from "../config";
 
-export const dynamic = "force-dynamic";
+const MAX_LENGTH = 200;
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const title = searchParams.get("title");
-  const message = searchParams.get("message");
+const isText = (value: unknown): value is string => typeof value === "string" && value.length <= MAX_LENGTH;
 
-  try {
-    const response = await fetch(
-      `http://${LED_DEVICE_IP}/text?title=${encodeURIComponent(title || "")}&message=${encodeURIComponent(message || "")}`,
-    );
-    if (!response.ok) throw new Error("Failed to set LED message");
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to communicate with LED device" }, { status: 500 });
+export async function POST(request: Request) {
+  const refused = refuseWrite(request);
+  if (refused) return refused;
+
+  const { title, message } = (await readJson(request)) ?? {};
+  if (!isText(message) || (title !== undefined && !isText(title))) {
+    return badRequest(`message, and title if there is one, must be text of at most ${MAX_LENGTH} characters`);
   }
+  return sendToLed("text", title === undefined ? { message } : { title, message });
 }

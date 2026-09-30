@@ -83,14 +83,16 @@ describe("Pi integrations", () => {
       },
       { method: "DELETE", url: "/api/current-session", body: { sessionId: "live-1" } },
     ]);
-    // The timer refuses writes that aren't JSON.
-    expect(fetch.calls.filter((c) => c.method !== "GET").map((c) => c.type)).toEqual(Array(5).fill("application/json"));
+    // The timer refuses writes that aren't JSON: the live record's five, and the LED display's.
+    const writes = fetch.calls.filter((c) => c.method !== "GET");
+    expect(writes.length).toBeGreaterThan(5);
+    expect(writes.map((c) => c.type)).toEqual(Array(writes.length).fill("application/json"));
   });
 
   it("drives the LEDs and keeps going when a call fails", async () => {
     const calls: string[] = [];
-    const impl = vi.fn(async (url: string) => {
-      calls.push(url);
+    const impl = vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push(init?.body ? `${init.method} ${url} ${String(init.body)}` : url);
       return new Response("{}", { status: url.startsWith("/api/led/text") ? 500 : 200 });
     });
     const store = createTimingStore();
@@ -101,8 +103,9 @@ describe("Pi integrations", () => {
     await vi.advanceTimersByTimeAsync(5000);
 
     expect(calls).toContain("/api/ir/led/0/100/0");
-    expect(calls).toContain("/api/led/rgb?r=0&g=255&b=0");
+    expect(calls).toContain('POST /api/led/rgb {"r":0,"g":255,"b":0}');
     expect(calls).toContain("/api/ir/led/100/0/0"); // lap flash, after the failed message
-    expect(calls.filter((url) => url.startsWith("/api/led/text"))).toHaveLength(2);
+    expect(calls).toContain('POST /api/led/text {"title":"Session    Start","message":"Kris - Buggy at Backyard"}');
+    expect(calls.filter((call) => call.startsWith("POST /api/led/text"))).toHaveLength(2);
   });
 });
