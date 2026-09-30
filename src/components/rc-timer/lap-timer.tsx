@@ -1,41 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Car as CarIcon, UserCog, Flag } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { Driver, Location } from "@/types/rc-timer";
 import DriverCarManager from "@/components/driver-car-manager";
 import { RacingSession } from "../racing-session";
 import { RaceHistory } from "../racing-session/race-history";
 import PracticeControl from "./practice-control";
-import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function LapTimer() {
   const [activeTab, setActiveTab] = useState("practice");
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-
-  // Only the Manager tab uses these lists, so load them whenever it is opened.
-  const loadManagerData = async () => {
-    try {
-      const response = await fetch("/api/data");
-      if (!response.ok) throw new Error("Failed to load data");
-
-      const data = await response.json();
-      setDrivers(data.drivers);
-      setLocations(data.locations);
-    } catch (error) {
-      logger.error("Error loading data:", error);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === "drivercarmanager") {
-      loadManagerData();
-    }
-  }, [activeTab]);
 
   // ****************************************
   // return
@@ -72,12 +48,7 @@ export default function LapTimer() {
           <TabsContent value="drivercarmanager" className="space-y-4">
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
               <ErrorBoundary>
-                <DriverCarManager
-                  drivers={drivers}
-                  locations={locations}
-                  onDriversUpdate={setDrivers}
-                  onLocationsUpdate={setLocations}
-                />
+                <DriverCarManager />
               </ErrorBoundary>
             </motion.div>
           </TabsContent>

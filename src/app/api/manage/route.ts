@@ -7,14 +7,6 @@ import { logger } from "@/lib/logger";
 
 // Renames (and car updates) keep the names stored on saved sessions in step, so history shows the new name.
 
-async function listDriversAndSessions() {
-  const [updatedDrivers, updatedSessions] = await Promise.all([
-    prisma.driver.findMany({ include: { cars: true, sessions: { include: { laps: true, penalties: true } } } }),
-    prisma.session.findMany({ include: { laps: true, penalties: true } }),
-  ]);
-  return { updatedDrivers, updatedSessions };
-}
-
 async function renameDriver(id: string, newName: unknown) {
   const name = cleanName(newName, "driver");
   if (!name.ok) return badRequest(name.error);
@@ -27,7 +19,7 @@ async function renameDriver(id: string, newName: unknown) {
     prisma.driver.update({ where: { id }, data: { name: name.value } }),
     prisma.session.updateMany({ where: { driverId: id }, data: { driverName: name.value } }),
   ]);
-  return NextResponse.json({ success: true, ...(await listDriversAndSessions()) });
+  return NextResponse.json({ success: true });
 }
 
 // Renames a car and sets its default IR car number. Leaving defaultCarNumber out keeps the current number; null clears it.
@@ -45,8 +37,7 @@ async function updateCar(id: string, data: Record<string, unknown>) {
     prisma.car.update({ where: { id }, data: { name: name.value, ...numberChange } }),
     prisma.session.updateMany({ where: { carId: id }, data: { carName: name.value } }),
   ]);
-  const updatedDrivers = await prisma.driver.findMany({ include: { cars: true } });
-  return NextResponse.json({ success: true, car: updatedCar, updatedDrivers });
+  return NextResponse.json({ success: true, car: updatedCar });
 }
 
 async function renameLocation(id: string, newName: unknown) {
@@ -63,8 +54,7 @@ async function renameLocation(id: string, newName: unknown) {
     prisma.location.update({ where: { id }, data: { name: name.value } }),
     prisma.session.updateMany({ where: { locationId: id }, data: { locationName: name.value } }),
   ]);
-  const updatedLocations = await prisma.location.findMany();
-  return NextResponse.json({ success: true, ...(await listDriversAndSessions()), updatedLocations });
+  return NextResponse.json({ success: true });
 }
 
 async function renameMotionSetting(id: string, newName: unknown) {
@@ -141,12 +131,7 @@ async function deleteLocation(id: string) {
 
     await tx.location.delete({ where: { id } });
   });
-
-  const [updatedDrivers, updatedLocations] = await Promise.all([
-    prisma.driver.findMany({ include: { cars: true } }),
-    prisma.location.findMany(),
-  ]);
-  return NextResponse.json({ success: true, updatedDrivers, updatedLocations });
+  return NextResponse.json({ success: true });
 }
 
 // A driver's races are kept; only their own entries go.
@@ -162,10 +147,7 @@ async function deleteDriver(driverId: string) {
     await tx.car.deleteMany({ where: { driverId } });
     await tx.driver.delete({ where: { id: driverId } });
   });
-  return NextResponse.json({
-    success: true,
-    updatedDrivers: await prisma.driver.findMany({ include: { cars: true } }),
-  });
+  return NextResponse.json({ success: true });
 }
 
 async function deleteCar(carId: string) {
@@ -176,10 +158,7 @@ async function deleteCar(carId: string) {
     await tx.raceEntry.deleteMany({ where: { carId } });
     await tx.car.delete({ where: { id: carId } });
   });
-  return NextResponse.json({
-    success: true,
-    updatedDrivers: await prisma.driver.findMany({ include: { cars: true } }),
-  });
+  return NextResponse.json({ success: true });
 }
 
 async function deleteMotionSetting(id: string) {

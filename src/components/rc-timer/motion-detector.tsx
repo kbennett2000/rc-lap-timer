@@ -4,6 +4,9 @@ import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef,
 import { RotateCw } from "lucide-react";
 import { beep } from "@/audio";
 import { useCamera } from "@/camera/use-camera";
+import { errorMessage, useCreateMotionSettings, useMotionSettings } from "@/data/hooks";
+import { sameName } from "@/domain/rules";
+import type { MotionSettings } from "@/domain/types";
 import { logger } from "@/lib/logger";
 import { now } from "@/timing/clock";
 
@@ -28,11 +31,6 @@ interface DetectorSettings {
   threshold: number;
   cooldown: number;
   framesToSkip: number;
-}
-
-interface MotionSettings extends DetectorSettings {
-  id: string;
-  name: string;
 }
 
 const DEFAULT_SETTINGS: DetectorSettings = {
@@ -64,7 +62,8 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const [error, setError] = useState("");
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [savedSettings, setSavedSettings] = useState<MotionSettings[]>([]);
+  const savedSettings = useMotionSettings();
+  const createSettings = useCreateMotionSettings();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newSettingsName, setNewSettingsName] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -76,42 +75,23 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const latest = useRef({ settings, isPreviewing, saveMDImages, soundOn, onMotionDetected, onCameraChange });
   latest.current = { settings, isPreviewing, saveMDImages, soundOn, onMotionDetected, onCameraChange };
 
-  useEffect(() => {
-    loadSavedSettings();
-  }, []);
-
-  const loadSavedSettings = async () => {
-    try {
-      const response = await fetch("/api/motion-settings");
-      if (response.ok) setSavedSettings(await response.json());
-    } catch (err) {
-      logger.error("Error loading settings:", err);
-    }
-  };
-
   const handleSaveSettings = async () => {
-    if (!newSettingsName.trim()) {
+    const name = newSettingsName.trim();
+    if (!name) {
       setSaveError("Please enter a name");
       return;
     }
-    if (savedSettings.some((s) => s.name === newSettingsName)) {
+    if (savedSettings.some((s) => sameName(s.name, name))) {
       setSaveError("This name already exists");
       return;
     }
     try {
-      const response = await fetch("/api/motion-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newSettingsName, ...settings }),
-      });
-      if (response.ok) {
-        await loadSavedSettings();
-        setShowSaveDialog(false);
-        setNewSettingsName("");
-        setSaveError("");
-      }
+      await createSettings.mutateAsync({ name, ...settings });
+      setShowSaveDialog(false);
+      setNewSettingsName("");
+      setSaveError("");
     } catch (err) {
-      logger.error("Error saving settings:", err);
+      setSaveError(errorMessage(err));
     }
   };
 

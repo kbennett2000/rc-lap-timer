@@ -1,12 +1,13 @@
 // src/components/racing-session/race-config-form.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Car, Driver, Location } from "@/types/rc-timer";
+import { useAppData } from "@/data/hooks";
+import type { Car } from "@/domain/types";
 import { format } from "date-fns";
 
 interface RaceConfigFormProps {
@@ -42,8 +43,7 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({
   onVoiceAnnouncementsChange,
 }) => {
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const { drivers, locations } = useAppData();
   const [customLaps, setCustomLaps] = useState("");
   const [showCustomLaps, setShowCustomLaps] = useState(false);
   const [usedDrivers, setUsedDrivers] = useState<Set<string>>(new Set());
@@ -55,20 +55,6 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({
       carNumber: string;
     }>
   >([{ driverId: "", carId: "", carNumber: "" }]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/data");
-        const data = await response.json();
-        setLocations(data.locations);
-        setDrivers(data.drivers);
-      } catch (error) {
-        console.error("Error loading data:", error);
-      }
-    };
-    fetchData();
-  }, []);
 
   const getCarsForDriver = (driverId: string): Car[] => {
     const driver = drivers.find((d) => d.id === driverId);
