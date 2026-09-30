@@ -102,27 +102,7 @@ npx prisma generate
 
 echo "*** UpgrayeDD updating the database schema"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=database%20schema" 2>/dev/null || true
-# Databases from before Prisma migrations have no _prisma_migrations table. Bring them up to the baseline
-# schema with db push (which refuses to drop data), then record the baseline migration as already applied.
-if ! echo "SELECT 1 FROM _prisma_migrations LIMIT 1;" | npx prisma db execute --stdin --schema prisma/schema.prisma > /dev/null 2>&1; then
-  echo "*** UpgrayeDD moving the database to Prisma migrations (one time)"
-  if ! npx prisma db push --skip-generate; then
-    echo "*** UpgrayeDD couldn't update the database schema without risking data (see above), so the upgrade stopped here."
-    echo "    Roll back: rm -rf ~/rc-lap-timer && mv ~/rc-lap-timer.previous ~/rc-lap-timer && sudo systemctl start rc-lap-timer"
-    echo "    Your database backup is in ~/db-backups/"
-    exit 1
-  fi
-  npx prisma migrate resolve --applied 0_init
-fi
-npx prisma migrate deploy
-# Stop if the database still doesn't match the schema, before the new app starts against it.
-if ! npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code > /dev/null; then
-  echo "*** UpgrayeDD says the database doesn't match the new schema, so the upgrade stopped here."
-  echo "    See the differences: cd ~/rc-lap-timer && npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma"
-  echo "    Roll back: rm -rf ~/rc-lap-timer && mv ~/rc-lap-timer.previous ~/rc-lap-timer && sudo systemctl start rc-lap-timer"
-  echo "    Your database backup is in ~/db-backups/"
-  exit 1
-fi
+bash scripts/system/upgrade-db.sh
 
 echo "*** UpgrayeDD owning shit left and right"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=owning%20shit" 2>/dev/null || true
