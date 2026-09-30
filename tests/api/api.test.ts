@@ -191,8 +191,8 @@ describe("renaming a car", () => {
       id: secondCarId,
       newName: "Car Renamed",
     });
-    expect(status).toBe(500);
-    expect(json.error).toBe("This driver already has a car with this name");
+    expect(status).toBe(409);
+    expect(json.error).toBe('This driver already has a car named "Car Renamed"');
   });
 
   it("refuses an empty name", async () => {
@@ -228,6 +228,125 @@ describe("deletes when race results exist", () => {
     expect(await prisma.race.count({ where: { locationId } })).toBe(0);
     expect(await prisma.raceEntry.count({ where: { id: entryId } })).toBe(0);
     expect(await prisma.driver.count({ where: { id: thirdDriver } })).toBe(1);
+  });
+});
+
+describe("data rules", () => {
+  const motionSettings = { sensitivity: 50, threshold: 1.5, cooldown: 1000, framesToSkip: 10 };
+  let ruleDriver = "";
+  let ruleCar = "";
+  let ruleLocation = "";
+
+  it("trims new names and refuses empty or over-long ones", async () => {
+    const { json } = await call("POST", "/api/data", { type: "driver", name: `  Rules Driver ${RUN}  ` });
+    expect(json).toMatchObject({ success: true, created: true, driver: { name: `Rules Driver ${RUN}` } });
+    ruleDriver = json.driver.id;
+    expect((await call("POST", "/api/data", { type: "location", name: "   " })).status).toBe(400);
+    expect((await call("POST", "/api/data", { type: "driver", name: "x".repeat(192) })).status).toBe(400);
+  });
+
+  it("refuses a duplicate name with a 409, ignoring case", async () => {
+    const { status, json } = await call("POST", "/api/data", { type: "driver", name: `rules driver ${RUN}` });
+    expect(status).toBe(409);
+    expect(json.error).toBe(`A driver named "rules driver ${RUN}" already exists`);
+  });
+
+  it("refuses a car for a driver that doesn't exist", async () => {
+    expect((await call("POST", "/api/data", { type: "car", name: "Car X", driverId: "nope" })).status).toBe(400);
+  });
+
+  it("uses a client's id, and a repeated create returns the same record", async () => {
+    const id = randomUUID();
+    const body = { type: "location", name: `Rules Track ${RUN}`, id };
+    expect((await call("POST", "/api/data", body)).json).toMatchObject({ created: true, location: { id } });
+    expect((await call("POST", "/api/data", body)).json).toMatchObject({ created: false, location: { id } });
+    expect(await prisma.location.count({ where: { id } })).toBe(1);
+    ruleLocation = id;
+    expect((await call("POST", "/api/data", { type: "driver", name: `Id ${RUN}`, id: "123" })).status).toBe(400);
+  });
+
+  it("returns laps in lap order", async () => {
+    ruleCar = await createCar(ruleDriver, "Rules Car", 4);
+    const sessionId = randomUUID();
+    await call("POST", "/api/data", {
+      session: {
+        id: sessionId,
+        date: "2026-09-30T12:00:00.000Z",
+        driverId: ruleDriver,
+        carId: ruleCar,
+        locationId: ruleLocation,
+        laps: [3, 1, 2, 5, 4].map((lapNumber) => ({ lapNumber, lapTime: 10000 + lapNumber })),
+      },
+    });
+    const saved = (await call("GET", "/api/data")).json.sessions.find((s: Json) => s.id === sessionId);
+    expect(saved.laps.map((l: Json) => l.lapNumber)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("keeps a car's number unless the rename changes or clears it", async () => {
+    const rename = (body: Record<string, unknown>) =>
+      call("PATCH", "/api/manage", { type: "car", id: ruleCar, newName: "Rules Car", ...body });
+    expect((await rename({})).json.car.defaultCarNumber).toBe(4);
+    expect((await rename({ defaultCarNumber: 6 })).json.car.defaultCarNumber).toBe(6);
+    expect((await rename({ defaultCarNumber: null })).json.car.defaultCarNumber).toBeNull();
+  });
+
+  it("refuses a rename to a name in use with a 409", async () => {
+    const other = await createDriver(`Rules Other ${RUN}`);
+    const { status } = await call("PATCH", "/api/manage", {
+      type: "driver",
+      id: other,
+      newName: `Rules Driver ${RUN}`,
+    });
+    expect(status).toBe(409);
+    await call("DELETE", "/api/manage", { type: "driver", driverId: other });
+  });
+
+  it("answers 404 for records that don't exist", async () => {
+    const missing = randomUUID();
+    for (const type of ["driver", "car", "location", "motionSetting"]) {
+      expect((await call("PATCH", "/api/manage", { type, id: missing, newName: "Anything" })).status).toBe(404);
+    }
+    expect((await call("DELETE", "/api/manage", { type: "driver", driverId: missing })).status).toBe(404);
+    expect((await call("DELETE", "/api/manage", { type: "car", carId: missing })).status).toBe(404);
+    expect((await call("DELETE", "/api/manage", { type: "location", id: missing })).status).toBe(404);
+    expect((await call("DELETE", "/api/manage", { type: "motionSetting", id: missing })).status).toBe(404);
+    expect((await call("PATCH", "/api/data", { sessionId: missing, notes: "x" })).status).toBe(404);
+    expect((await call("PUT", "/api/motion-settings", { id: missing, name: "M", ...motionSettings })).status).toBe(404);
+  });
+
+  it("refuses an unknown type", async () => {
+    expect((await call("PATCH", "/api/manage", { type: "boat", id: ruleCar, newName: "B" })).status).toBe(400);
+    expect((await call("DELETE", "/api/manage", { type: "boat", id: ruleCar })).status).toBe(400);
+  });
+
+  it("sets and clears notes", async () => {
+    const sessionId = randomUUID();
+    await call(
+      "POST",
+      "/api/data",
+      sessionBody(sessionId, { driverId: ruleDriver, carId: ruleCar, locationId: ruleLocation }),
+    );
+    expect((await call("PATCH", "/api/data", { sessionId, notes: "Loose rear wheel" })).json.session.notes).toBe(
+      "Loose rear wheel",
+    );
+    expect((await call("PATCH", "/api/data", { sessionId, notes: "" })).json.session.notes).toBeNull();
+  });
+
+  it("applies the same rules to motion settings", async () => {
+    const id = randomUUID();
+    const body = { id, name: `  Rules Motion ${RUN} `, ...motionSettings };
+    expect((await call("POST", "/api/motion-settings", body)).json).toMatchObject({ id, name: `Rules Motion ${RUN}` });
+    expect((await call("POST", "/api/motion-settings", body)).json.id).toBe(id);
+    const duplicate = await call("POST", "/api/motion-settings", { ...body, id: randomUUID() });
+    expect(duplicate.status).toBe(409);
+    expect((await call("POST", "/api/motion-settings", { ...body, id: undefined, sensitivity: 1 })).status).toBe(400);
+    expect((await call("DELETE", `/api/motion-settings?id=${id}`)).json.success).toBe(true);
+    expect((await call("DELETE", `/api/motion-settings?id=${id}`)).status).toBe(404);
+  });
+
+  it("cleans up", async () => {
+    expect((await call("DELETE", "/api/manage", { type: "driver", driverId: ruleDriver })).json.success).toBe(true);
+    expect((await call("DELETE", "/api/manage", { type: "location", id: ruleLocation })).json.success).toBe(true);
   });
 });
 
