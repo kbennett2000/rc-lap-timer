@@ -9,11 +9,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "next lint --dir src --dir tests",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "test:api": "vitest run --config vitest.api.config.mts",
+    "test:e2e": "playwright test",
     "dev-https": "node server.js"
   },
   "dependencies": {
@@ -41,7 +43,8 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@types/node": "^20.11.20",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.4",
     "@types/react": "^18.2.58",
     "@types/react-dom": "^18.2.19",
     "autoprefixer": "^10.4.17",
