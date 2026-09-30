@@ -7,18 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { promptInstall, useDeviceInfo, useInstallOffer } from "@/pwa/install";
 import { keepDataOnDevice, readStorageStatus, type StorageStatus } from "@/pwa/storage";
 import { BackupCard } from "./backup-card";
+import { SyncCard } from "./sync-card";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} kB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// Manager's Data tab in the phone-only app: installing the app, backups, and how safely the phone keeps its data.
+// Manager's Data tab in the phone-only app: installing the app, backups, syncing with a timer, and how safely the phone
+// keeps its data.
 export function DataTab() {
   return (
     <div className="space-y-4">
       <InstallCard />
       <BackupCard />
+      <SyncCard />
       <StorageCard />
     </div>
   );

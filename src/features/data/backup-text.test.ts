@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_CONTENTS } from "@/domain/sync/bundle";
 import type { MergeSummary } from "@/domain/sync/merge";
-import { backupFileName, describeAge, describeContents, describeMerge } from "./backup-text";
+import { backupFileName, describeAge, describeContents, describeMerge, restoreWords } from "./backup-text";
 
 const summary = (changes: Partial<Record<keyof MergeSummary, Partial<MergeSummary["driver"]>>> = {}): MergeSummary => {
   const blank = { added: 0, updated: 0, merged: 0, deleted: 0, skipped: 0 };
@@ -35,8 +35,19 @@ describe("backup text", () => {
     ]);
     expect(describeMerge(summary({ session: { added: 1 } }), "did")).toEqual(["Added 1 session."]);
     expect(describeMerge(summary(), "will")).toEqual(["Nothing new: this app already has everything in the backup."]);
-    expect(describeMerge(summary(), "did", "the timer")).toEqual([
+    expect(describeMerge(summary(), "did", restoreWords("the timer"))).toEqual([
       "Nothing new: the timer already has everything in the backup.",
+    ]);
+  });
+
+  it("describes one side of a sync", () => {
+    const words = { here: "the timer", atHere: "on the timer", there: "on this phone" };
+    expect(describeMerge(summary({ driver: { updated: 1, merged: 2 } }), "did", words)).toEqual([
+      "Updated 1 driver changed more recently on this phone.",
+      "Combined 2 drivers with ones of the same name on the timer.",
+    ]);
+    expect(describeMerge(summary(), "did", words)).toEqual([
+      "Nothing new: the timer already has everything on this phone.",
     ]);
   });
 

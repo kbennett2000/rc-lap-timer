@@ -6,8 +6,7 @@
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-
-type Fixture = { driver: string; car: string; location: string };
+import { addFixtures, openDataTab, pickSelect, runSession, sessionCard } from "./phone-helpers";
 
 test.beforeEach(async ({ page }) => {
   page.on("dialog", (dialog) => dialog.accept());
@@ -21,38 +20,6 @@ function watchApiCalls(page: Page): string[] {
     if (path.includes("/api/")) calls.push(`${r.method()} ${path}`);
   });
   return calls;
-}
-
-async function pickSelect(page: Page, placeholder: string, optionText: string) {
-  await page.getByRole("combobox").filter({ hasText: placeholder }).first().click();
-  await page.getByRole("option", { name: optionText, exact: true }).click();
-}
-
-// Adds a driver, a car and a location from Practice's setup, which selects each one as it's made.
-async function addFixtures(page: Page, label: string): Promise<Fixture> {
-  const fixture = { driver: `${label} Driver`, car: `${label} Car`, location: `${label} Track` };
-  for (const [button, type, name] of [
-    ["New Driver", "driver", fixture.driver],
-    ["New Car", "car", fixture.car],
-    ["New Location", "location", fixture.location],
-  ]) {
-    await page.getByRole("button", { name: button }).click();
-    await page.getByPlaceholder(`Enter ${type} name`).fill(name);
-    await page.getByRole("button", { name: "Add", exact: true }).click();
-    await expect(page.getByRole("combobox").filter({ hasText: name })).toBeVisible();
-  }
-  return fixture;
-}
-
-// A saved session's card (Recent Sessions and Session Mgmt), as opposed to the setup summary's "Driver: …".
-const sessionCard = (page: Page, fixture: Fixture) => page.getByText(`Driver: ${fixture.driver} - Car: ${fixture.car}`);
-
-async function runSession(page: Page) {
-  await page.getByRole("button", { name: "Start Lap Timer" }).click();
-  await page.waitForTimeout(500);
-  await page.getByRole("button", { name: "Record Lap" }).click();
-  await page.waitForTimeout(300);
-  await page.getByRole("button", { name: "Stop Lap Timer" }).click();
 }
 
 test("keeps its data on the phone, hides the Pi's features, and never calls an API", async ({ page }) => {
@@ -220,11 +187,6 @@ test("opens with its data when the site can't be reached", async ({ page }) => {
   }
 });
 
-async function openDataTab(page: Page) {
-  await page.getByRole("tab", { name: "Manager" }).click();
-  await page.getByRole("tab", { name: "Data" }).click();
-}
-
 test("saves a backup, and restores it into an empty app", async ({ page, browser }, testInfo) => {
   await page.goto("./");
   const fixture = await addFixtures(page, "Backup");
@@ -232,13 +194,13 @@ test("saves a backup, and restores it into an empty app", async ({ page, browser
   await expect(sessionCard(page, fixture)).toBeVisible();
 
   await openDataTab(page);
-  await expect(page.getByText("Last backup: never.")).toBeVisible();
+  await expect(page.getByText("Last backup or sync: never.")).toBeVisible();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Save a backup" }).click();
   const file = testInfo.outputPath("backup.json");
   await (await download).saveAs(file);
   await expect(page.getByText("Backup saved to your downloads.")).toBeVisible();
-  await expect(page.getByText("Last backup: today.")).toBeVisible();
+  await expect(page.getByText("Last backup or sync: today.")).toBeVisible();
   const backup = JSON.parse(readFileSync(file, "utf8"));
   expect(backup).toMatchObject({ format: "rc-lap-timer", schemaVersion: 1 });
   expect(backup.data.sessions).toHaveLength(1);

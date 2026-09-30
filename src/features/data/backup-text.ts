@@ -34,8 +34,25 @@ export function describeContents(data: BundleData): string {
   return parts.length > 0 ? list(parts) : "nothing";
 }
 
-// What a restore changes (or would change), one sentence per kind of change. `here` names where the backup goes.
-export function describeMerge(summary: MergeSummary, tense: "will" | "did", here = "this app"): string[] {
+// Where merged data goes and where it came from, for the sentences below: a backup restored here, or one side of a
+// sync with the timer.
+export interface MergeWords {
+  // "Nothing new: this app already has everything in the backup."
+  here: string;
+  // "Combines 1 driver with ones of the same name here."
+  atHere: string;
+  // "Updates 1 driver changed more recently in the backup."
+  there: string;
+}
+
+export const restoreWords = (here: string): MergeWords => ({ here, atHere: "here", there: "in the backup" });
+
+// What a merge changes (or would change), one sentence per kind of change.
+export function describeMerge(
+  summary: MergeSummary,
+  tense: "will" | "did",
+  words: MergeWords = restoreWords("this app"),
+): string[] {
   const verbs = {
     added: tense === "will" ? "Adds" : "Added",
     updated: tense === "will" ? "Updates" : "Updated",
@@ -48,16 +65,16 @@ export function describeMerge(summary: MergeSummary, tense: "will" | "did", here
 
   const lines: string[] = [];
   if (phrase("added")) lines.push(`${verbs.added} ${phrase("added")}.`);
-  if (phrase("updated")) lines.push(`${verbs.updated} ${phrase("updated")} changed more recently in the backup.`);
-  if (phrase("merged")) lines.push(`${verbs.merged} ${phrase("merged")} with ones of the same name here.`);
-  if (phrase("deleted")) lines.push(`${verbs.deleted} ${phrase("deleted")} deleted in the backup.`);
+  if (phrase("updated")) lines.push(`${verbs.updated} ${phrase("updated")} changed more recently ${words.there}.`);
+  if (phrase("merged")) lines.push(`${verbs.merged} ${phrase("merged")} with ones of the same name ${words.atHere}.`);
+  if (phrase("deleted")) lines.push(`${verbs.deleted} ${phrase("deleted")} deleted ${words.there}.`);
   if (phrase("skipped")) {
     const one = ORDER.reduce((total, kind) => total + summary[kind].skipped, 0) === 1;
     lines.push(
-      `${verbs.skipped} ${phrase("skipped")} that ${one ? "doesn't" : "don't"} fit here (a driver, car or location is missing, or the name is taken).`,
+      `${verbs.skipped} ${phrase("skipped")} that ${one ? "doesn't" : "don't"} fit ${words.atHere} (a driver, car or location is missing, or the name is taken).`,
     );
   }
-  if (lines.length === 0) lines.push(`Nothing new: ${here} already has everything in the backup.`);
+  if (lines.length === 0) lines.push(`Nothing new: ${words.here} already has everything ${words.there}.`);
   return lines;
 }
 

@@ -14,11 +14,10 @@ import {
 } from "@/data/hooks";
 import { parseBundle, type Bundle } from "@/domain/sync/bundle";
 import type { MergeSummary } from "@/domain/sync/merge";
-import { UNSAVED_SESSIONS_KEY } from "@/features/practice/use-unsaved-sessions";
 import { CAPABILITIES } from "@/platform/capabilities";
 import { useDeviceInfo } from "@/pwa/install";
-import { ACTIVE_RUN_KEY } from "@/timing/active-run-store";
-import { backupFileName, describeAge, describeContents, describeMerge } from "./backup-text";
+import { changeBlocker } from "./blockers";
+import { backupFileName, describeAge, describeContents, describeMerge, restoreWords } from "./backup-text";
 
 interface PendingRestore {
   bundle: Bundle;
@@ -28,20 +27,7 @@ interface PendingRestore {
 
 // Where the backups come from and go: the phone-only app's own data, or the timer's.
 const HERE = CAPABILITIES.onDeviceData ? "this app" : "the timer";
-
-// Why a restore can't start now, if it can't: it changes the data a running or unsaved session refers to.
-function restoreBlocker(): string | null {
-  try {
-    if (localStorage.getItem(ACTIVE_RUN_KEY)) return "Finish the running session before restoring a backup.";
-    const unsaved = JSON.parse(localStorage.getItem(UNSAVED_SESSIONS_KEY) ?? "[]");
-    if (Array.isArray(unsaved) && unsaved.length > 0) {
-      return "Save or discard the unsaved sessions at the top of the Practice screen before restoring a backup.";
-    }
-  } catch {
-    // Storage blocked: nothing can be running either.
-  }
-  return null;
-}
+const WORDS = restoreWords(HERE);
 
 // Saving a backup file of everything the app holds, and restoring one (merged into what's here, never replacing it).
 export function BackupCard() {
@@ -108,7 +94,7 @@ export function BackupCard() {
   };
 
   const chooseFile = () => {
-    const blocker = restoreBlocker();
+    const blocker = changeBlocker("restoring a backup");
     if (blocker) {
       alert(blocker);
       return;
@@ -143,7 +129,7 @@ export function BackupCard() {
 
   const confirmRestore = async () => {
     if (!pending) return;
-    const blocker = restoreBlocker();
+    const blocker = changeBlocker("restoring a backup");
     if (blocker) {
       alert(blocker);
       return;
@@ -151,7 +137,7 @@ export function BackupCard() {
     try {
       const summary = await restore.mutateAsync(pending.bundle);
       setPending(null);
-      setMessage(["Backup restored.", ...describeMerge(summary, "did", HERE)]);
+      setMessage(["Backup restored.", ...describeMerge(summary, "did", WORDS)]);
     } catch (error) {
       setMessage([`The backup wasn't restored. ${errorMessage(error)}`]);
     }
@@ -178,7 +164,8 @@ export function BackupCard() {
           </p>
         )}
         <p>
-          Last backup:{" "}
+          {/* On the phone, a sync with the timer counts too: the timer then holds everything. */}
+          {CAPABILITIES.onDeviceData ? "Last backup or sync" : "Last backup"}:{" "}
           {lastBackup === undefined ? "…" : lastBackup === null ? "never" : describeAge(lastBackup, new Date())}.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -204,7 +191,7 @@ export function BackupCard() {
               This backup holds {describeContents(pending.bundle.data)}. Restoring it merges it into {HERE}:
             </p>
             <ul className="list-disc pl-5">
-              {describeMerge(pending.preview, "will", HERE).map((line) => (
+              {describeMerge(pending.preview, "will", WORDS).map((line) => (
                 <li key={line}>{line}</li>
               ))}
               {pending.dropped > 0 && (

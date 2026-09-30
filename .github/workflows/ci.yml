@@ -75,6 +75,9 @@ jobs:
       DATABASE_URL: mysql://root:ci@127.0.0.1:3306/rc_lap_timer
       ADMIN_PIN: test1234
       API_ADMIN_PIN: test1234
+      # The phone app's real site, and the copy the sync browser tests serve next to the Pi build.
+      SYNC_ALLOWED_ORIGINS: https://kbennett2000.github.io,http://127.0.0.1:3200
+      PAGES_BASE_PATH: /rc-lap-timer
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -87,6 +90,8 @@ jobs:
         run: npx prisma migrate deploy
       - name: Check the migrations produce the schema
         run: npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      # The phone app too, for the sync tests. First: both builds use .next, and the phone app's lands in out/.
+      - run: npm run build:pages
       - run: npm run build
       - name: Start the app
         run: |
@@ -100,7 +105,15 @@ jobs:
       - run: npm run test:api
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - name: Keep traces and the server log
+      - name: Sync the phone app with the Pi build
+        run: |
+          node scripts/serve-static.mjs --port 3200 > static.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -fs -o /dev/null http://127.0.0.1:3200/rc-lap-timer/ && break
+            sleep 1
+          done
+          E2E_TARGET=sync npm run test:e2e
+      - name: Keep traces and the server logs
         if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -108,6 +121,7 @@ jobs:
           path: |
             test-results/
             server.log
+            static.log
           retention-days: 7
 
   phone-app:
