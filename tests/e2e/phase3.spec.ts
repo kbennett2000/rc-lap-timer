@@ -3,12 +3,14 @@
 // as phase0.spec.ts.
 
 import { expect, request, test, type Page } from "@playwright/test";
+import { expectNoRefusedRequests } from "./pi-helpers";
 
 type Fixture = { id: string; name: string };
 
 const stamp = Date.now().toString(36);
 
 test.describe.configure({ mode: "serial" });
+expectNoRefusedRequests();
 
 async function api(method: "GET" | "POST", path: string, body?: unknown) {
   const context = await request.newContext({ baseURL: test.info().project.use.baseURL });
