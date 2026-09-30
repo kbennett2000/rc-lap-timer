@@ -1,3 +1,5 @@
+#!/bin/bash
+set -euo pipefail
 ./piUpgrade1.sh
 
 echo "UpgrayeDD is waiting for the server UpgrayeDD to complete. Press any key when it's done..."

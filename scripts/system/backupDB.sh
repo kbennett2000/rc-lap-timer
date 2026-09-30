@@ -1,3 +1,5 @@
+#!/bin/bash
+set -euo pipefail
 echo ".................................................................................................................."
 echo "................................................::................................................................"
 echo "...............................................-@#................................................................"
@@ -37,6 +39,11 @@ echo ".................................:--======-:...........=#*+:.::...........
 echo ".................................................................................................................."
 echo ".................................................................................................................."
 echo "*** Backing up database"
-cp backup_data.sql backup_data.$(date +%Y%m%d_%H%M%S).sql
-rm backup_data.sql
-mysql -u rc_timer_user -p rc_lap_timer -N -r < backupDB.sql > backup_data.sql
+mkdir -p ~/db-backups
+backup_file=~/db-backups/rc_lap_timer.$(date +%Y%m%d_%H%M%S).sql
+# Dump to a temporary name first, so a failed dump never looks like the newest backup.
+trap 'rm -f "$backup_file.partial"' EXIT
+# --complete-insert names every column, so the backup restores correctly even if column order changes.
+mysqldump -u root -p --single-transaction --complete-insert --databases rc_lap_timer > "$backup_file.partial"
+mv "$backup_file.partial" "$backup_file"
+echo "*** Saved $backup_file"
