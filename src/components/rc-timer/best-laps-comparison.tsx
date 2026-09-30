@@ -77,15 +77,24 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
       const date = parseISO(sessionDate);
 
       if (dateRange.from && !dateRange.to) {
-        return isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd");
+        return (
+          isAfter(date, startOfDay(dateRange.from)) ||
+          format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")
+        );
       }
 
       if (!dateRange.from && dateRange.to) {
-        return isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd");
+        return (
+          isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd")
+        );
       }
 
       if (dateRange.from && dateRange.to) {
-        return (isAfter(date, startOfDay(dateRange.from)) || format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) && (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"));
+        return (
+          (isAfter(date, startOfDay(dateRange.from)) ||
+            format(date, "yyyy-MM-dd") === format(dateRange.from, "yyyy-MM-dd")) &&
+          (isBefore(date, endOfDay(dateRange.to)) || format(date, "yyyy-MM-dd") === format(dateRange.to, "yyyy-MM-dd"))
+        );
       }
 
       return true;
@@ -209,14 +218,21 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
               <div className="flex flex-wrap gap-2 mb-4">
                 {DATE_PRESETS.map((preset) => {
                   const presetDates = getPresetDates(preset);
-                  const isActive = dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
+                  const isActive =
+                    dateRange.from &&
+                    dateRange.to &&
+                    format(dateRange.from, "yyyy-MM-dd") === format(presetDates.from, "yyyy-MM-dd") &&
+                    format(dateRange.to, "yyyy-MM-dd") === format(presetDates.to, "yyyy-MM-dd");
 
                   return (
                     <Button
                       key={preset.label}
                       variant="outline"
                       size="sm"
-                      className={cn("hover:bg-muted", isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "")}
+                      className={cn(
+                        "hover:bg-muted",
+                        isActive ? "bg-primary text-primary-foreground hover:bg-primary/90" : "",
+                      )}
                       onClick={() => {
                         const { from, to } = getPresetDates(preset);
                         setDateRange({ from, to });
@@ -232,29 +248,56 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.from && "text-muted-foreground",
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateRange.from ? format(dateRange.from, "PPP") : "Select start date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.from}
+                      onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))}
+                      autoFocus
+                    />
                   </PopoverContent>
                 </Popover>
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.to && "text-muted-foreground",
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateRange.to ? format(dateRange.to, "PPP") : "Select end date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} disabled={(date) => (dateRange.from ? isBefore(date, dateRange.from) : false)} initialFocus />
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.to}
+                      onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))}
+                      disabled={(date) => (dateRange.from ? isBefore(date, dateRange.from) : false)}
+                      autoFocus
+                    />
                   </PopoverContent>
                 </Popover>
 
-                <Button variant="outline" onClick={() => setDateRange({ from: undefined, to: undefined })} className="w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setDateRange({ from: undefined, to: undefined })}
+                  className="w-full sm:w-auto"
+                >
                   Reset Dates
                 </Button>
               </div>
@@ -262,16 +305,25 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
               {/* Date Range Summary */}
               {(dateRange.from || dateRange.to) && (
                 <div className="text-sm text-muted-foreground">
-                  {dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
+                  {dateRange.from &&
+                  dateRange.to &&
+                  format(dateRange.from, "yyyy-MM-dd") === format(startOfDay(new Date()), "yyyy-MM-dd") &&
+                  format(dateRange.to, "yyyy-MM-dd") === format(endOfDay(new Date()), "yyyy-MM-dd") ? (
                     "Showing sessions from today"
-                  ) : dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).to, "yyyy-MM-dd") ? (
+                  ) : dateRange.from &&
+                    dateRange.to &&
+                    format(dateRange.from, "yyyy-MM-dd") ===
+                      format(getPresetDates(DATE_PRESETS[1]).from, "yyyy-MM-dd") &&
+                    format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(DATE_PRESETS[1]).to, "yyyy-MM-dd") ? (
                     "Showing sessions from the last 7 days"
                   ) : (
                     <>
                       Showing sessions
                       {dateRange.from && !dateRange.to && ` from ${format(dateRange.from, "PPP")}`}
                       {!dateRange.from && dateRange.to && ` until ${format(dateRange.to, "PPP")}`}
-                      {dateRange.from && dateRange.to && ` from ${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}`}
+                      {dateRange.from &&
+                        dateRange.to &&
+                        ` from ${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}`}
                     </>
                   )}
                 </div>
@@ -285,7 +337,9 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
           <div className="text-center py-12">
             <Trophy className="mx-auto h-12 w-12 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">No Best Laps Yet</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Complete some timing sessions to see your best laps here.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Complete some timing sessions to see your best laps here.
+            </p>
           </div>
         ) : filteredBestLaps.length === 0 ? (
           // No laps match the filters
@@ -319,7 +373,15 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
                         className={`border-b ${index === 0 ? "bg-green-50" : ""} 
           hover:bg-muted/50 transition-colors`}
                       >
-                        <td className="p-2">{index === 0 ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Best</span> : `#${index + 1}`}</td>
+                        <td className="p-2">
+                          {index === 0 ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Best
+                            </span>
+                          ) : (
+                            `#${index + 1}`
+                          )}
+                        </td>
                         <td className="p-2">{lap.driverName}</td>
                         <td className="p-2">{lap.carName}</td>
                         <td className="p-2 text-right font-mono">
@@ -341,9 +403,20 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
               {/* Mobile Card View - Shown only on mobile */}
               <div className="md:hidden space-y-4">
                 {filteredBestLaps.map((lap, index) => (
-                  <div key={`${lap.sessionId}-${lap.lapNumber}`} className={`p-4 rounded-lg border ${index === 0 ? "bg-green-50 border-green-200" : ""}`}>
+                  <div
+                    key={`${lap.sessionId}-${lap.lapNumber}`}
+                    className={`p-4 rounded-lg border ${index === 0 ? "bg-green-50 border-green-200" : ""}`}
+                  >
                     <div className="flex justify-between items-start mb-2">
-                      <div>{index === 0 ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Best</span> : <span className="text-sm text-muted-foreground">#{index + 1}</span>}</div>
+                      <div>
+                        {index === 0 ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Best
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">#{index + 1}</span>
+                        )}
+                      </div>
                       <div className="text-right text-sm text-muted-foreground">{formatDateTime(lap.date)}</div>
                     </div>
 
@@ -373,16 +446,24 @@ export function BestLapsComparison({ sessions }: BestLapsComparisonProps) {
 
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Penalties</span>
-                        <span className="font-medium">{lap.penalties > 0 ? <span className="text-yellow-600">{lap.penalties}</span> : "-"}</span>
+                        <span className="font-medium">
+                          {lap.penalties > 0 ? <span className="text-yellow-600">{lap.penalties}</span> : "-"}
+                        </span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {filteredBestLaps.length === 0 && <div className="text-center py-8 text-muted-foreground">No lap times found for the selected filters.</div>}
+              {filteredBestLaps.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No lap times found for the selected filters.
+                </div>
+              )}
             </div>
-            {filteredBestLaps.length === 0 && <div className="text-center py-8 text-muted-foreground">No lap times found for the selected filters.</div>}
+            {filteredBestLaps.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">No lap times found for the selected filters.</div>
+            )}
           </>
         )}
       </CardContent>

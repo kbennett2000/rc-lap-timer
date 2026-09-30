@@ -14,7 +14,7 @@ prompt_user() {
 # Set a timeout for the user's input
 read_user_input() {
   choice=""
-  read -t 15 -p "Choose wisely: " choice || true
+  read -r -t 15 -p "Choose wisely: " choice || true
 }
 
 # Function to handle the user's choice
@@ -100,9 +100,29 @@ echo "*** UpgrayeDD npx prisma generate"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=prisma%20generate" 2>/dev/null || true
 npx prisma generate
 
-echo "*** UpgrayeDD npx prisma db push"
-curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=prisma%20db%20push" 2>/dev/null || true
-npx prisma db push
+echo "*** UpgrayeDD updating the database schema"
+curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=database%20schema" 2>/dev/null || true
+# Databases from before Prisma migrations have no _prisma_migrations table. Bring them up to the baseline
+# schema with db push (which refuses to drop data), then record the baseline migration as already applied.
+if ! echo "SELECT 1 FROM _prisma_migrations LIMIT 1;" | npx prisma db execute --stdin --schema prisma/schema.prisma > /dev/null 2>&1; then
+  echo "*** UpgrayeDD moving the database to Prisma migrations (one time)"
+  if ! npx prisma db push --skip-generate; then
+    echo "*** UpgrayeDD couldn't update the database schema without risking data (see above), so the upgrade stopped here."
+    echo "    Roll back: rm -rf ~/rc-lap-timer && mv ~/rc-lap-timer.previous ~/rc-lap-timer && sudo systemctl start rc-lap-timer"
+    echo "    Your database backup is in ~/db-backups/"
+    exit 1
+  fi
+  npx prisma migrate resolve --applied 0_init
+fi
+npx prisma migrate deploy
+# Stop if the database still doesn't match the schema, before the new app starts against it.
+if ! npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code > /dev/null; then
+  echo "*** UpgrayeDD says the database doesn't match the new schema, so the upgrade stopped here."
+  echo "    See the differences: cd ~/rc-lap-timer && npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma"
+  echo "    Roll back: rm -rf ~/rc-lap-timer && mv ~/rc-lap-timer.previous ~/rc-lap-timer && sudo systemctl start rc-lap-timer"
+  echo "    Your database backup is in ~/db-backups/"
+  exit 1
+fi
 
 echo "*** UpgrayeDD owning shit left and right"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=owning%20shit" 2>/dev/null || true
@@ -145,18 +165,12 @@ fi
 
 echo "*** UpgrayeDD copying system utilities"
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=copying%20utilities" 2>/dev/null || true
-#!/bin/bash
 # Copy database files to home directory
-cp -f ~/rc-lap-timer/scripts/database/backupDB.sql ~/
 cp -f ~/rc-lap-timer/scripts/database/clearDB.sql ~/
-cp -f ~/rc-lap-timer/scripts/database/createDB.sql ~/
-cp -f ~/rc-lap-timer/scripts/database/dbCycle.sql ~/
-cp -f ~/rc-lap-timer/scripts/database/dropDB.sql ~/
 
 # Copy system files to home directory
 cp -f ~/rc-lap-timer/scripts/system/backupDB.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/clearDB.sh ~/
-cp -f ~/rc-lap-timer/scripts/system/dbCycle.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade1.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/piUpgrade2.sh ~/
 cp -f ~/rc-lap-timer/scripts/system/recreateDB.sh ~/
@@ -168,15 +182,14 @@ sudo cp -f ~/rc-lap-timer/misc/etc/motd /etc/motd
 
 # Make the scripts executable
 cd ~
-sudo chmod +x *.sh
+sudo chmod +x ./*.sh
 
 # Verify all files were copied successfully
 echo "Verifying files..."
 curl -s -o /dev/null "http://192.168.4.99/text?title=UpgrayeDD&message=verifying%20files" 2>/dev/null || true
 files_to_check=(
-    "$HOME/backupDB.sql"
+    "$HOME/backupDB.sh"
     "$HOME/clearDB.sql"
-    "$HOME/dbCycle.sql"
     "$HOME/piUpgrade1.sh"
     "$HOME/piUpgrade2.sh"
     "$HOME/restoreDB.sh"

@@ -267,6 +267,25 @@ Contributions are welcome! Please follow these steps:
 - Push to the branch: git push origin feature/feature-name
 - Submit a pull request
 
+## Running it locally
+You need Node 22 (`nvm use` reads `.nvmrc`) and a MySQL or MariaDB database.
+```bash
+npm ci
+cp .env.example .env      # then set DATABASE_URL
+npx prisma migrate deploy
+npm run dev
+```
+
+## Checks
+CI runs all of these on every pull request:
+- `npm run format:check` (fix with `npm run format`), `npm run lint`, `npm run typecheck`
+- `npm test`: unit tests
+- `npm run test:api` and `npm run test:e2e`: API and browser tests against a running server and database.
+  [tests/api/api.test.ts](tests/api/api.test.ts) shows how to start both.
+
+To change the database schema, edit `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>`, and
+commit the new folder under `prisma/migrations/`. `migrate dev` needs a database user that can create databases.
+
 
 # License
 RC Lap Timer is released under the [MIT License](LICENSE).

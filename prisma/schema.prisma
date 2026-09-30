@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // The app is built on a PC and runs on a Raspberry Pi (64-bit Raspberry Pi OS).
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
 }
 
 datasource db {

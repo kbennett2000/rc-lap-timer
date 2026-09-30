@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { Save, RotateCw } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +39,9 @@ const PiConfiguration = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [status, setStatus] = useState({ isLoading: false, error: "", success: "" });
 
-  const hasChanges = Boolean(settings.deviceName || settings.userPassword || settings.wifiName || settings.wifiPassword);
+  const hasChanges = Boolean(
+    settings.deviceName || settings.userPassword || settings.wifiName || settings.wifiPassword,
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -61,7 +72,8 @@ const PiConfiguration = () => {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const applied = Array.isArray(data.applied) && data.applied.length > 0 ? ` Already applied: ${data.applied.join(", ")}.` : "";
+        const applied =
+          Array.isArray(data.applied) && data.applied.length > 0 ? ` Already applied: ${data.applied.join(", ")}.` : "";
         throw new Error((data.error || `Request failed (${response.status}).`) + applied);
       }
 
@@ -69,7 +81,8 @@ const PiConfiguration = () => {
       setStatus({
         isLoading: false,
         error: "",
-        success: "Settings updated. The Pi is rebooting; reconnect to its Wi-Fi if needed. This page reloads in about a minute.",
+        success:
+          "Settings updated. The Pi is rebooting; reconnect to its Wi-Fi if needed. This page reloads in about a minute.",
       });
       setTimeout(() => window.location.reload(), RELOAD_AFTER_REBOOT_MS);
     } catch (err) {
@@ -102,19 +115,41 @@ const PiConfiguration = () => {
           {/* Admin PIN */}
           <div className="space-y-2">
             <Label htmlFor="adminPin">Admin PIN</Label>
-            <Input id="adminPin" name="adminPin" type="password" autoComplete="off" placeholder="Set as ADMIN_PIN on the Pi" value={settings.adminPin} onChange={handleChange} />
+            <Input
+              id="adminPin"
+              name="adminPin"
+              type="password"
+              autoComplete="off"
+              placeholder="Set as ADMIN_PIN on the Pi"
+              value={settings.adminPin}
+              onChange={handleChange}
+            />
           </div>
 
           {/* Device Name */}
           <div className="space-y-2">
             <Label htmlFor="deviceName">Device Name</Label>
-            <Input id="deviceName" name="deviceName" placeholder="rclaptimer" value={settings.deviceName} onChange={handleChange} />
+            <Input
+              id="deviceName"
+              name="deviceName"
+              placeholder="rclaptimer"
+              value={settings.deviceName}
+              onChange={handleChange}
+            />
           </div>
 
           {/* User Password */}
           <div className="space-y-2">
             <Label htmlFor="userPassword">Pi User Password</Label>
-            <Input id="userPassword" name="userPassword" type="password" autoComplete="new-password" placeholder="Enter new password" value={settings.userPassword} onChange={handleChange} />
+            <Input
+              id="userPassword"
+              name="userPassword"
+              type="password"
+              autoComplete="new-password"
+              placeholder="Enter new password"
+              value={settings.userPassword}
+              onChange={handleChange}
+            />
           </div>
 
           {/* TODO: Uncomment to enable changes to WiFi Network name and password - this will break the Remote LED device - see issue #12 */}
@@ -157,7 +192,9 @@ const PiConfiguration = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Save and reboot?</AlertDialogTitle>
-            <AlertDialogDescription>The Pi reboots right after saving. Any session running on a connected device will be interrupted.</AlertDialogDescription>
+            <AlertDialogDescription>
+              The Pi reboots right after saving. Any session running on a connected device will be interrupted.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -1,6 +1,6 @@
 // src/app/api/session-requests/next/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { SessionRequestStatus } from "@prisma/client";
 

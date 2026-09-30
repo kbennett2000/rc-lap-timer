@@ -6,10 +6,17 @@ import { RacePositionBoard } from "./race-position-board";
 import { RaceControls } from "./race-controls";
 import { RaceCountdown } from "./race-countdown";
 import IRDetector from "@/components/ir-detector";
-import { RaceStatus, RaceEntryStatus } from "@/types/race-timer";
+import { RaceConfiguration, RaceStatus } from "@/types/race-timer";
 import { logger } from "@/lib/logger";
-import axios from "axios";
 import { LEDDeviceService } from "@/services/ledDevice";
+import { createAudioContext, fetchOk } from "@/lib/utils";
+
+interface BeepOptions {
+  frequency?: number;
+  duration?: number;
+  volume?: number;
+  type?: OscillatorType;
+}
 
 interface RacingSessionProps {
   onRaceComplete?: () => void;
@@ -144,7 +151,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
         logger.error("Error recording lap:", error);
       }
     },
-    [raceId, raceStatus, raceStartTime, lastDetectionTimes]
+    [raceId, raceStatus, raceStartTime, lastDetectionTimes],
   );
 
   // Handle race completion
@@ -213,7 +220,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       setRaceStatus("RACING");
 
       // Clear previous race data and ensure we're creating new Maps
-      const emptyMap = new Map();
       setLapCounts(new Map());
       setLastLapTimes(new Map());
       setBestLapTimes(new Map());
@@ -257,18 +263,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       }
 
       setIsPaused(!isPaused); // Using our state
-
-      if (isPaused) {
-        // Resume timer
-        timerRef.current = setInterval(() => {
-          setElapsedTime((prev) => prev + 1000);
-        }, 1000);
-      } else {
-        // Pause timer
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-        }
-      }
     } catch (error) {
       logger.error(`Error ${isPaused ? "resuming" : "pausing"} race:`, error);
     }
@@ -300,7 +294,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       if (!lastDetectionTimes.has(carNumber)) return undefined;
 
       // Find the leader
-      const leader = Array.from(carPositions.entries()).find(([_, pos]) => pos === 1)?.[0];
+      const leader = Array.from(carPositions.entries()).find(([, pos]) => pos === 1)?.[0];
 
       if (!leader || leader === carNumber) return 0;
 
@@ -310,10 +304,10 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       return carTime - leaderTime;
     },
-    [lastDetectionTimes, carPositions]
+    [lastDetectionTimes, carPositions],
   );
 
-  const onRaceConfigured = async (config: any) => {
+  const onRaceConfigured = async (config: RaceConfiguration) => {
     try {
       // 1. Create race
       const response = await fetch("/api/races", {
@@ -334,7 +328,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
       // 2. Set race ID in state
       setRaceId(race.id);
-      setAllowedCarNumbers(race.entries.map((e: any) => e.carNumber.toString()));
+      setAllowedCarNumbers(race.entries.map((e: { carNumber: number }) => e.carNumber.toString()));
 
       // 3. Start countdown
       const initiateCountdown = async () => {
@@ -398,14 +392,19 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     lastLapTime: lastLapTimes.get(carNum),
     bestLapTime: bestLapTimes.get(carNum),
     gap: calculateGapToLeader(carNum),
-    status: "RACING",
+    status: "RACING" as const,
   }));
 
-  const playBeep = ({ frequency = 440, duration = 200, volume = 0.5, type = "square" }: BeepOptions = {}): Promise<void> => {
+  const playBeep = ({
+    frequency = 440,
+    duration = 200,
+    volume = 0.5,
+    type = "square",
+  }: BeepOptions = {}): Promise<void> => {
     if (playBeeps) {
       return new Promise((resolve) => {
         // Create audio context
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioContext = createAudioContext();
 
         // Create oscillator and gain node
         const oscillator = audioContext.createOscillator();
@@ -433,6 +432,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
         }, duration);
       });
     }
+    return Promise.resolve();
   };
 
   const playRaceFinish = async (): Promise<void> => {
@@ -498,7 +498,9 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
       const setVoice = () => {
         const voices = window.speechSynthesis.getVoices();
         // First try to find Google US English voice
-        let preferredVoice = voices.find((voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"));
+        let preferredVoice = voices.find(
+          (voice) => voice.name.includes("Google US English") || voice.name.includes("en-US"),
+        );
 
         // If no Google US voice, try any English voice
         if (!preferredVoice) {
@@ -570,7 +572,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     const validBlue = Math.max(0, Math.min(100, blue));
 
     try {
-      const response = await axios.get(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
+      await fetchOk(`/api/ir/led/${validRed}/${validGreen}/${validBlue}`);
 
       const scaledRed = 2.55 * validRed;
       const scaledGreen = 2.55 * validGreen;
@@ -582,21 +584,9 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
     }
   };
 
-  const setLedRed = async (level: number): Promise<void> => {
-    try {
-      const response = await axios.get(`/api/ir/led/${level}/0/0`);
-
-      const scaledRed = 2.55 * level;
-      ledDevice.setColor(scaledRed, 0, 0);
-    } catch (error) {
-      console.error("Error setting LED RED:", error);
-      throw error;
-    }
-  };
-
   const setLedGreen = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/${level}/0`);
+      await fetchOk(`/api/ir/led/0/${level}/0`);
 
       const scaledGreen = 2.55 * level;
       ledDevice.setColor(0, scaledGreen, 0);
@@ -608,7 +598,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const setLedBlue = async (level: number): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/0/${level}`);
+      await fetchOk(`/api/ir/led/0/0/${level}`);
 
       const scaledBlue = 2.55 * level;
       ledDevice.setColor(0, 0, scaledBlue);
@@ -620,7 +610,7 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const setLedOff = async (): Promise<void> => {
     try {
-      const response = await axios.get(`/api/ir/led/0/0/0`);
+      await fetchOk(`/api/ir/led/0/0/0`);
 
       ledDevice.setColor(0, 0, 0);
     } catch (error) {
@@ -631,11 +621,6 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
 
   const flashLap = async (): Promise<void> => {
     await flashPresets.redFlash(1000);
-    setLedGreen(100);
-  };
-
-  const flashPenalty = async (): Promise<void> => {
-    await flashPresets.yellowFlash(1000);
     setLedGreen(100);
   };
 
@@ -670,14 +655,26 @@ export const RacingSession: React.FC<RacingSessionProps> = ({ onRaceComplete }) 
             />
           )}
 
-          {raceStatus === "COUNTDOWN" && <RaceCountdown timeLeft={countdownTime || 0} playBeeps={playBeeps} voiceAnnouncements={voiceAnnouncements} />}
+          {raceStatus === "COUNTDOWN" && (
+            <RaceCountdown
+              timeLeft={countdownTime || 0}
+              playBeeps={playBeeps}
+              voiceAnnouncements={voiceAnnouncements}
+            />
+          )}
 
           {(raceStatus === "RACING" || raceStatus === "PAUSED") && (
             <>
               <RacePositionBoard positions={boardPositions} />
 
               <div className="mt-4">
-                <RaceControls isPaused={isPaused} onPauseResume={togglePause} onStop={stopRace} onDNF={markDNF} availableCarNumbers={allowedCarNumbers.map((num) => parseInt(num))} />
+                <RaceControls
+                  isPaused={isPaused}
+                  onPauseResume={togglePause}
+                  onStop={stopRace}
+                  onDNF={markDNF}
+                  availableCarNumbers={allowedCarNumbers.map((num) => parseInt(num))}
+                />
               </div>
             </>
           )}

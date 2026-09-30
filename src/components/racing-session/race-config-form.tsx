@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Car, Driver, Location } from "@prisma/client";
+import { Car, Driver, Location } from "@/types/rc-timer";
 import { format } from "date-fns";
 
 interface RaceConfigFormProps {
@@ -31,7 +31,16 @@ interface RaceConfigFormProps {
   onVoiceAnnouncementsChange: (enable: boolean) => void;
 }
 
-export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, startDelay, onStartDelayChange, totalLaps, onTotalLapsChange, playBeeps, onPlayBeepsChange, voiceAnnouncements, onVoiceAnnouncementsChange }) => {
+export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({
+  onConfigured,
+  startDelay,
+  onStartDelayChange,
+  onTotalLapsChange,
+  playBeeps,
+  onPlayBeepsChange,
+  voiceAnnouncements,
+  onVoiceAnnouncementsChange,
+}) => {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [locations, setLocations] = useState<Location[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -129,7 +138,9 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
   const isValid = () => {
     if (!selectedLocation) return false;
 
-    const validAssignments = carAssignments.filter((assignment) => assignment.driverId && assignment.carId && assignment.carNumber);
+    const validAssignments = carAssignments.filter(
+      (assignment) => assignment.driverId && assignment.carId && assignment.carNumber,
+    );
 
     if (validAssignments.length === 0) return false;
 
@@ -192,7 +203,10 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
 
         {carAssignments.map((assignment, index) => (
           <div key={index} className="flex flex-col sm:grid sm:grid-cols-4 gap-4">
-            <Select value={assignment.driverId} onValueChange={(value) => updateCarAssignment(index, "driverId", value)} className="w-full">
+            <Select
+              value={assignment.driverId}
+              onValueChange={(value) => updateCarAssignment(index, "driverId", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select driver" />
               </SelectTrigger>
@@ -207,7 +221,11 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
               </SelectContent>
             </Select>
 
-            <Select value={assignment.carId} onValueChange={(value) => updateCarAssignment(index, "carId", value)} disabled={!assignment.driverId} className="w-full">
+            <Select
+              value={assignment.carId}
+              onValueChange={(value) => updateCarAssignment(index, "carId", value)}
+              disabled={!assignment.driverId}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select car" />
               </SelectTrigger>
@@ -236,7 +254,13 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
                 className={`flex-1 ${assignment.carNumber && carAssignments.filter((a) => a.carNumber === assignment.carNumber).length > 1 ? "border-red-500" : ""}`}
               />
 
-              <Button onClick={() => removeCarAssignment(index)} variant="ghost" size="icon" className="text-red-500" disabled={carAssignments.length === 1}>
+              <Button
+                onClick={() => removeCarAssignment(index)}
+                variant="ghost"
+                size="icon"
+                className="text-red-500"
+                disabled={carAssignments.length === 1}
+              >
                 Remove
               </Button>
             </div>
@@ -250,7 +274,14 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>Start Delay (seconds)</Label>
-            <Input type="number" min="3" max="30" value={startDelay} onChange={(e) => onStartDelayChange(parseInt(e.target.value))} className="w-full" />
+            <Input
+              type="number"
+              min="3"
+              max="30"
+              value={startDelay}
+              onChange={(e) => onStartDelayChange(parseInt(e.target.value))}
+              className="w-full"
+            />
           </div>
 
           <div>
@@ -302,7 +333,11 @@ export const RaceConfigForm: React.FC<RaceConfigFormProps> = ({ onConfigured, st
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <Label htmlFor="voice-announcements">Voice Announcements</Label>
-            <Switch id="voice-announcements" checked={voiceAnnouncements} onCheckedChange={onVoiceAnnouncementsChange} />
+            <Switch
+              id="voice-announcements"
+              checked={voiceAnnouncements}
+              onCheckedChange={onVoiceAnnouncementsChange}
+            />
           </div>
         </div>
       </div>

@@ -1,33 +1,43 @@
-import { Driver as PrismaDriver, Car as PrismaCar, Session as PrismaSession, Lap, Penalty } from "@prisma/client";
+// Shapes of the data the UI gets from /api/data. These are JSON, so dates arrive as ISO strings.
 
-// Extend Prisma types with any additional properties we need
-export interface Driver extends PrismaDriver {
+export interface Driver {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
   cars: Car[];
 }
 
-export interface Car extends PrismaCar {
+export interface Car {
+  id: string;
+  name: string;
+  driverId: string;
+  defaultCarNumber?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
   driver?: Driver;
-  defaultCarNumber?: number;
 }
 
-export interface Session extends Omit<PrismaSession, "date"> {
+export interface Session {
   id: string;
-  driver: Driver;
-  car: Car;
-  laps: Lap[];
-  penalties: Penalty[];
   date: string;
-  stats: LapStats;
-
   driverId: string;
   driverName: string;
   carId: string;
   carName: string;
-  totalLaps: "unlimited" | number;
-  totalPenalties: number;
-  notes?: string;
   locationId: string;
   locationName: string;
+  driver: Driver;
+  car: Car;
+  laps: Lap[];
+  penalties: PenaltyData[];
+  stats: LapStats;
+  totalTime: number;
+  totalLaps: "unlimited" | number;
+  totalPenalties: number;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LapStats {
@@ -37,9 +47,9 @@ export interface LapStats {
   worstLap: number;
   maxPenaltyLap: number | null;
   maxPenaltyCount: number;
+  totalPenalties: number;
 }
 
-// Other interfaces remain the same
 export interface BestLapRecord {
   sessionId: string;
   date: string;
@@ -47,7 +57,7 @@ export interface BestLapRecord {
   carName: string;
   lapTime: number;
   lapNumber: number;
-  penalties?: number;
+  penalties: number;
 }
 
 export interface ComparisonData {

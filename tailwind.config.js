@@ -1,12 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
-  ],
+  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   theme: {
     container: {
       center: true,
@@ -60,22 +55,22 @@ module.exports = {
         "timer-start": {
           "0%": { transform: "scale(1)", opacity: "1" },
           "50%": { transform: "scale(1.2)", opacity: "0.8" },
-          "100%": { transform: "scale(1)", opacity: "1" }
+          "100%": { transform: "scale(1)", opacity: "1" },
         },
         "lap-record": {
           "0%": { transform: "translateY(0)", opacity: "1" },
           "50%": { transform: "translateY(-10px)", opacity: "0.6" },
-          "100%": { transform: "translateY(0)", opacity: "1" }
+          "100%": { transform: "translateY(0)", opacity: "1" },
         },
         "timer-stop": {
           "0%": { transform: "scale(1) rotate(0deg)", opacity: "1" },
           "50%": { transform: "scale(1.1) rotate(3deg)", opacity: "0.8" },
-          "100%": { transform: "scale(1) rotate(0deg)", opacity: "1" }
+          "100%": { transform: "scale(1) rotate(0deg)", opacity: "1" },
         },
         "time-pulse": {
           "0%": { transform: "scale(1)" },
           "50%": { transform: "scale(1.05)" },
-          "100%": { transform: "scale(1)" }
+          "100%": { transform: "scale(1)" },
         },
         "accordion-down": {
           from: { height: 0 },

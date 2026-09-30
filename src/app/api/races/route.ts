@@ -1,7 +1,9 @@
 // src/app/api/races/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { CreateRaceRequest } from "./types";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {

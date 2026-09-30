@@ -1,6 +1,8 @@
 // app/api/led/rgb/route.ts
 import { NextResponse } from "next/server";
-import { LED_DEVICE_IP, LED_DEVICE_TIMEOUT } from "../config";
+import { LED_DEVICE_IP } from "../config";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -29,7 +31,7 @@ export async function GET(request: Request) {
         details: error instanceof Error ? error.message : "Unknown error",
         deviceUrl: ledUrl,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

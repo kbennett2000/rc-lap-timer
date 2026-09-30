@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { logger } from "@/lib/logger";
+import { createAudioContext } from "@/lib/utils";
 
 interface MotionDetectorProps {
   onMotionDetected?: (changePercent: number) => void;
   className?: string;
   // Add ref for external control
-  controlRef?: React.RefObject<{
+  controlRef?: React.MutableRefObject<{
     stop: () => void;
     start: () => Promise<void>;
-  }>;
+  } | null>;
   playBeeps?: boolean;
 }
 
@@ -39,7 +40,12 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   enableDebugView: true,
 };
 
-export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected, className = "", controlRef, playBeeps }) => {
+export const MotionDetector: React.FC<MotionDetectorProps> = ({
+  onMotionDetected,
+  className = "",
+  controlRef,
+  playBeeps,
+}) => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,7 +67,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [isRunning, setIsRunning] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [error, setError] = useState<string>("");
-  const [motionEvents, setMotionEvents] = useState(0);
   const [lastChangePercent, setLastChangePercent] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [savedSettings, setSavedSettings] = useState<MotionSettings[]>([]);
@@ -72,7 +77,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
   const [detectedMotionStats, setDetectedMotionStats] = useState("");
 
   const [saveMDImages, setSaveMDImages] = useState(false);
-  const saveMDImagesRef = useRef(saveMDImages);  
+  const saveMDImagesRef = useRef(saveMDImages);
   // Sync with the ref whenever it changes
   useEffect(() => {
     saveMDImagesRef.current = saveMDImages;
@@ -156,7 +161,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     if (!settings.enableAudio) return;
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = createAudioContext();
       }
       if (audioContextRef.current.state === "suspended") {
         await audioContextRef.current.resume();
@@ -265,14 +270,17 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
 
     if (previousFrameRef.current && frameCountRef.current > settingsRef.current.framesToSkip) {
       let changedPixels = 0;
-      const debugFrame = settingsRef.current.enableDebugView ? debugCtx.createImageData(canvas.width, canvas.height) : null;
 
       for (let i = 0; i < currentFrame.data.length; i += 4) {
         const rDiff = Math.abs(currentFrame.data[i] - previousFrameRef.current.data[i]);
         const gDiff = Math.abs(currentFrame.data[i + 1] - previousFrameRef.current.data[i + 1]);
         const bDiff = Math.abs(currentFrame.data[i + 2] - previousFrameRef.current.data[i + 2]);
 
-        if (rDiff > settingsRef.current.sensitivity || gDiff > settingsRef.current.sensitivity || bDiff > settingsRef.current.sensitivity) {
+        if (
+          rDiff > settingsRef.current.sensitivity ||
+          gDiff > settingsRef.current.sensitivity ||
+          bDiff > settingsRef.current.sensitivity
+        ) {
           changedPixels++;
         }
       }
@@ -287,7 +295,6 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           setDetectedMotionStats("Motion detected: " + changePercent.toFixed(1));
 
           playBeep();
-          setMotionEvents((prev) => prev + 1);
 
           if (saveMDImagesRef.current) {
             // Save the frame to device gallery
@@ -320,7 +327,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
             resolve(blob!);
           },
           "image/jpeg",
-          0.8
+          0.8,
         );
       });
 
@@ -329,7 +336,7 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
       const filename = `rc-lap-${timestamp}-${changePercent.toFixed(1)}pct.jpg`;
 
       // Try to use the Web Share API first (works on most mobile browsers)
-      if (navigator.share && navigator.canShare) {
+      if (typeof navigator.share === "function" && typeof navigator.canShare === "function") {
         const file = new File([blob], filename, { type: "image/jpeg" });
         try {
           await navigator.share({
@@ -484,7 +491,10 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
     <div className={`space-y-4 ${className}`}>
       <div className="relative bg-black rounded-lg overflow-hidden">
         <video ref={videoRef} autoPlay playsInline className="w-full" />
-        <canvas ref={debugCanvasRef} className={`absolute top-0 left-0 w-full h-full ${settings.enableDebugView && isRunning ? "opacity-50" : "hidden"}`} />
+        <canvas
+          ref={debugCanvasRef}
+          className={`absolute top-0 left-0 w-full h-full ${settings.enableDebugView && isRunning ? "opacity-50" : "hidden"}`}
+        />
         <canvas ref={canvasRef} className="hidden" />
       </div>
 
@@ -494,7 +504,9 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         {/* Logging */}
         <div className="pt-2 border-t">
           {isPreviewing && <div className="text-sm">Motion Detected Stats: {detectedMotionStats}</div>}
-          {isPreviewing && lastChangePercent !== null && <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>}
+          {isPreviewing && lastChangePercent !== null && (
+            <div className="text-sm">Last Change: {lastChangePercent.toFixed(1)}%</div>
+          )}
         </div>
       </div>
 
@@ -520,7 +532,11 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           {isLoading ? "Cam On" : "Cam On"}
         </button>
         {/* Cam Off Button */}
-        <button onClick={handleStop} disabled={(!isRunning && !isPreviewing) || isLoading} className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300">
+        <button
+          onClick={handleStop}
+          disabled={(!isRunning && !isPreviewing) || isLoading}
+          className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300"
+        >
           {isLoading ? "Cam Off" : "Cam Off"}
         </button>
       </div>
@@ -550,19 +566,42 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
         {/* Threshold */}
         <div>
           <label className="block text-sm mb-1">Threshold ({settings.threshold}%)</label>
-          <input type="range" min="0.1" max="10.0" step="0.1" value={settings.threshold} onChange={(e) => setSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))} className="w-full" />
+          <input
+            type="range"
+            min="0.1"
+            max="10.0"
+            step="0.1"
+            value={settings.threshold}
+            onChange={(e) => setSettings((prev) => ({ ...prev, threshold: Number(e.target.value) }))}
+            className="w-full"
+          />
         </div>
 
         {/* Cooldown */}
         <div>
           <label className="block text-sm mb-1">Cooldown ({settings.cooldown}ms)</label>
-          <input type="range" min="100" max="25000" step="100" value={settings.cooldown} onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))} className="w-full" />
+          <input
+            type="range"
+            min="100"
+            max="25000"
+            step="100"
+            value={settings.cooldown}
+            onChange={(e) => setSettings((prev) => ({ ...prev, cooldown: Number(e.target.value) }))}
+            className="w-full"
+          />
         </div>
 
         {/* Frames to Skip */}
         <div>
           <label className="block text-sm mb-1">Frames to Skip ({settings.framesToSkip})</label>
-          <input type="range" min="1" max="240" value={settings.framesToSkip} onChange={(e) => setSettings((prev) => ({ ...prev, framesToSkip: Number(e.target.value) }))} className="w-full" />
+          <input
+            type="range"
+            min="1"
+            max="240"
+            value={settings.framesToSkip}
+            onChange={(e) => setSettings((prev) => ({ ...prev, framesToSkip: Number(e.target.value) }))}
+            className="w-full"
+          />
         </div>
 
         {/* Save / Load Settings */}
@@ -614,7 +653,13 @@ export const MotionDetector: React.FC<MotionDetectorProps> = ({ onMotionDetected
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <div className="bg-white p-4 rounded-lg space-y-4">
               <h3 className="font-bold">Save Settings</h3>
-              <input type="text" value={newSettingsName} onChange={(e) => setNewSettingsName(e.target.value)} placeholder="Enter settings name" className="px-4 py-2 border rounded w-full" />
+              <input
+                type="text"
+                value={newSettingsName}
+                onChange={(e) => setNewSettingsName(e.target.value)}
+                placeholder="Enter settings name"
+                className="px-4 py-2 border rounded w-full"
+              />
               {saveError && <p className="text-red-500 text-sm">{saveError}</p>}
               <div className="flex justify-end gap-2">
                 <button

@@ -30,3 +30,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 rc-lap-timer-build.tar.gz
+
+# Playwright
+/test-results/
+/playwright-report/

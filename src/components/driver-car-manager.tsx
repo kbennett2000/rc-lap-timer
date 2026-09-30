@@ -6,8 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { User, Car as CarIcon, Pencil, Trash2, AlertTriangle, Plus, Map, SlidersHorizontal, Users, Cog, Wrench } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  User,
+  Car as CarIcon,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+  Map,
+  SlidersHorizontal,
+  Users,
+  Cog,
+  Wrench,
+} from "lucide-react";
 import { logger } from "@/lib/logger";
 import PiConfiguration from "@/components/pi-config-settings";
 import TrackMeasurer from "./track-measurer";
@@ -32,11 +52,6 @@ interface DriverCarManagerProps {
 type EntityType = "driver" | "car" | "location" | "motionSetting";
 type ActionType = "add" | "edit";
 
-interface CarFormState {
-  name: string;
-  defaultCarNumber?: number;
-}
-
 interface EntityDialogState {
   isOpen: boolean;
   type: EntityType | null;
@@ -46,7 +61,13 @@ interface EntityDialogState {
   initialCarNumber?: number;
 }
 
-const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations, onDriversUpdate, onLocationsUpdate, onSessionsUpdate }) => {
+const DriverCarManager: React.FC<DriverCarManagerProps> = ({
+  drivers,
+  locations,
+  onDriversUpdate,
+  onLocationsUpdate,
+  onSessionsUpdate,
+}) => {
   // Selection states
   const [selectedDriver, setSelectedDriver] = useState<string>("");
   const [selectedCar, setSelectedCar] = useState<string>("");
@@ -84,7 +105,13 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
     loadMotionSettings();
   }, []);
 
-  const openEntityDialog = (type: EntityType, action: ActionType, entityId?: string, initialValue: string = "", initialCarNumber?: number) => {
+  const openEntityDialog = (
+    type: EntityType,
+    action: ActionType,
+    entityId?: string,
+    initialValue: string = "",
+    initialCarNumber?: number,
+  ) => {
     setEntityDialogState({
       isOpen: true,
       type,
@@ -116,7 +143,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
       const endpoint = isAdd ? "/api/data" : "/api/manage";
       const method = isAdd ? "POST" : "PATCH";
 
-      let body: any = { name: entityName.trim() };
+      const body: Record<string, unknown> = { name: entityName.trim() };
 
       if (isAdd) {
         body.type = type;
@@ -176,13 +203,13 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
   };
 
   const handleDelete = async () => {
-    const { type, entityId } = deleteDialog;
+    const { type } = deleteDialog;
     if (!type) return;
 
     setIsProcessing(true);
     try {
       let endpoint = "/api/manage";
-      let body: any = { type };
+      const body: Record<string, unknown> = { type };
 
       switch (type) {
         case "motionSetting":
@@ -330,7 +357,13 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                 </Select>
                 {selectedDriver && (
                   <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => openEntityDialog("driver", "edit", selectedDriver, currentDriver?.name || "", undefined)}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        openEntityDialog("driver", "edit", selectedDriver, currentDriver?.name || "", undefined)
+                      }
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
 
@@ -376,7 +409,19 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                     </Select>
                     {selectedCar && (
                       <div className="flex gap-2">
-                        <Button variant="outline" size="icon" onClick={() => openEntityDialog("car", "edit", selectedCar, currentCar?.name || "", currentCar?.defaultCarNumber)}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() =>
+                            openEntityDialog(
+                              "car",
+                              "edit",
+                              selectedCar,
+                              currentCar?.name || "",
+                              currentCar?.defaultCarNumber ?? undefined,
+                            )
+                          }
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -425,7 +470,13 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                 </Select>
                 {selectedLocation && (
                   <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => openEntityDialog("location", "edit", selectedLocation, currentLocation?.name || "", undefined)}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        openEntityDialog("location", "edit", selectedLocation, currentLocation?.name || "", undefined)
+                      }
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
 
@@ -472,7 +523,13 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
                 </Select>
                 {selectedMotionSetting && (
                   <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => openEntityDialog("motionSetting", "edit", selectedMotionSetting, currentMotionSetting?.name)}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        openEntityDialog("motionSetting", "edit", selectedMotionSetting, currentMotionSetting?.name)
+                      }
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
@@ -516,15 +573,34 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                {entityDialogState.action === "add" ? "Add New" : "Edit"} {entityDialogState.type === "driver" ? "Driver" : entityDialogState.type === "car" ? "Car" : entityDialogState.type === "location" ? "Location" : "Motion Setting"}
+                {entityDialogState.action === "add" ? "Add New" : "Edit"}{" "}
+                {entityDialogState.type === "driver"
+                  ? "Driver"
+                  : entityDialogState.type === "car"
+                    ? "Car"
+                    : entityDialogState.type === "location"
+                      ? "Location"
+                      : "Motion Setting"}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {entityDialogState.action === "add" ? "Enter a name for the new" : "Update the name of the"} {entityDialogState.type === "driver" ? "driver" : entityDialogState.type === "car" ? "car" : entityDialogState.type === "location" ? "location" : "motion setting"}
+                {entityDialogState.action === "add" ? "Enter a name for the new" : "Update the name of the"}{" "}
+                {entityDialogState.type === "driver"
+                  ? "driver"
+                  : entityDialogState.type === "car"
+                    ? "car"
+                    : entityDialogState.type === "location"
+                      ? "location"
+                      : "motion setting"}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
             <div className="py-4">
-              <Input value={entityName} onChange={(e) => setEntityName(e.target.value)} placeholder="Enter name" className={!isNameValid() ? "border-red-500" : ""} />
+              <Input
+                value={entityName}
+                onChange={(e) => setEntityName(e.target.value)}
+                placeholder="Enter name"
+                className={!isNameValid() ? "border-red-500" : ""}
+              />
               {!isNameValid() && (
                 <p className="text-sm text-red-500 mt-2">
                   This name already exists
@@ -573,7 +649,10 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
         </AlertDialog>
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, type: null })}>
+        <AlertDialog
+          open={deleteDialog.isOpen}
+          onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, type: null })}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
@@ -582,11 +661,20 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({ drivers, locations,
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {deleteDialog.type === "driver" ? (
-                  <>Are you sure you want to delete driver "{currentDriver?.name}"? This will also delete all their cars, sessions and race results.</>
+                  <>
+                    Are you sure you want to delete driver &ldquo;{currentDriver?.name}&rdquo;? This will also delete
+                    all their cars, sessions and race results.
+                  </>
                 ) : deleteDialog.type === "car" ? (
-                  <>Are you sure you want to delete car "{currentCar?.name}"? This will also delete its sessions and race results.</>
+                  <>
+                    Are you sure you want to delete car &ldquo;{currentCar?.name}&rdquo;? This will also delete its
+                    sessions and race results.
+                  </>
                 ) : deleteDialog.type === "location" ? (
-                  <>Are you sure you want to delete location "{currentLocation?.name}"? This will also delete all sessions and races at this location.</>
+                  <>
+                    Are you sure you want to delete location &ldquo;{currentLocation?.name}&rdquo;? This will also
+                    delete all sessions and races at this location.
+                  </>
                 ) : (
                   <>Are you sure you want to delete this motion setting? This cannot be undone.</>
                 )}

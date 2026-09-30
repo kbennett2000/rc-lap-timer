@@ -9,20 +9,23 @@ export async function POST() {
       // Delete all current laps first (due to foreign key constraint)
       prisma.currentLap.deleteMany({}),
       // Then delete all current sessions
-      prisma.currentSession.deleteMany({})
+      prisma.currentSession.deleteMany({}),
     ]);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "All current sessions and laps have been deleted" 
+    return NextResponse.json({
+      success: true,
+      message: "All current sessions and laps have been deleted",
     });
   } catch (error) {
     logger.error("Error truncating current session tables:", error);
-    return NextResponse.json({ 
-      error: "Failed to truncate current session tables",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { 
-      status: 500 
-    });
+    return NextResponse.json(
+      {
+        error: "Failed to truncate current session tables",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }

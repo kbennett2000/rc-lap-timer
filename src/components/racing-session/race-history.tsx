@@ -19,17 +19,6 @@ const DATE_PRESETS = [
   { label: "Last Year", days: 365 },
 ];
 
-interface RaceHistoryProps {
-  onFilterChange?: (filters: RaceFilters) => void;
-}
-
-interface RaceFilters {
-  driver: string;
-  car: string;
-  location: string;
-  dateRange: { from: Date | null; to: Date | null };
-}
-
 interface RaceResult {
   id: string;
   date: Date;
@@ -41,6 +30,9 @@ interface RaceResult {
   laps: number;
   status: string;
 }
+
+// A race result as the API returns it (JSON, so the date is a string).
+type RaceResultJson = Omit<RaceResult, "date"> & { date: string };
 
 interface Location {
   id: string;
@@ -57,11 +49,14 @@ interface Car {
   name: string;
 }
 
-export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
+export const RaceHistory: React.FC = () => {
   const [filterDriver, setFilterDriver] = useState("all");
   const [filterCar, setFilterCar] = useState("all");
   const [filterLocation, setFilterLocation] = useState("all");
-  const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
   const [races, setRaces] = useState<RaceResult[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -73,10 +68,13 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [lookupResponse, racesResponse] = await Promise.all([fetch("/api/races/history/lookup-data"), fetch("/api/races/history/results")]);
+        const [lookupResponse, racesResponse] = await Promise.all([
+          fetch("/api/races/history/lookup-data"),
+          fetch("/api/races/history/results"),
+        ]);
 
         const lookupData = await lookupResponse.json();
-        const racesData = await racesResponse.json();
+        const racesData: RaceResultJson[] = await racesResponse.json();
 
         setDrivers(lookupData.drivers);
         setCars(lookupData.cars);
@@ -96,7 +94,9 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
       return;
     }
     const driverCars = cars.filter((car) => {
-      const carRaces = races.filter((race) => race.driver === drivers.find((d) => d.id === filterDriver)?.name && race.car === car.name);
+      const carRaces = races.filter(
+        (race) => race.driver === drivers.find((d) => d.id === filterDriver)?.name && race.car === car.name,
+      );
       return carRaces.length > 0;
     });
     setAvailableCars(driverCars);
@@ -109,7 +109,8 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
   useEffect(() => {
     const filteredLocations = locations.filter((location) => {
       return races.some((race) => {
-        const matchesDriver = filterDriver === "all" || race.driver === drivers.find((d) => d.id === filterDriver)?.name;
+        const matchesDriver =
+          filterDriver === "all" || race.driver === drivers.find((d) => d.id === filterDriver)?.name;
         const matchesCar = filterCar === "all" || race.car === cars.find((c) => c.id === filterCar)?.name;
         return matchesDriver && matchesCar && race.location === location.name;
       });
@@ -124,7 +125,7 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
   useEffect(() => {
     const fetchRaces = async () => {
       const response = await fetch("/api/races/history/results");
-      const data = await response.json();
+      const data: RaceResultJson[] = await response.json();
       let filtered = data;
 
       if (filterDriver !== "all") {
@@ -238,7 +239,12 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
                   size="sm"
                   className={cn(
                     "hover:bg-muted text-sm",
-                    dateRange.from && dateRange.to && format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(preset).from, "yyyy-MM-dd") && format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(preset).to, "yyyy-MM-dd") ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+                    dateRange.from &&
+                      dateRange.to &&
+                      format(dateRange.from, "yyyy-MM-dd") === format(getPresetDates(preset).from, "yyyy-MM-dd") &&
+                      format(dateRange.to, "yyyy-MM-dd") === format(getPresetDates(preset).to, "yyyy-MM-dd")
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "",
                   )}
                   onClick={() => setDateRange(getPresetDates(preset))}
                 >
@@ -252,13 +258,24 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
                 <Label>From</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.from && "text-muted-foreground",
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateRange.from ? format(dateRange.from, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dateRange.from} onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))} initialFocus />
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.from}
+                      onSelect={(date) => setDateRange((prev) => ({ ...prev, from: date }))}
+                      autoFocus
+                    />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -267,13 +284,24 @@ export const RaceHistory: React.FC<RaceHistoryProps> = ({ onFilterChange }) => {
                 <Label>To</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal", !dateRange.to && "text-muted-foreground")}>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[240px] justify-start text-left font-normal",
+                        !dateRange.to && "text-muted-foreground",
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateRange.to ? format(dateRange.to, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dateRange.to} onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))} initialFocus />
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.to}
+                      onSelect={(date) => setDateRange((prev) => ({ ...prev, to: date }))}
+                      autoFocus
+                    />
                   </PopoverContent>
                 </Popover>
               </div>

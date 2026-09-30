@@ -1,6 +1,8 @@
 // app/api/led/status/route.ts
 import { NextResponse } from "next/server";
-import { LED_DEVICE_IP, LED_DEVICE_TIMEOUT } from "../config";
+import { LED_DEVICE_IP } from "../config";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

@@ -19,7 +19,12 @@ function isValidSecret(value: string, min: number, max: number): boolean {
 }
 
 // Returns an error message, or null if every value that is set is valid. Empty values mean "no change".
-export function validateSystemSettings({ deviceName, userPassword, wifiName, wifiPassword }: SystemSettingsInput): string | null {
+export function validateSystemSettings({
+  deviceName,
+  userPassword,
+  wifiName,
+  wifiPassword,
+}: SystemSettingsInput): string | null {
   if (deviceName && !HOSTNAME_RE.test(deviceName)) {
     return "Device name must be 1-63 letters, numbers or hyphens, and cannot start or end with a hyphen.";
   }

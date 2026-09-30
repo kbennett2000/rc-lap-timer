@@ -122,7 +122,12 @@ export function CurrentSessionDisplay() {
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+      >
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Current Session</CardTitle>
@@ -163,7 +168,9 @@ export function CurrentSessionDisplay() {
                   <div className="text-center">
                     <Trophy className="h-5 w-5 mx-auto mb-2 text-green-500" />
                     <div className="text-sm font-medium text-gray-500">Best Lap</div>
-                    <div className="text-lg font-semibold">{stats.bestLapTime !== null ? formatTime(stats.bestLapTime) : "--:--:--"}</div>
+                    <div className="text-lg font-semibold">
+                      {stats.bestLapTime !== null ? formatTime(stats.bestLapTime) : "--:--:--"}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -173,7 +180,9 @@ export function CurrentSessionDisplay() {
                   <div className="text-center">
                     <Clock className="h-5 w-5 mx-auto mb-2 text-yellow-500" />
                     <div className="text-sm font-medium text-gray-500">Average</div>
-                    <div className="text-lg font-semibold">{stats.averageLapTime !== null ? formatTime(stats.averageLapTime) : "--:--:--"}</div>
+                    <div className="text-lg font-semibold">
+                      {stats.averageLapTime !== null ? formatTime(stats.averageLapTime) : "--:--:--"}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -197,7 +206,13 @@ export function CurrentSessionDisplay() {
                   const originalIndex = currentSession.laps.length - reversedIndex - 1;
                   const isBestLap = stats.bestLapTime !== null && lap.lapTime === stats.bestLapTime;
                   return (
-                    <motion.div key={lap.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className={`p-2 rounded-lg ${isBestLap ? "bg-green-50 border border-green-200" : "bg-gray-50"}`}>
+                    <motion.div
+                      key={lap.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={`p-2 rounded-lg ${isBestLap ? "bg-green-50 border border-green-200" : "bg-gray-50"}`}
+                    >
                       <div className="flex justify-between items-center">
                         <span className="font-mono">
                           Lap {originalIndex + 1}: {formatTime(lap.lapTime)}
@@ -216,7 +231,9 @@ export function CurrentSessionDisplay() {
             </div>
 
             {/* Session Start Time */}
-            <div className="text-sm text-gray-500 text-right">Session started: {formatDateTime(currentSession.createdAt)}</div>
+            <div className="text-sm text-gray-500 text-right">
+              Session started: {formatDateTime(currentSession.createdAt)}
+            </div>
           </CardContent>
         </Card>
       </motion.div>

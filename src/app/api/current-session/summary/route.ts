@@ -1,7 +1,6 @@
 // app/api/current-session/summary/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic"; // Disable route caching
 export const revalidate = 0; // Disable fetch caching
@@ -51,7 +50,7 @@ export async function GET() {
         // execId,
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

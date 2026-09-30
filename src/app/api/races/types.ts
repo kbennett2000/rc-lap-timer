@@ -1,5 +1,4 @@
 // src/app/api/races/types.ts
-import { Race as PrismaRace, RaceEntry as PrismaRaceEntry } from "@prisma/client";
 
 export interface CreateRaceRequest {
   name: string;

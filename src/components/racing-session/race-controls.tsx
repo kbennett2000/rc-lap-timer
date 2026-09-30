@@ -1,7 +1,16 @@
 // src/components/racing-session/race-controls.tsx
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PlayCircle, PauseCircle, StopCircle, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +24,13 @@ interface RaceControlsProps {
   availableCarNumbers: number[];
 }
 
-export const RaceControls: React.FC<RaceControlsProps> = ({ isPaused, onPauseResume, onStop, onDNF, availableCarNumbers }) => {
+export const RaceControls: React.FC<RaceControlsProps> = ({
+  isPaused,
+  onPauseResume,
+  onStop,
+  onDNF,
+  availableCarNumbers,
+}) => {
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [showDNFDialog, setShowDNFDialog] = useState(false);
   const [selectedCar, setSelectedCar] = useState<string>("");
@@ -64,7 +79,9 @@ export const RaceControls: React.FC<RaceControlsProps> = ({ isPaused, onPauseRes
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>End Race</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to end this race? This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Are you sure you want to end this race? This action cannot be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -108,13 +125,21 @@ export const RaceControls: React.FC<RaceControlsProps> = ({ isPaused, onPauseRes
 
             <div className="space-y-2">
               <Label>Reason (Optional)</Label>
-              <Input value={dnfReason} onChange={(e) => setDnfReason(e.target.value)} placeholder="Enter reason for DNF" />
+              <Input
+                value={dnfReason}
+                onChange={(e) => setDnfReason(e.target.value)}
+                placeholder="Enter reason for DNF"
+              />
             </div>
           </div>
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDNFConfirm} disabled={!selectedCar} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogAction
+              onClick={handleDNFConfirm}
+              disabled={!selectedCar}
+              className="bg-red-500 hover:bg-red-600"
+            >
               Confirm DNF
             </AlertDialogAction>
           </AlertDialogFooter>
