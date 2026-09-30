@@ -416,6 +416,9 @@ tests/upgrade/test-upgrade-db.sh
 - `PAGES_BASE_PATH` is the path the phone app is built and served under (`/rc-lap-timer` by default, as on GitHub
   Pages).
 
+`node scripts/screenshots.mjs phone` (or `timer`, against the Pi build) retakes the app's screenshots in `images/`
+with sample data; see the script for the details.
+
 To change the database schema, edit `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>`, and
 commit the new folder under `prisma/migrations/`. `migrate dev` needs a database user that can create databases.
 
