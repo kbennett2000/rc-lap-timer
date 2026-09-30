@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { Driver, Location, Session } from "@/types/rc-timer";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -28,26 +27,32 @@ import {
   Cog,
   Wrench,
 } from "lucide-react";
-import { logger } from "@/lib/logger";
 import PiConfiguration from "@/components/pi-config-settings";
+import {
+  errorMessage,
+  useAppData,
+  useCreateCar,
+  useCreateDriver,
+  useCreateLocation,
+  useDeleteCar,
+  useDeleteDriver,
+  useDeleteLocation,
+  useDeleteMotionSettings,
+  useMotionSettings,
+  useRenameDriver,
+  useRenameLocation,
+  useUpdateCar,
+  useUpdateMotionSettings,
+} from "@/data/hooks";
+import { sameName } from "@/domain/rules";
+import { gridCols } from "@/lib/utils";
+import { CAPABILITIES } from "@/platform/capabilities";
 import TrackMeasurer from "./track-measurer";
 
-interface MotionSettings {
-  id: string;
-  name: string;
-  sensitivity: number;
-  threshold: number;
-  cooldown: number;
-  framesToSkip: number;
-}
-
-interface DriverCarManagerProps {
-  drivers: Driver[];
-  locations: Location[];
-  onDriversUpdate: (updatedDrivers: Driver[]) => void;
-  onSessionsUpdate?: (updatedSessions: Session[]) => void;
-  onLocationsUpdate: (updatedLocations: Location[]) => void;
-}
+// Drivers & Cars, Locations, Motion Settings, Utilities, and System Settings on the Pi.
+const TAB_COUNT = CAPABILITIES.piSystemConfig ? 5 : 4;
+// A car's default number is for IR timing, in practice and races.
+const SHOW_CAR_NUMBER = CAPABILITIES.irTiming || CAPABILITIES.races;
 
 type EntityType = "driver" | "car" | "location" | "motionSetting";
 type ActionType = "add" | "edit";
@@ -61,13 +66,22 @@ interface EntityDialogState {
   initialCarNumber?: number;
 }
 
-const DriverCarManager: React.FC<DriverCarManagerProps> = ({
-  drivers,
-  locations,
-  onDriversUpdate,
-  onLocationsUpdate,
-  onSessionsUpdate,
-}) => {
+// Drivers, cars, locations and saved motion settings, plus the utilities and (on the Pi) system settings.
+const DriverCarManager: React.FC = () => {
+  const { drivers, locations } = useAppData();
+  const motionSettings = useMotionSettings();
+  const createDriver = useCreateDriver();
+  const renameDriver = useRenameDriver();
+  const deleteDriver = useDeleteDriver();
+  const createCar = useCreateCar();
+  const updateCar = useUpdateCar();
+  const deleteCar = useDeleteCar();
+  const createLocation = useCreateLocation();
+  const renameLocation = useRenameLocation();
+  const deleteLocation = useDeleteLocation();
+  const updateMotionSettings = useUpdateMotionSettings();
+  const deleteMotionSettings = useDeleteMotionSettings();
+
   // Selection states
   const [selectedDriver, setSelectedDriver] = useState<string>("");
   const [selectedCar, setSelectedCar] = useState<string>("");
@@ -75,7 +89,6 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
   const [selectedMotionSetting, setSelectedMotionSetting] = useState<string>("");
 
   // Entity management states
-  const [motionSettings, setMotionSettings] = useState<MotionSettings[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [entityDialogState, setEntityDialogState] = useState<EntityDialogState>({
     isOpen: false,
@@ -100,10 +113,6 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
   const currentCar = currentDriver?.cars.find((c) => c.id === selectedCar);
   const currentLocation = locations.find((l) => l.id === selectedLocation);
   const currentMotionSetting = motionSettings.find((s) => s.id === selectedMotionSetting);
-
-  useEffect(() => {
-    loadMotionSettings();
-  }, []);
 
   const openEntityDialog = (
     type: EntityType,
@@ -135,70 +144,34 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
 
   const handleEntitySubmit = async () => {
     const { type, action, entityId } = entityDialogState;
-    if (!type || !action || !entityName.trim()) return;
+    const name = entityName.trim();
+    if (!type || !action || !name) return;
 
     setIsProcessing(true);
     try {
-      const isAdd = action === "add";
-      const endpoint = isAdd ? "/api/data" : "/api/manage";
-      const method = isAdd ? "POST" : "PATCH";
-
-      const body: Record<string, unknown> = { name: entityName.trim() };
-
-      if (isAdd) {
-        body.type = type;
-        if (type === "car") {
-          body.driverId = selectedDriver;
-          body.defaultCarNumber = defaultCarNumber;
-        }
-      } else {
-        body.type = type;
-        body.id = entityId;
-        body.newName = entityName.trim();
-        if (type === "car") {
-          body.defaultCarNumber = defaultCarNumber;
+      const carNumber = defaultCarNumber ?? null;
+      if (action === "add") {
+        if (type === "driver") setSelectedDriver((await createDriver.mutateAsync(name)).id);
+        else if (type === "car") {
+          const car = await createCar.mutateAsync({ driverId: selectedDriver, name, defaultCarNumber: carNumber });
+          setSelectedCar(car.id);
+        } else if (type === "location") setSelectedLocation((await createLocation.mutateAsync(name)).id);
+      } else if (entityId) {
+        if (type === "driver") await renameDriver.mutateAsync({ id: entityId, name });
+        else if (type === "car") {
+          await updateCar.mutateAsync({ id: entityId, changes: { name, defaultCarNumber: carNumber } });
+        } else if (type === "location") await renameLocation.mutateAsync({ id: entityId, name });
+        else if (currentMotionSetting) {
+          const { sensitivity, threshold, cooldown, framesToSkip } = currentMotionSetting;
+          const input = { name, sensitivity, threshold, cooldown, framesToSkip };
+          await updateMotionSettings.mutateAsync({ id: entityId, input });
         }
       }
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) throw new Error("Operation failed");
-
-      const data = await response.json();
-
-      if (data.success || data.driver || data.car || data.location) {
-        if (data.updatedDrivers) onDriversUpdate(data.updatedDrivers);
-        if (data.updatedLocations) onLocationsUpdate(data.updatedLocations);
-        if (onSessionsUpdate && data.updatedSessions) onSessionsUpdate(data.updatedSessions);
-
-        // Update selections for newly created entities
-        if (data.driver) setSelectedDriver(data.driver.id);
-        if (data.car) setSelectedCar(data.car.id);
-        if (data.location) setSelectedLocation(data.location.id);
-      }
-
       closeEntityDialog();
     } catch (error) {
-      logger.error("Error in entity operation:", error);
-      alert("Operation failed. Please try again.");
+      alert(errorMessage(error));
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const loadMotionSettings = async () => {
-    try {
-      const response = await fetch("/api/motion-settings");
-      if (response.ok) {
-        const data = await response.json();
-        setMotionSettings(data);
-      }
-    } catch (error) {
-      logger.error("Error loading motion settings:", error);
     }
   };
 
@@ -208,76 +181,45 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
 
     setIsProcessing(true);
     try {
-      let endpoint = "/api/manage";
-      const body: Record<string, unknown> = { type };
-
-      switch (type) {
-        case "motionSetting":
-          endpoint = `/api/motion-settings?id=${selectedMotionSetting}`;
-          break;
-        case "location":
-          body.id = selectedLocation;
-          break;
-        case "driver":
-          body.driverId = selectedDriver;
-          break;
-        case "car":
-          body.driverId = selectedDriver;
-          body.carId = selectedCar;
-          break;
-      }
-
-      const response = await fetch(endpoint, {
-        method: "DELETE",
-        ...(type !== "motionSetting" && {
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }),
-      });
-
-      if (!response.ok) throw new Error("Delete operation failed");
-
-      const data = await response.json();
-
-      if (data.success) {
-        if (type === "motionSetting") {
-          await loadMotionSettings();
-          setSelectedMotionSetting("");
-        } else if (type === "location") {
-          onLocationsUpdate(data.updatedLocations);
-          setSelectedLocation("");
-        } else {
-          onDriversUpdate(data.updatedDrivers);
-          if (type === "driver") setSelectedDriver("");
-          else setSelectedCar("");
-        }
+      if (type === "driver") {
+        await deleteDriver.mutateAsync(selectedDriver);
+        setSelectedDriver("");
+        setSelectedCar("");
+      } else if (type === "car") {
+        await deleteCar.mutateAsync(selectedCar);
+        setSelectedCar("");
+      } else if (type === "location") {
+        await deleteLocation.mutateAsync(selectedLocation);
+        setSelectedLocation("");
+      } else {
+        await deleteMotionSettings.mutateAsync(selectedMotionSetting);
+        setSelectedMotionSetting("");
       }
     } catch (error) {
-      logger.error("Error deleting:", error);
-      alert("Failed to delete. Please try again.");
+      alert(`Failed to delete. ${errorMessage(error)}`);
     } finally {
       setIsProcessing(false);
       setDeleteDialog({ isOpen: false, type: null });
     }
   };
 
+  // Names are unique ignoring case (car names per driver); a record may keep its own name.
   const isNameValid = () => {
-    const trimmedName = entityName.trim().toLowerCase();
-    const { type, action } = entityDialogState;
-
-    if (action === "add") {
-      switch (type) {
-        case "driver":
-          return !drivers.some((d) => d.name.toLowerCase() === trimmedName);
-        case "car":
-          return !currentDriver?.cars.some((c) => c.name.toLowerCase() === trimmedName);
-        case "location":
-          return !locations.some((l) => l.name.toLowerCase() === trimmedName);
-        default:
-          return true;
-      }
+    const { type, entityId } = entityDialogState;
+    const taken = (items: { id: string; name: string }[]) =>
+      items.some((item) => item.id !== entityId && sameName(item.name, entityName));
+    switch (type) {
+      case "driver":
+        return !taken(drivers);
+      case "car":
+        return !taken(currentDriver?.cars ?? []);
+      case "location":
+        return !taken(locations);
+      case "motionSetting":
+        return !taken(motionSettings);
+      default:
+        return true;
     }
-    return true;
   };
 
   return (
@@ -287,7 +229,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="drivers">
-          <TabsList className="grid w-full h-full grid-cols-5">
+          <TabsList className={`grid w-full h-full ${gridCols(TAB_COUNT)}`}>
             <TabsTrigger value="drivers">
               <div className="flex flex-col items-center">
                 <Users className="h-6 w-6" />
@@ -321,15 +263,17 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
               </div>
             </TabsTrigger>
 
-            <TabsTrigger value="systemSettings">
-              <div className="flex flex-col items-center">
-                <Cog className="h-6 w-6" />
-                <span className="text-xs mt-1">
-                  System <br />
-                  Settings
-                </span>
-              </div>
-            </TabsTrigger>
+            {CAPABILITIES.piSystemConfig && (
+              <TabsTrigger value="systemSettings">
+                <div className="flex flex-col items-center">
+                  <Cog className="h-6 w-6" />
+                  <span className="text-xs mt-1">
+                    System <br />
+                    Settings
+                  </span>
+                </div>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Drivers & Cars Tab */}
@@ -360,6 +304,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <Button
                       variant="outline"
                       size="icon"
+                      aria-label="Edit driver"
                       onClick={() =>
                         openEntityDialog("driver", "edit", selectedDriver, currentDriver?.name || "", undefined)
                       }
@@ -370,6 +315,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <Button
                       variant="destructive"
                       size="icon"
+                      aria-label="Delete driver"
                       onClick={() =>
                         setDeleteDialog({
                           isOpen: true,
@@ -412,6 +358,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                         <Button
                           variant="outline"
                           size="icon"
+                          aria-label="Edit car"
                           onClick={() =>
                             openEntityDialog(
                               "car",
@@ -427,6 +374,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                         <Button
                           variant="destructive"
                           size="icon"
+                          aria-label="Delete car"
                           onClick={() =>
                             setDeleteDialog({
                               isOpen: true,
@@ -459,7 +407,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <SelectValue placeholder="Choose a location" />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations
+                    {[...locations]
                       .sort((a, b) => a.name.localeCompare(b.name))
                       .map((location) => (
                         <SelectItem key={location.id} value={location.id}>
@@ -473,6 +421,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <Button
                       variant="outline"
                       size="icon"
+                      aria-label="Edit location"
                       onClick={() =>
                         openEntityDialog("location", "edit", selectedLocation, currentLocation?.name || "", undefined)
                       }
@@ -483,6 +432,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <Button
                       variant="destructive"
                       size="icon"
+                      aria-label="Delete location"
                       onClick={() =>
                         setDeleteDialog({
                           isOpen: true,
@@ -526,6 +476,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <Button
                       variant="outline"
                       size="icon"
+                      aria-label="Edit motion setting"
                       onClick={() =>
                         openEntityDialog("motionSetting", "edit", selectedMotionSetting, currentMotionSetting?.name)
                       }
@@ -535,6 +486,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
                     <Button
                       variant="destructive"
                       size="icon"
+                      aria-label="Delete motion setting"
                       onClick={() =>
                         setDeleteDialog({
                           isOpen: true,
@@ -560,12 +512,13 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
           </TabsContent>
 
           {/* System Settings Tab */}
-          <TabsContent value="systemSettings" className="space-y-4">
-            <div className="space-y-2">
-              {/* Pi Configuration Settings */}
-              <PiConfiguration />
-            </div>
-          </TabsContent>
+          {CAPABILITIES.piSystemConfig && (
+            <TabsContent value="systemSettings" className="space-y-4">
+              <div className="space-y-2">
+                <PiConfiguration />
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Add/Edit Entity Dialog */}
@@ -611,7 +564,7 @@ const DriverCarManager: React.FC<DriverCarManagerProps> = ({
 
             <div className="py-4">
               {/* Car Number Input for Cars */}
-              {entityDialogState.type === "car" && (
+              {entityDialogState.type === "car" && SHOW_CAR_NUMBER && (
                 <div className="space-y-2">
                   <Label>Default IR Car Number (Optional)</Label>
                   <Input

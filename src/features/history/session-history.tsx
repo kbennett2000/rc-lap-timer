@@ -11,6 +11,7 @@ import { isWithinRange, todayRange, type DateRange } from "@/domain/date-range";
 import { sortNewestFirst } from "@/domain/sessions";
 import type { Driver, Location, Session } from "@/domain/types";
 import { SessionCard } from "@/features/practice/session-card";
+import { CAPABILITIES } from "@/platform/capabilities";
 import { DateRangeFilter } from "./date-range-filter";
 
 const uniqueNames = (names: string[]) =>
@@ -25,8 +26,8 @@ interface SessionHistoryProps {
   onDelete: (session: Session) => void;
 }
 
-// The Session Mgmt tab: the live view of a session running on another device, the request form for remote control,
-// and every saved session with filters.
+// The Session Mgmt tab: on the Pi, the live view of a session running on another device and the request form for
+// remote control; then every saved session, with filters.
 export function SessionHistory({ sessions, drivers, locations, onDelete }: SessionHistoryProps) {
   const [driver, setDriver] = useState("all");
   const [car, setCar] = useState("all");
@@ -43,23 +44,27 @@ export function SessionHistory({ sessions, drivers, locations, onDelete }: Sessi
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Session</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CurrentSessionDisplay />
-        </CardContent>
-      </Card>
+      {CAPABILITIES.liveSessionView && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Current Session</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CurrentSessionDisplay />
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Request a Session</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SessionRequestForm drivers={drivers} locations={locations} />
-        </CardContent>
-      </Card>
+      {CAPABILITIES.remoteControl && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Request a Session</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SessionRequestForm drivers={drivers} locations={locations} />
+          </CardContent>
+        </Card>
+      )}
 
       {sessions.length === 0 ? (
         <Card>

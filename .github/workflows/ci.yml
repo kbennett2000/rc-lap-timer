@@ -53,8 +53,14 @@ jobs:
           exit 1
 
   integration:
-    name: Migrations, API and browser tests (MariaDB)
+    # pi: the Pi build, with the API tests (including the DataStore contract) and its browser tests.
+    # standalone: the phone-only build (NEXT_PUBLIC_TARGET=standalone), with its own browser tests.
+    name: Migrations, API and browser tests (${{ matrix.target }} build, MariaDB)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [pi, standalone]
     services:
       mariadb:
         # The MariaDB version Raspberry Pi OS (bookworm) ships.
@@ -73,6 +79,8 @@ jobs:
       DATABASE_URL: mysql://root:ci@127.0.0.1:3306/rc_lap_timer
       ADMIN_PIN: test1234
       API_ADMIN_PIN: test1234
+      NEXT_PUBLIC_TARGET: ${{ matrix.target }}
+      E2E_TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -96,13 +104,14 @@ jobs:
           cat server.log
           exit 1
       - run: npm run test:api
+        if: matrix.target == 'pi'
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - name: Keep traces and the server log
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: integration-results
+          name: integration-results-${{ matrix.target }}
           path: |
             test-results/
             server.log

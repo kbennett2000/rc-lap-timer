@@ -1,8 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Which build the server is running: "pi" (the default) or "standalone", the phone-only build. Each has its own tests.
+const standalone = process.env.E2E_TARGET === "standalone";
+
 // Browser tests against a running server (E2E_BASE_URL) and its database. See tests/e2e/phase0.spec.ts.
 export default defineConfig({
   testDir: "tests/e2e",
+  ...(standalone ? { testMatch: "standalone.spec.ts" } : { testIgnore: "standalone.spec.ts" }),
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,

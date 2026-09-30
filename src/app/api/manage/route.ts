@@ -1,203 +1,98 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+import { cleanCarNumber, cleanName, duplicateNameMessage } from "@/domain/rules";
+import { badRequest, conflict, isPrismaError, notFound, readJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
+// Renames (and car updates) keep the names stored on saved sessions in step, so history shows the new name.
+
+async function renameDriver(id: string, newName: unknown) {
+  const name = cleanName(newName, "driver");
+  if (!name.ok) return badRequest(name.error);
+  if (!(await prisma.driver.findUnique({ where: { id }, select: { id: true } }))) return notFound("Driver not found");
+  if (await prisma.driver.findFirst({ where: { name: name.value, id: { not: id } } })) {
+    return conflict(duplicateNameMessage("driver", name.value));
+  }
+
+  await prisma.$transaction([
+    prisma.driver.update({ where: { id }, data: { name: name.value } }),
+    prisma.session.updateMany({ where: { driverId: id }, data: { driverName: name.value } }),
+  ]);
+  return NextResponse.json({ success: true });
+}
+
+// Renames a car and sets its default IR car number. Leaving defaultCarNumber out keeps the current number; null clears it.
+async function updateCar(id: string, data: Record<string, unknown>) {
+  const name = cleanName(data.newName, "car");
+  if (!name.ok) return badRequest(name.error);
+  const car = await prisma.car.findUnique({ where: { id }, select: { driverId: true } });
+  if (!car) return notFound("Car not found");
+  if (await prisma.car.findFirst({ where: { name: name.value, driverId: car.driverId, id: { not: id } } })) {
+    return conflict(duplicateNameMessage("car", name.value));
+  }
+
+  const numberChange = "defaultCarNumber" in data ? { defaultCarNumber: cleanCarNumber(data.defaultCarNumber) } : {};
+  const [updatedCar] = await prisma.$transaction([
+    prisma.car.update({ where: { id }, data: { name: name.value, ...numberChange } }),
+    prisma.session.updateMany({ where: { carId: id }, data: { carName: name.value } }),
+  ]);
+  return NextResponse.json({ success: true, car: updatedCar });
+}
+
+async function renameLocation(id: string, newName: unknown) {
+  const name = cleanName(newName, "location");
+  if (!name.ok) return badRequest(name.error);
+  if (!(await prisma.location.findUnique({ where: { id }, select: { id: true } }))) {
+    return notFound("Location not found");
+  }
+  if (await prisma.location.findFirst({ where: { name: name.value, id: { not: id } } })) {
+    return conflict(duplicateNameMessage("location", name.value));
+  }
+
+  await prisma.$transaction([
+    prisma.location.update({ where: { id }, data: { name: name.value } }),
+    prisma.session.updateMany({ where: { locationId: id }, data: { locationName: name.value } }),
+  ]);
+  return NextResponse.json({ success: true });
+}
+
+async function renameMotionSetting(id: string, newName: unknown) {
+  const name = cleanName(newName, "motionSetting");
+  if (!name.ok) return badRequest(name.error);
+  if (!(await prisma.motionSettings.findUnique({ where: { id }, select: { id: true } }))) {
+    return notFound("Motion setting not found");
+  }
+  if (await prisma.motionSettings.findFirst({ where: { name: name.value, id: { not: id } } })) {
+    return conflict(duplicateNameMessage("motionSetting", name.value));
+  }
+
+  await prisma.motionSettings.update({ where: { id }, data: { name: name.value } });
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(request: Request) {
   try {
-    const data = await request.json();
-    const { type, id, newName, defaultCarNumber } = data;
+    const data = await readJson(request);
+    if (!data) return badRequest("Request body must be a JSON object");
+    const { type, id } = data;
+    if (typeof id !== "string" || !id) return badRequest("id is required");
 
-    if (type === "car") {
-      const name = typeof newName === "string" ? newName.trim() : "";
-      if (!name) {
-        return NextResponse.json({ success: false, error: "Car name is required" }, { status: 400 });
-      }
-
-      const updatedCar = await prisma.$transaction(async (tx) => {
-        const car = await tx.car.findUnique({
-          where: { id },
-          select: { driverId: true },
-        });
-
-        if (!car) {
-          throw new Error("Car not found");
-        }
-
-        // Check if name is already taken for this driver
-        const existingCar = await tx.car.findFirst({
-          where: {
-            name,
-            driverId: car.driverId,
-            id: { not: id },
-          },
-        });
-
-        if (existingCar) {
-          throw new Error("This driver already has a car with this name");
-        }
-
-        const updated = await tx.car.update({
-          where: { id },
-          data: {
-            name,
-            defaultCarNumber: defaultCarNumber || null,
-          },
-        });
-
-        // Keep the car name stored on saved sessions in step with the car
-        await tx.session.updateMany({
-          where: { carId: id },
-          data: { carName: name },
-        });
-
-        return updated;
-      });
-
-      const updatedDrivers = await prisma.driver.findMany({
-        include: { cars: true },
-      });
-
-      return NextResponse.json({
-        success: true,
-        car: updatedCar,
-        updatedDrivers,
-      });
+    switch (type) {
+      case "driver":
+        return await renameDriver(id, data.newName);
+      case "car":
+        return await updateCar(id, data);
+      case "location":
+        return await renameLocation(id, data.newName);
+      case "motionSetting":
+        return await renameMotionSetting(id, data.newName);
+      default:
+        return badRequest(`Unknown type: ${String(type)}`);
     }
-
-    if (type === "motionSetting") {
-      // Existing motion settings code
-      const existingSettings = await prisma.motionSettings.findFirst({
-        where: {
-          name: newName,
-          id: { not: id },
-        },
-      });
-
-      if (existingSettings) {
-        return NextResponse.json({ error: "A motion setting with this name already exists" }, { status: 400 });
-      }
-
-      await prisma.motionSettings.update({
-        where: { id },
-        data: { name: newName },
-      });
-
-      return NextResponse.json({ success: true });
-    }
-
-    if (type === "location") {
-      // Check if location name is already taken
-      const existingLocation = await prisma.location.findFirst({
-        where: {
-          name: newName,
-          id: { not: id },
-        },
-      });
-
-      if (existingLocation) {
-        return NextResponse.json({ error: "A location with this name already exists" }, { status: 400 });
-      }
-
-      await prisma.$transaction(async (tx) => {
-        // Update location name
-        await tx.location.update({
-          where: { id },
-          data: { name: newName },
-        });
-
-        // Update locationName in all related sessions
-        await tx.session.updateMany({
-          where: { locationId: id },
-          data: { locationName: newName },
-        });
-      });
-
-      // Fetch updated data including locations
-      const [updatedDrivers, updatedSessions, updatedLocations] = await Promise.all([
-        prisma.driver.findMany({
-          include: {
-            cars: true,
-            sessions: {
-              include: {
-                laps: true,
-                penalties: true,
-              },
-            },
-          },
-        }),
-        prisma.session.findMany({
-          include: {
-            laps: true,
-            penalties: true,
-          },
-        }),
-        prisma.location.findMany(),
-      ]);
-
-      return NextResponse.json({
-        success: true,
-        updatedDrivers,
-        updatedSessions,
-        updatedLocations,
-      });
-    }
-
-    // Handle driver updates (cars are handled above)
-    await prisma.$transaction(async (tx) => {
-      if (type === "driver") {
-        // Check if name is already taken
-        const existingDriver = await tx.driver.findFirst({
-          where: {
-            name: newName,
-            id: { not: id },
-          },
-        });
-
-        if (existingDriver) {
-          throw new Error("A driver with this name already exists");
-        }
-
-        // Update driver name
-        await tx.driver.update({
-          where: { id },
-          data: { name: newName },
-        });
-
-        // Update driverName in all related sessions
-        await tx.session.updateMany({
-          where: { driverId: id },
-          data: { driverName: newName },
-        });
-      }
-    });
-
-    // Fetch updated data
-    const [updatedDrivers, updatedSessions] = await Promise.all([
-      prisma.driver.findMany({
-        include: {
-          cars: true,
-          sessions: {
-            include: {
-              laps: true,
-              penalties: true,
-            },
-          },
-        },
-      }),
-      prisma.session.findMany({
-        include: {
-          laps: true,
-          penalties: true,
-        },
-      }),
-    ]);
-
-    return NextResponse.json({
-      success: true,
-      updatedDrivers,
-      updatedSessions,
-    });
   } catch (error) {
+    // Two renames to the same name can race past the checks above; the database's unique index catches the second.
+    if (isPrismaError(error, "P2002")) return conflict("That name is already in use");
     logger.error("Error updating:", error);
     return NextResponse.json(
       {
@@ -209,203 +104,95 @@ export async function PATCH(request: Request) {
   }
 }
 
+// Deleting a driver, car or location also deletes everything recorded with it: sessions (with laps and penalties),
+// session requests, and race entries (with their laps). Deleting a location also deletes the races held there.
+// Every foreign key is ON DELETE RESTRICT, so each cascade is spelled out here and runs as one transaction.
+
+async function deleteSessionsWhere(tx: Prisma.TransactionClient, where: Prisma.SessionWhereInput) {
+  const sessionIds = (await tx.session.findMany({ where, select: { id: true } })).map((s) => s.id);
+  if (sessionIds.length > 0) {
+    await tx.penalty.deleteMany({ where: { sessionId: { in: sessionIds } } });
+    await tx.lap.deleteMany({ where: { sessionId: { in: sessionIds } } });
+  }
+  await tx.session.deleteMany({ where });
+}
+
+async function deleteLocation(id: string) {
+  await prisma.$transaction(async (tx) => {
+    await deleteSessionsWhere(tx, { locationId: id });
+    await tx.sessionRequest.deleteMany({ where: { locationId: id } });
+
+    const raceIds = (await tx.race.findMany({ where: { locationId: id }, select: { id: true } })).map((r) => r.id);
+    if (raceIds.length > 0) {
+      await tx.raceLap.deleteMany({ where: { raceEntry: { raceId: { in: raceIds } } } });
+      await tx.raceEntry.deleteMany({ where: { raceId: { in: raceIds } } });
+      await tx.race.deleteMany({ where: { id: { in: raceIds } } });
+    }
+
+    await tx.location.delete({ where: { id } });
+  });
+  return NextResponse.json({ success: true });
+}
+
+// A driver's races are kept; only their own entries go.
+async function deleteDriver(driverId: string) {
+  await prisma.$transaction(async (tx) => {
+    const carIds = (await tx.car.findMany({ where: { driverId }, select: { id: true } })).map((c) => c.id);
+    const raceEntryFilter = { OR: [{ driverId }, { carId: { in: carIds } }] };
+
+    await deleteSessionsWhere(tx, { carId: { in: carIds } });
+    await tx.sessionRequest.deleteMany({ where: raceEntryFilter });
+    await tx.raceLap.deleteMany({ where: { raceEntry: raceEntryFilter } });
+    await tx.raceEntry.deleteMany({ where: raceEntryFilter });
+    await tx.car.deleteMany({ where: { driverId } });
+    await tx.driver.delete({ where: { id: driverId } });
+  });
+  return NextResponse.json({ success: true });
+}
+
+async function deleteCar(carId: string) {
+  await prisma.$transaction(async (tx) => {
+    await deleteSessionsWhere(tx, { carId });
+    await tx.sessionRequest.deleteMany({ where: { carId } });
+    await tx.raceLap.deleteMany({ where: { raceEntry: { carId } } });
+    await tx.raceEntry.deleteMany({ where: { carId } });
+    await tx.car.delete({ where: { id: carId } });
+  });
+  return NextResponse.json({ success: true });
+}
+
+async function deleteMotionSetting(id: string) {
+  await prisma.motionSettings.delete({ where: { id } });
+  return NextResponse.json({ success: true });
+}
+
+const DELETES = {
+  driver: { key: "driverId", label: "Driver", run: deleteDriver },
+  car: { key: "carId", label: "Car", run: deleteCar },
+  location: { key: "id", label: "Location", run: deleteLocation },
+  motionSetting: { key: "id", label: "Motion setting", run: deleteMotionSetting },
+} as const;
+
 export async function DELETE(request: Request) {
   try {
-    const { type, driverId, carId, id } = await request.json();
-
-    if (type === "motionSetting") {
-      await prisma.motionSettings.delete({
-        where: { id },
-      });
-      return NextResponse.json({ success: true });
+    const data = await readJson(request);
+    if (!data) return badRequest("Request body must be a JSON object");
+    const type = data.type;
+    if (typeof type !== "string" || !Object.hasOwn(DELETES, type)) {
+      return badRequest(`Unknown type: ${String(type)}`);
     }
 
-    if (type === "location") {
-      await prisma.$transaction(async (tx) => {
-        // Find all sessions for this location
-        const sessions = await tx.session.findMany({
-          where: { locationId: id },
-          select: { id: true },
-        });
+    // Drivers are named by driverId, cars by carId, locations and motion settings by id.
+    const { key, label, run } = DELETES[type as keyof typeof DELETES];
+    const id = data[key];
+    if (typeof id !== "string" || !id) return badRequest(`${key} is required`);
 
-        // Delete all penalties and laps for these sessions
-        if (sessions.length > 0) {
-          const sessionIds = sessions.map((s) => s.id);
-
-          await tx.penalty.deleteMany({
-            where: { sessionId: { in: sessionIds } },
-          });
-
-          await tx.lap.deleteMany({
-            where: { sessionId: { in: sessionIds } },
-          });
-        }
-
-        // Delete session requests for this location
-        await tx.sessionRequest.deleteMany({
-          where: { locationId: id },
-        });
-
-        // Delete races held at this location, with their entries and laps
-        const races = await tx.race.findMany({
-          where: { locationId: id },
-          select: { id: true },
-        });
-        const raceIds = races.map((r) => r.id);
-        if (raceIds.length > 0) {
-          await tx.raceLap.deleteMany({
-            where: { raceEntry: { raceId: { in: raceIds } } },
-          });
-          await tx.raceEntry.deleteMany({
-            where: { raceId: { in: raceIds } },
-          });
-          await tx.race.deleteMany({
-            where: { id: { in: raceIds } },
-          });
-        }
-
-        // Delete all sessions for this location
-        await tx.session.deleteMany({
-          where: { locationId: id },
-        });
-
-        // Finally delete the location
-        await tx.location.delete({
-          where: { id },
-        });
-      });
-
-      const [updatedDrivers, updatedLocations] = await Promise.all([
-        prisma.driver.findMany({
-          include: { cars: true },
-        }),
-        prisma.location.findMany(),
-      ]);
-
-      return NextResponse.json({
-        success: true,
-        updatedDrivers,
-        updatedLocations,
-      });
+    try {
+      return await run(id);
+    } catch (error) {
+      if (isPrismaError(error, "P2025")) return notFound(`${label} not found`);
+      throw error;
     }
-
-    if (type === "driver") {
-      await prisma.$transaction(async (tx) => {
-        // Find all cars for this driver
-        const cars = await tx.car.findMany({
-          where: { driverId },
-          select: { id: true },
-        });
-
-        const carIds = cars.map((c) => c.id);
-
-        // Find all sessions for these cars
-        const sessions = await tx.session.findMany({
-          where: { carId: { in: carIds } },
-          select: { id: true },
-        });
-
-        const sessionIds = sessions.map((s) => s.id);
-
-        // Delete all penalties and laps for these sessions
-        if (sessionIds.length > 0) {
-          await tx.penalty.deleteMany({
-            where: { sessionId: { in: sessionIds } },
-          });
-
-          await tx.lap.deleteMany({
-            where: { sessionId: { in: sessionIds } },
-          });
-        }
-
-        // Delete session requests for this driver and their cars
-        await tx.sessionRequest.deleteMany({
-          where: {
-            OR: [{ driverId }, { carId: { in: carIds } }],
-          },
-        });
-
-        // Delete this driver's race entries and their laps
-        const raceEntryFilter = { OR: [{ driverId }, { carId: { in: carIds } }] };
-        await tx.raceLap.deleteMany({
-          where: { raceEntry: raceEntryFilter },
-        });
-        await tx.raceEntry.deleteMany({
-          where: raceEntryFilter,
-        });
-
-        // Delete all sessions for the cars
-        await tx.session.deleteMany({
-          where: { carId: { in: carIds } },
-        });
-
-        // Delete all cars
-        await tx.car.deleteMany({
-          where: { driverId },
-        });
-
-        // Finally delete the driver
-        await tx.driver.delete({
-          where: { id: driverId },
-        });
-      });
-    } else if (type === "car") {
-      await prisma.$transaction(async (tx) => {
-        // Find all sessions for this car
-        const sessions = await tx.session.findMany({
-          where: { carId },
-          select: { id: true },
-        });
-
-        // Delete all penalties and laps for these sessions
-        if (sessions.length > 0) {
-          const sessionIds = sessions.map((s) => s.id);
-
-          await tx.penalty.deleteMany({
-            where: { sessionId: { in: sessionIds } },
-          });
-
-          await tx.lap.deleteMany({
-            where: { sessionId: { in: sessionIds } },
-          });
-        }
-
-        // Delete session requests for this car
-        await tx.sessionRequest.deleteMany({
-          where: { carId },
-        });
-
-        // Delete this car's race entries and their laps
-        await tx.raceLap.deleteMany({
-          where: { raceEntry: { carId } },
-        });
-        await tx.raceEntry.deleteMany({
-          where: { carId },
-        });
-
-        // Delete all sessions for this car
-        await tx.session.deleteMany({
-          where: { carId },
-        });
-
-        // Finally delete the car
-        await tx.car.delete({
-          where: { id: carId },
-        });
-      });
-    }
-
-    // Fetch updated drivers list
-    const updatedDrivers = await prisma.driver.findMany({
-      include: {
-        cars: true,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      updatedDrivers,
-    });
   } catch (error) {
     logger.error("Error deleting:", error);
     return NextResponse.json(

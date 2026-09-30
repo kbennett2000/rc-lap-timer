@@ -5,6 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Tailwind only generates classes it finds written out in full, so a column count needs a literal class name.
+const GRID_COLS: Record<number, string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  5: "grid-cols-5",
+};
+
+export function gridCols(count: number): string {
+  return GRID_COLS[count] ?? "grid-cols-5";
+}
+
 // Random RFC 4122 v4 id. crypto.randomUUID only exists in secure contexts (HTTPS or localhost),
 // so fall back to crypto.getRandomValues, which is available everywhere.
 export function newId(): string {

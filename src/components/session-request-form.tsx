@@ -121,7 +121,7 @@ export const SessionRequestForm: React.FC<SessionRequestFormProps> = ({ drivers,
                 <SelectValue placeholder="Select Driver" />
               </SelectTrigger>
               <SelectContent>
-                {drivers
+                {[...drivers]
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((driver) => (
                     <SelectItem key={driver.id} value={driver.id}>
@@ -141,7 +141,7 @@ export const SessionRequestForm: React.FC<SessionRequestFormProps> = ({ drivers,
                   <SelectValue placeholder="Select Car" />
                 </SelectTrigger>
                 <SelectContent>
-                  {getCurrentDriverCars()
+                  {[...getCurrentDriverCars()]
                     .sort((a, b) => a.name.localeCompare(b.name))
                     .map((car) => (
                       <SelectItem key={car.id} value={car.id}>
@@ -161,7 +161,7 @@ export const SessionRequestForm: React.FC<SessionRequestFormProps> = ({ drivers,
                 <SelectValue placeholder="Select Location" />
               </SelectTrigger>
               <SelectContent>
-                {locations
+                {[...locations]
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((location) => (
                     <SelectItem key={location.id} value={location.id}>

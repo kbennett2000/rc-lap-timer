@@ -12,14 +12,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { errorMessage, useAppData, useDeleteSession, useRefreshData } from "@/data/hooks";
 import { formatDateTime } from "@/domain/format";
 import type { Session } from "@/domain/types";
 import { SessionHistory } from "@/features/history/session-history";
 import { useLatest } from "@/hooks/use-latest";
 import { useWakeLock } from "@/hooks/use-wake-lock";
+import { noopIntegrations } from "@/integrations/noop";
 import { createPiIntegrations } from "@/integrations/pi";
-import { logger } from "@/lib/logger";
 import { newId } from "@/lib/utils";
+import { CAPABILITIES } from "@/platform/capabilities";
 import { now } from "@/timing/clock";
 import { toSessionPayload, type FinishedRun, type TimingMode } from "@/timing/engine";
 import type { CreatedEntity } from "./add-entity-dialog";
@@ -32,10 +34,19 @@ import { planRunSounds, playRunSounds, type SoundSettings } from "./run-sounds";
 import { RunningView } from "./running-view";
 import { DeleteSessionDialog } from "./session-card";
 import { SessionSetup, type Selection } from "./session-setup";
-import { usePracticeData } from "./use-practice-data";
 import { useRemoteControl } from "./use-remote-control";
 import { useTimingSession } from "./use-timing-session";
-import { useUnsavedSessions } from "./use-unsaved-sessions";
+import { useUnsavedSessions, type SaveFailure } from "./use-unsaved-sessions";
+
+// What to tell the user about sessions that couldn't be saved: whether trying again can help.
+function unsavedMessage(failures: SaveFailure[]): string {
+  const cannotSave = failures.find((failure) => !failure.retryable);
+  const what = failures.length === 1 ? "The session" : `${failures.length} sessions`;
+  if (cannotSave) {
+    return `${what} could not be saved: ${cannotSave.message}. ${failures.length === 1 ? "It is" : "They are"} kept on this device; use Discard at the top of the Practice screen if you don't need ${failures.length === 1 ? "it" : "them"}.`;
+  }
+  return `${what} could not be saved. ${failures.length === 1 ? "It has" : "They have"} been kept on this device: check the connection to the timer, then use Retry save at the top of the Practice screen.`;
+}
 
 const tabMotion = {
   initial: { opacity: 0, x: 50 },
@@ -44,11 +55,16 @@ const tabMotion = {
 };
 
 export default function PracticeScreen({ isActive = true }: { isActive?: boolean }) {
-  const data = usePracticeData(isActive);
+  const data = useAppData();
+  const refreshData = useRefreshData();
+  const deleteSessionChange = useDeleteSession();
   const outbox = useUnsavedSessions();
   const wakeLock = useWakeLock();
   const motionRef = useRef<MotionDetectorHandle>(null);
-  const [integrations] = useState(() => createPiIntegrations());
+  // The Pi's LEDs and live view follow the run; the phone-only build has neither.
+  const [integrations] = useState(() =>
+    CAPABILITIES.ledDisplay || CAPABILITIES.liveSessionView ? createPiIntegrations() : noopIntegrations,
+  );
 
   const [activeTab, setActiveTab] = useState("current");
   const [selection, setSelection] = useState<Selection>({
@@ -66,7 +82,6 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
   const [remoteControl, setRemoteControl] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Read by camera and IR callbacks, which fire outside React renders.
   const latest = useLatest({ data, selection, sounds });
@@ -74,15 +89,10 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
   const handleFinished = useCallback(
     async (run: FinishedRun) => {
       if (run.config.timingMode === "motion") motionRef.current?.stop();
-      if (await outbox.saveNew(toSessionPayload(run))) {
-        await latest.current.data.reload();
-      } else {
-        alert(
-          "The session could not be saved. It has been kept on this device: use Retry save at the top of the Practice screen.",
-        );
-      }
+      const outcome = await outbox.saveNew(toSessionPayload(run));
+      if (!outcome.ok) alert(unsavedMessage([outcome]));
     },
-    [outbox, latest],
+    [outbox],
   );
 
   const timing = useTimingSession({ integrations, onFinished: handleFinished });
@@ -141,10 +151,11 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
   };
 
   useRemoteControl({
-    enabled: remoteControl,
+    enabled: CAPABILITIES.remoteControl && remoteControl,
     isIdle: () => store.getState().status !== "running" && !timing.interrupted,
     onRequest: async (request) => {
-      await data.reload();
+      // The request may name a driver or car added on another phone moments ago.
+      await refreshData();
       setSelection((s) => ({
         ...s,
         driverId: request.driverId,
@@ -168,18 +179,11 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
       return next;
     });
 
+  // The new driver, car or location is already in the shared data, so it can be selected straight away.
   const onCreated = (created: CreatedEntity) => {
-    if (created.type === "driver") {
-      data.setDrivers((prev) => [...prev, { ...created.entity, cars: created.entity.cars ?? [] }]);
-      changeSelection({ driverId: created.entity.id });
-    } else if (created.type === "car") {
-      const car = created.entity;
-      data.setDrivers((prev) => prev.map((d) => (d.id === car.driverId ? { ...d, cars: [...d.cars, car] } : d)));
-      changeSelection({ carId: car.id });
-    } else {
-      data.setLocations((prev) => [...prev, created.entity]);
-      changeSelection({ locationId: created.entity.id });
-    }
+    if (created.type === "driver") changeSelection({ driverId: created.entity.id });
+    else if (created.type === "car") changeSelection({ carId: created.entity.id });
+    else changeSelection({ locationId: created.entity.id });
   };
 
   const resumeInterrupted = () => {
@@ -192,19 +196,15 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
       carId: config.carId,
       locationId: config.locationId,
       lapTarget: config.lapTarget,
-      timingMode: config.timingMode,
+      // Without IR timing there is no IR screen (or Stop button) to go back to, so the run carries on with taps.
+      timingMode: config.timingMode === "ir" && !CAPABILITIES.irTiming ? "manual" : config.timingMode,
     });
     timing.resume();
   };
 
   const retryUnsaved = async () => {
-    const failed = await outbox.retryAll();
-    await data.reload();
-    if (failed > 0) {
-      alert(
-        `${failed === 1 ? "A session" : `${failed} sessions`} still could not be saved. Check the connection to the timer and try again.`,
-      );
-    }
+    const failures = await outbox.retryAll();
+    if (failures.length > 0) alert(unsavedMessage(failures));
   };
 
   const discardUnsaved = () => {
@@ -217,22 +217,11 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
   };
 
   const deleteSession = async (session: Session) => {
-    setDeleting(true);
     try {
-      const response = await fetch("/api/data", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: session.id }),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.success) throw new Error(result.error || "Failed to delete session");
-      data.setSessions((prev) => prev.filter((s) => s.id !== session.id));
+      await deleteSessionChange.mutateAsync(session.id);
       setSessionToDelete(null);
     } catch (error) {
-      logger.error("Error deleting session:", error);
-      alert("Failed to delete session. Please try again.");
-    } finally {
-      setDeleting(false);
+      alert(`Failed to delete the session. ${errorMessage(error)}`);
     }
   };
 
@@ -371,8 +360,10 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
                     running={running}
                     canStart={Boolean(selection.driverId && selection.carId)}
                     onStart={() => {
+                      // Read the clock before unlocking: creating the audio context can take tens of milliseconds.
+                      const at = now();
                       unlock();
-                      startRun(now());
+                      startRun(at);
                     }}
                     onLap={() => dispatch({ type: "lap", at: now() })}
                     onStop={() => dispatch({ type: "finish", at: now() })}
@@ -431,19 +422,14 @@ export default function PracticeScreen({ isActive = true }: { isActive?: boolean
 
           <TabsContent value="notes" className="px-0 sm:px-4 space-y-4 h-full overflow-y-auto">
             <motion.div key={activeTab} {...tabMotion}>
-              <SessionNotes
-                sessions={data.sessions}
-                onNotesSaved={(sessionId, notes) =>
-                  data.setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, notes } : s)))
-                }
-              />
+              <SessionNotes sessions={data.sessions} />
             </motion.div>
           </TabsContent>
         </Tabs>
 
         <DeleteSessionDialog
           session={sessionToDelete}
-          deleting={deleting}
+          deleting={deleteSessionChange.isPending}
           onCancel={() => setSessionToDelete(null)}
           onConfirm={deleteSession}
         />

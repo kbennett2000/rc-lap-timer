@@ -1,8 +1,7 @@
 // The practice timing engine: a pure reducer over timestamped events. Every timing mode (manual taps, motion
 // detection, IR beacons) feeds it the same events, so they share one set of rules.
 
-import { lapStats } from "@/domain/stats";
-import type { LapStats, PenaltyData } from "@/domain/types";
+import type { NewSession, PenaltyData } from "@/domain/types";
 
 export type TimingMode = "manual" | "motion" | "ir";
 export type LapTarget = number | "unlimited";
@@ -152,23 +151,8 @@ export function gapTotal(run: Run, at: number): number {
   return run.gaps.reduce((sum, gap) => sum + ((gap.to ?? at) - gap.from), 0);
 }
 
-export interface SessionPayload {
-  id: string;
-  date: string;
-  driverId: string;
-  driverName: string;
-  carId: string;
-  carName: string;
-  locationId: string;
-  locationName: string;
-  laps: { lapNumber: number; lapTime: number }[];
-  penalties: PenaltyData[];
-  totalLaps: number;
-  stats: LapStats;
-}
-
-// What /api/data saves for a finished run. Penalties on a lap that was dropped (Stop in a sensor mode) are left out.
-export function toSessionPayload(run: FinishedRun): SessionPayload {
+// The session to save for a finished run. Penalties on a lap that was dropped (Stop in a sensor mode) are left out.
+export function toSessionPayload(run: FinishedRun): NewSession {
   const times = lapTimes(run).map((time) => Math.round(time));
   const penalties = run.penalties.filter((p) => p.lapNumber <= times.length);
   const { config } = run;
@@ -183,7 +167,5 @@ export function toSessionPayload(run: FinishedRun): SessionPayload {
     locationName: config.locationName,
     laps: times.map((lapTime, i) => ({ lapNumber: i + 1, lapTime })),
     penalties,
-    totalLaps: config.lapTarget === "unlimited" ? times.length : config.lapTarget,
-    stats: lapStats(times, penalties),
   };
 }

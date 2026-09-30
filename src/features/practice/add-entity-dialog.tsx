@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { errorMessage, useCreateCar, useCreateDriver, useCreateLocation } from "@/data/hooks";
 import type { Car, Driver, Location } from "@/domain/types";
-import { logger } from "@/lib/logger";
+import { CAPABILITIES } from "@/platform/capabilities";
 
 export type EntityType = "driver" | "car" | "location";
 
@@ -36,6 +37,9 @@ interface AddEntityDialogProps {
 export function AddEntityDialog({ type, existingNames, driverId, onClose, onCreated }: AddEntityDialogProps) {
   const [name, setName] = useState("");
   const [defaultCarNumber, setDefaultCarNumber] = useState<number | undefined>();
+  const createDriver = useCreateDriver();
+  const createCar = useCreateCar();
+  const createLocation = useCreateLocation();
 
   const trimmed = name.trim();
   const duplicate = trimmed !== "" && existingNames.some((n) => n.toLowerCase().trim() === trimmed.toLowerCase());
@@ -52,20 +56,16 @@ export function AddEntityDialog({ type, existingNames, driverId, onClose, onCrea
       alert("Please select a driver first");
       return;
     }
-    const body = type === "car" ? { type, name: trimmed, driverId, defaultCarNumber } : { type, name: trimmed };
+    const carNumber = defaultCarNumber ?? null;
     close();
     try {
-      const response = await fetch("/api/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) throw new Error(`Failed to create ${type}`);
-      const data = await response.json();
-      onCreated({ type, entity: data[type] } as CreatedEntity);
+      if (type === "driver") onCreated({ type, entity: await createDriver.mutateAsync(trimmed) });
+      else if (type === "car") {
+        const car = await createCar.mutateAsync({ driverId, name: trimmed, defaultCarNumber: carNumber });
+        onCreated({ type, entity: car });
+      } else onCreated({ type, entity: await createLocation.mutateAsync(trimmed) });
     } catch (error) {
-      logger.error(`Error creating ${type}:`, error);
-      alert(`Failed to create ${type}. Please try again.`);
+      alert(`Failed to create the ${type}. ${errorMessage(error)}`);
     }
   };
 
@@ -84,7 +84,7 @@ export function AddEntityDialog({ type, existingNames, driverId, onClose, onCrea
             className={duplicate ? "border-red-500" : ""}
           />
 
-          {type === "car" && (
+          {type === "car" && (CAPABILITIES.irTiming || CAPABILITIES.races) && (
             <div className="space-y-2">
               <Label>Default IR Car Number (Optional)</Label>
               <Input
