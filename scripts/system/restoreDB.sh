@@ -92,6 +92,8 @@ convert_legacy_backup() {
 
 # Usage: ./restoreDB.sh [backup.sql]   (defaults to the newest file in ~/db-backups)
 # Older backups made by the previous upgrade script (~/backup_data.sql) can be passed explicitly.
+# Newest backup by time. The names are timestamps this project writes, so ls is safe here.
+# shellcheck disable=SC2012
 backup_file="${1:-$(ls -1t ~/db-backups/rc_lap_timer.*.sql 2> /dev/null | head -n 1 || true)}"
 if [ -z "$backup_file" ] || [ ! -f "$backup_file" ]; then
   echo "No backup found. Usage: ./restoreDB.sh [path/to/backup.sql]"

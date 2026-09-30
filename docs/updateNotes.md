@@ -19,8 +19,11 @@ on the dev server
 
 What the upgrade does to your data and app:
 - The database is backed up to `~/db-backups/rc_lap_timer.<date>.sql` (you'll be asked for the MySQL
-  root password). Nothing is dropped; schema changes are applied with `prisma db push`, which refuses
-  changes that would lose data.
+  root password). Nothing is dropped. Schema changes are applied with `prisma migrate deploy`, and the
+  upgrade stops before starting the new app if the database still doesn't match the schema.
+- The first upgrade to a version with Prisma migrations (`prisma/migrations/0_init`) also records the
+  existing database as that baseline, once. It uses `prisma db push`, which refuses changes that would
+  lose data.
 - The running app is moved to `~/rc-lap-timer.previous`, and its `.env` is copied into the new build.
 - The first time, you're asked for an admin PIN for the System Settings screen. It's stored in
   `/etc/rc-lap-timer.env`.
@@ -89,7 +92,17 @@ EOF
 ```
 
 ```bash
-npx prisma generate && npx prisma db push
+npx prisma generate
+```
+
+Only the first time you upgrade to a version with Prisma migrations (`prisma/migrations/0_init`),
+record your existing database as the baseline:
+```bash
+npx prisma db push --skip-generate && npx prisma migrate resolve --applied 0_init
+```
+
+```bash
+npx prisma migrate deploy
 ```
 
 ```bash
