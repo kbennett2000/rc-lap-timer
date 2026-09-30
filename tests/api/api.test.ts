@@ -14,60 +14,12 @@
 
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { PrismaClient } from "@prisma/client";
-import { afterAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { addRace, call, createCar, createDriver, createLocation, prisma, type Json } from "./helpers";
 
-const BASE = process.env.API_BASE_URL ?? "http://127.0.0.1:3100";
 const ADMIN_PIN = process.env.API_ADMIN_PIN ?? "test1234";
 const RUN = Date.now().toString(36);
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
-const prisma = new PrismaClient();
-afterAll(() => prisma.$disconnect());
-
-// Response bodies are whatever the route returns; the assertions check their shape.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Json = any;
-
-async function call(method: string, path: string, body?: unknown): Promise<{ status: number; json: Json }> {
-  const response = await fetch(`${BASE}${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
-  });
-  const text = await response.text();
-  let json: Json = {};
-  try {
-    json = text ? JSON.parse(text) : {};
-  } catch {
-    json = { text };
-  }
-  return { status: response.status, json };
-}
-
-async function createDriver(name: string): Promise<string> {
-  return (await call("POST", "/api/data", { type: "driver", name })).json.driver.id;
-}
-
-async function createCar(driverId: string, name: string, defaultCarNumber?: number): Promise<string> {
-  return (await call("POST", "/api/data", { type: "car", name, driverId, defaultCarNumber })).json.car.id;
-}
-
-async function createLocation(name: string): Promise<string> {
-  return (await call("POST", "/api/data", { type: "location", name })).json.location.id;
-}
-
-// A finished race with one entry and one lap, written straight to the database (race mode needs IR hardware).
-async function addRace(locationId: string, driverId: string, carId: string, carNumber: number) {
-  const race = await prisma.race.create({
-    data: { name: "R", date: new Date(), locationId, status: "FINISHED", startDelay: 5 },
-  });
-  const entry = await prisma.raceEntry.create({ data: { raceId: race.id, driverId, carId, carNumber } });
-  await prisma.raceLap.create({
-    data: { raceEntryId: entry.id, lapNumber: 1, lapTime: 10000, position: 1, gap: 0, timestamp: new Date() },
-  });
-  return { raceId: race.id, entryId: entry.id };
-}
 
 let driverId = "";
 let carId = "";

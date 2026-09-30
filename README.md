@@ -264,6 +264,8 @@ Use this tab to perform the following administrative functions:
 - Add, rename, and delete Cars
 - Add, rename, and delete Locations
 - Rename, and delete Motion Detection Settings
+- Save a backup of everything on the timer, and restore one (**Data**). The backup file is the same as the phone
+  app's, so it also moves data between the timer and the phone app: records with the same name become one.
 - Change the device name
 - Change the Pi user password
 
@@ -294,7 +296,9 @@ GitHub Pages serves), and `npm run serve:pages` serves that at http://127.0.0.1:
 
 Once CI passes on `main`, [.github/workflows/pages.yml](.github/workflows/pages.yml) publishes the phone-only app to
 GitHub Pages (Settings → Pages → Source must be set to "GitHub Actions"). Its data layer is in [src/data](src/data):
-the phone's on-device store in `src/data/local`, and backups and merging in [src/domain/sync](src/domain/sync).
+the phone's on-device store in `src/data/local`, and backups and merging in [src/domain/sync](src/domain/sync). The Pi
+merges backups with the same code ([src/lib/sync.ts](src/lib/sync.ts), behind `/api/sync`), and every delete on either
+leaves a tombstone, so a backup can't bring deleted records back.
 
 The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi build treats `.pi.ts` files as pages and
 routes (see `next.config.js`), so the static build leaves them out.

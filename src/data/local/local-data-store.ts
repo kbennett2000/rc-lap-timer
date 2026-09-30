@@ -11,7 +11,7 @@ import {
   type EntityKind,
 } from "@/domain/rules";
 import { BUNDLE_FORMAT, BUNDLE_SCHEMA_VERSION, type Bundle, type BundleContents } from "@/domain/sync/bundle";
-import { mergeBundles, planWrites } from "@/domain/sync/merge";
+import { mergeBundles, planWrites, type TableWrites } from "@/domain/sync/merge";
 import type { Car, Driver, Location, MotionSettings, SessionRecord } from "@/domain/types";
 import { parseSessionInput } from "@/lib/session-input";
 import { newId } from "@/lib/utils";
@@ -421,12 +421,17 @@ export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataSto
         const { merged, summary } = mergeBundles(before, bundle, now());
         if (dryRun) return summary;
         const writes = planWrites(before, merged);
-        // Deletes first, so a name that moves between records never meets itself in a unique index.
+        // Deletes first, and changed records are written afresh, so a name that moves between records (even along a
+        // chain of renames) is always free by the time it arrives in a unique index.
+        const cleared = <T extends { id: string }>({ put, remove }: TableWrites<T>) => [
+          ...remove,
+          ...put.map((record) => record.id),
+        ];
         await db.sessions.bulkDelete(writes.sessions.remove);
-        await db.cars.bulkDelete(writes.cars.remove);
-        await db.drivers.bulkDelete(writes.drivers.remove);
-        await db.locations.bulkDelete(writes.locations.remove);
-        await db.motionSettings.bulkDelete(writes.motionSettings.remove);
+        await db.cars.bulkDelete(cleared(writes.cars));
+        await db.drivers.bulkDelete(cleared(writes.drivers));
+        await db.locations.bulkDelete(cleared(writes.locations));
+        await db.motionSettings.bulkDelete(cleared(writes.motionSettings));
         await db.drivers.bulkPut(writes.drivers.put.map(withNameKey));
         await db.cars.bulkPut(writes.cars.put.map(withNameKey));
         await db.locations.bulkPut(writes.locations.put.map(withNameKey));

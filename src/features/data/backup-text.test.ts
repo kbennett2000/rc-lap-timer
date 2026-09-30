@@ -35,6 +35,9 @@ describe("backup text", () => {
     ]);
     expect(describeMerge(summary({ session: { added: 1 } }), "did")).toEqual(["Added 1 session."]);
     expect(describeMerge(summary(), "will")).toEqual(["Nothing new: this app already has everything in the backup."]);
+    expect(describeMerge(summary(), "did", "the timer")).toEqual([
+      "Nothing new: the timer already has everything in the backup.",
+    ]);
   });
 
   it("says how long ago, in days", () => {

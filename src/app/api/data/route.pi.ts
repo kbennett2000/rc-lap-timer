@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { cleanCarNumber, cleanName, cleanNotes } from "@/domain/rules";
 import { badRequest, createOnce, isPrismaError, notFound, parseClientId, readJson } from "@/lib/api-helpers";
+import { resolveId } from "@/lib/aliases";
 import { prisma } from "@/lib/db";
+import { deleteSession } from "@/lib/deletes";
 import { logger } from "@/lib/logger";
 import { parseSessionInput } from "@/lib/session-input";
 
@@ -9,21 +11,26 @@ export const dynamic = "force-dynamic";
 
 // Saves one finished practice session with its laps and penalties.
 // Idempotent: posting a session id that already exists succeeds without changing anything, so clients can retry safely.
+// A session that was deleted isn't saved again either: a retry must not bring it back.
 async function saveSession(input: unknown) {
   const parsed = parseSessionInput(input);
   if (!parsed.ok) return badRequest(parsed.error);
   const { session } = parsed;
   const { date, laps, penalties } = session;
 
-  const existing = await prisma.session.findUnique({ where: { id: session.id }, select: { id: true } });
-  if (existing) {
+  const [existing, buried] = await Promise.all([
+    prisma.session.findUnique({ where: { id: session.id }, select: { id: true } }),
+    prisma.tombstone.findUnique({ where: { kind_recordId: { kind: "session", recordId: session.id } } }),
+  ]);
+  if (existing || buried) {
     return NextResponse.json({ success: true, created: false });
   }
 
+  // A save waiting since before a sync may name a driver, car or location that was merged into another.
   const [driver, car, location] = await Promise.all([
-    prisma.driver.findUnique({ where: { id: session.driverId } }),
-    prisma.car.findUnique({ where: { id: session.carId } }),
-    prisma.location.findUnique({ where: { id: session.locationId } }),
+    resolveId(prisma, "driver", session.driverId).then((id) => prisma.driver.findUnique({ where: { id } })),
+    resolveId(prisma, "car", session.carId).then((id) => prisma.car.findUnique({ where: { id } })),
+    resolveId(prisma, "location", session.locationId).then((id) => prisma.location.findUnique({ where: { id } })),
   ]);
   if (!driver) return badRequest(`Driver ${session.driverId} not found`);
   if (!car || car.driverId !== driver.id) return badRequest(`Car ${session.carId} not found for this driver`);
@@ -180,15 +187,10 @@ export async function DELETE(request: Request) {
     const id = data?.id;
     if (typeof id !== "string" || !id) return badRequest("Invalid delete request - missing id");
 
-    await prisma.$transaction([
-      prisma.penalty.deleteMany({ where: { sessionId: id } }),
-      prisma.lap.deleteMany({ where: { sessionId: id } }),
-      prisma.session.delete({ where: { id } }),
-    ]);
-
+    const found = await prisma.$transaction((tx) => deleteSession(tx, id));
+    if (!found) return notFound("Session not found");
     return NextResponse.json({ success: true, message: `Session ${id} deleted successfully` });
   } catch (error) {
-    if (isPrismaError(error, "P2025")) return notFound("Session not found");
     logger.error("Error in DELETE handler:", error);
     return NextResponse.json(
       {

@@ -34,8 +34,8 @@ export function describeContents(data: BundleData): string {
   return parts.length > 0 ? list(parts) : "nothing";
 }
 
-// What a restore changes (or would change), one sentence per kind of change.
-export function describeMerge(summary: MergeSummary, tense: "will" | "did"): string[] {
+// What a restore changes (or would change), one sentence per kind of change. `here` names where the backup goes.
+export function describeMerge(summary: MergeSummary, tense: "will" | "did", here = "this app"): string[] {
   const verbs = {
     added: tense === "will" ? "Adds" : "Added",
     updated: tense === "will" ? "Updates" : "Updated",
@@ -57,7 +57,7 @@ export function describeMerge(summary: MergeSummary, tense: "will" | "did"): str
       `${verbs.skipped} ${phrase("skipped")} that ${one ? "doesn't" : "don't"} fit here (a driver, car or location is missing, or the name is taken).`,
     );
   }
-  if (lines.length === 0) lines.push("Nothing new: this app already has everything in the backup.");
+  if (lines.length === 0) lines.push(`Nothing new: ${here} already has everything in the backup.`);
   return lines;
 }
 

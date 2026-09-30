@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 import { cleanCarNumber, cleanName, duplicateNameMessage } from "@/domain/rules";
 import { badRequest, conflict, isPrismaError, notFound, readJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { deleteCar, deleteDriver, deleteLocation, deleteMotionSettings } from "@/lib/deletes";
 import { logger } from "@/lib/logger";
+import { renameOnSessions } from "@/lib/session-names";
 
 // Renames (and car updates) keep the names stored on saved sessions in step, so history shows the new name.
+// Each runs as one transaction.
 
 async function renameDriver(id: string, newName: unknown) {
   const name = cleanName(newName, "driver");
@@ -17,7 +19,7 @@ async function renameDriver(id: string, newName: unknown) {
 
   await prisma.$transaction([
     prisma.driver.update({ where: { id }, data: { name: name.value } }),
-    prisma.session.updateMany({ where: { driverId: id }, data: { driverName: name.value } }),
+    renameOnSessions(prisma, "driver", id, name.value),
   ]);
   return NextResponse.json({ success: true });
 }
@@ -35,7 +37,7 @@ async function updateCar(id: string, data: Record<string, unknown>) {
   const numberChange = "defaultCarNumber" in data ? { defaultCarNumber: cleanCarNumber(data.defaultCarNumber) } : {};
   const [updatedCar] = await prisma.$transaction([
     prisma.car.update({ where: { id }, data: { name: name.value, ...numberChange } }),
-    prisma.session.updateMany({ where: { carId: id }, data: { carName: name.value } }),
+    renameOnSessions(prisma, "car", id, name.value),
   ]);
   return NextResponse.json({ success: true, car: updatedCar });
 }
@@ -52,7 +54,7 @@ async function renameLocation(id: string, newName: unknown) {
 
   await prisma.$transaction([
     prisma.location.update({ where: { id }, data: { name: name.value } }),
-    prisma.session.updateMany({ where: { locationId: id }, data: { locationName: name.value } }),
+    renameOnSessions(prisma, "location", id, name.value),
   ]);
   return NextResponse.json({ success: true });
 }
@@ -104,73 +106,12 @@ export async function PATCH(request: Request) {
   }
 }
 
-// Deleting a driver, car or location also deletes everything recorded with it: sessions (with laps and penalties),
-// session requests, and race entries (with their laps). Deleting a location also deletes the races held there.
-// Every foreign key is ON DELETE RESTRICT, so each cascade is spelled out here and runs as one transaction.
-
-async function deleteSessionsWhere(tx: Prisma.TransactionClient, where: Prisma.SessionWhereInput) {
-  const sessionIds = (await tx.session.findMany({ where, select: { id: true } })).map((s) => s.id);
-  if (sessionIds.length > 0) {
-    await tx.penalty.deleteMany({ where: { sessionId: { in: sessionIds } } });
-    await tx.lap.deleteMany({ where: { sessionId: { in: sessionIds } } });
-  }
-  await tx.session.deleteMany({ where });
-}
-
-async function deleteLocation(id: string) {
-  await prisma.$transaction(async (tx) => {
-    await deleteSessionsWhere(tx, { locationId: id });
-    await tx.sessionRequest.deleteMany({ where: { locationId: id } });
-
-    const raceIds = (await tx.race.findMany({ where: { locationId: id }, select: { id: true } })).map((r) => r.id);
-    if (raceIds.length > 0) {
-      await tx.raceLap.deleteMany({ where: { raceEntry: { raceId: { in: raceIds } } } });
-      await tx.raceEntry.deleteMany({ where: { raceId: { in: raceIds } } });
-      await tx.race.deleteMany({ where: { id: { in: raceIds } } });
-    }
-
-    await tx.location.delete({ where: { id } });
-  });
-  return NextResponse.json({ success: true });
-}
-
-// A driver's races are kept; only their own entries go.
-async function deleteDriver(driverId: string) {
-  await prisma.$transaction(async (tx) => {
-    const carIds = (await tx.car.findMany({ where: { driverId }, select: { id: true } })).map((c) => c.id);
-    const raceEntryFilter = { OR: [{ driverId }, { carId: { in: carIds } }] };
-
-    await deleteSessionsWhere(tx, { carId: { in: carIds } });
-    await tx.sessionRequest.deleteMany({ where: raceEntryFilter });
-    await tx.raceLap.deleteMany({ where: { raceEntry: raceEntryFilter } });
-    await tx.raceEntry.deleteMany({ where: raceEntryFilter });
-    await tx.car.deleteMany({ where: { driverId } });
-    await tx.driver.delete({ where: { id: driverId } });
-  });
-  return NextResponse.json({ success: true });
-}
-
-async function deleteCar(carId: string) {
-  await prisma.$transaction(async (tx) => {
-    await deleteSessionsWhere(tx, { carId });
-    await tx.sessionRequest.deleteMany({ where: { carId } });
-    await tx.raceLap.deleteMany({ where: { raceEntry: { carId } } });
-    await tx.raceEntry.deleteMany({ where: { carId } });
-    await tx.car.delete({ where: { id: carId } });
-  });
-  return NextResponse.json({ success: true });
-}
-
-async function deleteMotionSetting(id: string) {
-  await prisma.motionSettings.delete({ where: { id } });
-  return NextResponse.json({ success: true });
-}
-
+// Deletes run as one transaction each; see src/lib/deletes.ts for what goes with each record.
 const DELETES = {
   driver: { key: "driverId", label: "Driver", run: deleteDriver },
   car: { key: "carId", label: "Car", run: deleteCar },
   location: { key: "id", label: "Location", run: deleteLocation },
-  motionSetting: { key: "id", label: "Motion setting", run: deleteMotionSetting },
+  motionSetting: { key: "id", label: "Motion setting", run: deleteMotionSettings },
 } as const;
 
 export async function DELETE(request: Request) {
@@ -187,12 +128,8 @@ export async function DELETE(request: Request) {
     const id = data[key];
     if (typeof id !== "string" || !id) return badRequest(`${key} is required`);
 
-    try {
-      return await run(id);
-    } catch (error) {
-      if (isPrismaError(error, "P2025")) return notFound(`${label} not found`);
-      throw error;
-    }
+    const found = await prisma.$transaction((tx) => run(tx, id));
+    return found ? NextResponse.json({ success: true }) : notFound(`${label} not found`);
   } catch (error) {
     logger.error("Error deleting:", error);
     return NextResponse.json(

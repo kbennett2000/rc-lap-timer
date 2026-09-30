@@ -214,6 +214,36 @@ export function describeDataStore(label: string, makeStore: () => DataStore | Pr
         await expectError(store.updateSessionNotes(randomUUID(), "x"), "not-found");
       });
 
+      it("doesn't bring back a deleted session when its save is retried", async () => {
+        const setup = await newSetup("Retries");
+        const session = sessionFor(setup);
+        await store.saveSession(session);
+        await store.deleteSession(session.id);
+        expect(await store.saveSession(session)).toEqual({ created: false });
+        expect(await findSession(session.id)).toBeUndefined();
+      });
+
+      // Sync keeps the more recent notes by updatedAt (src/domain/sync/merge.ts), so nothing else may move it.
+      it("keeps a session's updatedAt when names change: only notes move it", async () => {
+        const setup = await newSetup("Stamps");
+        const session = sessionFor(setup);
+        await store.saveSession(session);
+        const saved = (await findSession(session.id))?.updatedAt;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        await store.renameDriver(setup.driver.id, named("Stamps Renamed"));
+        await store.updateCar(setup.car.id, { name: "Renamed Car", defaultCarNumber: null });
+        await store.renameLocation(setup.location.id, named("Stamps Track Renamed"));
+        expect(await findSession(session.id)).toMatchObject({
+          driverName: named("Stamps Renamed"),
+          carName: "Renamed Car",
+          updatedAt: saved,
+        });
+
+        await store.updateSessionNotes(session.id, "Now it moves");
+        expect((await findSession(session.id))?.updatedAt).not.toBe(saved);
+      });
+
       it("deletes a session, and deleting it again is a no-op", async () => {
         const setup = await newSetup("Deletes");
         const session = sessionFor(setup);
