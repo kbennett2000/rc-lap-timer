@@ -1,0 +1,69 @@
+# The local Supabase that the cloud features (docs/cloud.md) are developed and tested against:
+#   npx supabase@2.119.0 start
+# A hosted project gets the same database from supabase/migrations. Its Auth settings are made in its dashboard
+# (docs/cloud.md); the ones here are the local stand-ins. Anything not set here is the CLI's default.
+project_id = "rc-lap-timer"
+
+[api]
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[studio]
+port = 54323
+
+# Catches the emails Auth sends, where the tests read the sign-in codes (tests/e2e/cloud-helpers.ts).
+[local_smtp]
+port = 54324
+
+# Not used by the app.
+[realtime]
+enabled = false
+
+[storage]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
+
+[auth]
+# The phone app as `npm run serve:pages` serves it.
+site_url = "http://127.0.0.1:3100/rc-lap-timer/"
+additional_redirect_urls = []
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+# The tests sign in many times from one address.
+[auth.rate_limit]
+email_sent = 1000
+sign_in_sign_ups = 1000
+token_verifications = 1000
+
+[auth.email]
+enable_signup = true
+# As a hosted project has it: a new account's first code also confirms its email.
+enable_confirmations = true
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 3600
+
+# Sign-in is by a code typed into the app, so both emails carry the code (docs/cloud.md).
+[auth.email.template.confirmation]
+subject = "Your RC Lap Timer code"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.magic_link]
+subject = "Your RC Lap Timer code"
+content_path = "./supabase/templates/magic_link.html"

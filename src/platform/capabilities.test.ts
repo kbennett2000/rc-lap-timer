@@ -11,6 +11,7 @@ describe("capabilitiesFor", () => {
       ledDisplay: true,
       piSystemConfig: true,
       onDeviceData: false,
+      cloud: false,
     });
   });
 
@@ -23,6 +24,12 @@ describe("capabilitiesFor", () => {
       ledDisplay: false,
       piSystemConfig: false,
       onDeviceData: true,
+      cloud: false,
     });
+  });
+
+  it("has the cloud features only in a phone-only build given a Supabase project", () => {
+    expect(capabilitiesFor("standalone", { cloudConfigured: true }).cloud).toBe(true);
+    expect(capabilitiesFor("pi", { cloudConfigured: true }).cloud).toBe(false);
   });
 });

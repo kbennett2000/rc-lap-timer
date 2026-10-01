@@ -180,3 +180,57 @@ jobs:
             test-results/
             server.log
           retention-days: 7
+
+  cloud:
+    # Accounts and cloud sync (docs/cloud.md), which the phone app has only when it's built with a Supabase project:
+    # here a local one. Its database's access rules are tested directly, then sign-in and sync in the browser.
+    name: Cloud features (local Supabase)
+    runs-on: ubuntu-latest
+    env:
+      PAGES_BASE_PATH: /rc-lap-timer
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The type check still covers the Pi's API routes, which use the Prisma client.
+      - run: npx prisma generate
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.119.0
+      - name: Start a local Supabase with the cloud's database (supabase/)
+        run: supabase start -x studio,postgres-meta
+      - name: The database's access rules
+        run: supabase test db
+      - name: Build the phone app with it
+        run: |
+          eval "$(supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=')"
+          NEXT_PUBLIC_CLOUD_URL="$API_URL" NEXT_PUBLIC_CLOUD_KEY="$PUBLISHABLE_KEY" npm run build:pages
+          node scripts/check-bundles.mjs standalone-cloud
+      - name: Serve the export the way GitHub Pages does
+        run: |
+          npm run serve:pages > server.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -fs -o /dev/null http://127.0.0.1:3100/rc-lap-timer/ && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          E2E_TARGET: cloud
+      - name: Keep traces, the server log and Supabase's logs
+        if: failure()
+        run: docker logs supabase_auth_rc-lap-timer > auth.log 2>&1 || true
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cloud-results
+          path: |
+            test-results/
+            server.log
+            auth.log
+          retention-days: 7

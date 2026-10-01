@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Download, HardDrive, Share, SquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,17 +10,24 @@ import { keepDataOnDevice, readStorageStatus, type StorageStatus } from "@/pwa/s
 import { BackupCard } from "./backup-card";
 import { SyncCard } from "./sync-card";
 
+// Signing in and cloud sync, only in an app built with a cloud service (docs/cloud.md). The condition is written out in
+// full so that otherwise the build leaves the code out altogether.
+const AccountCard = process.env.NEXT_PUBLIC_CLOUD_URL
+  ? dynamic(() => import("@/features/cloud/account-card").then((m) => m.AccountCard), { ssr: false })
+  : null;
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} kB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// Manager's Data tab in the phone-only app: installing the app, backups, syncing with a timer, and how safely the phone
-// keeps its data.
+// Manager's Data tab in the phone-only app: installing the app, the account (if there's a cloud service), backups,
+// syncing with a timer, and how safely the phone keeps its data.
 export function DataTab() {
   return (
     <div className="space-y-4">
       <InstallCard />
+      {AccountCard && <AccountCard />}
       <BackupCard />
       <SyncCard />
       <StorageCard />
@@ -94,7 +102,10 @@ function StorageCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <p>Drivers, cars, locations and sessions are stored on this device only. Nothing is sent anywhere.</p>
+        <p>
+          Drivers, cars, locations and sessions are stored on this device. They leave it only when you save a backup or
+          sync.
+        </p>
         {status?.usage != null && <p>Using {formatBytes(status.usage)}.</p>}
         {status?.supported &&
           (status.persisted ? (

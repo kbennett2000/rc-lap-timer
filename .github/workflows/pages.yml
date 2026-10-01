@@ -41,7 +41,12 @@ jobs:
         env:
           # The path Pages serves this repository under, such as /rc-lap-timer (empty for a custom domain).
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-      - run: node scripts/check-bundles.mjs standalone
+          # Accounts, cloud sync, shared tracks and leaderboards: only when these repository variables name a Supabase
+          # project (Settings → Secrets and variables → Actions → Variables; docs/cloud.md). Unset, the app has none of it.
+          NEXT_PUBLIC_CLOUD_URL: ${{ vars.CLOUD_URL }}
+          NEXT_PUBLIC_CLOUD_KEY: ${{ vars.CLOUD_KEY }}
+          NEXT_PUBLIC_CLOUD_PRIVACY_URL: ${{ vars.CLOUD_PRIVACY_URL }}
+      - run: node scripts/check-bundles.mjs ${{ vars.CLOUD_URL && 'standalone-cloud' || 'standalone' }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: out

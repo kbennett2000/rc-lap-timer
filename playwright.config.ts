@@ -1,15 +1,21 @@
 import { defineConfig, devices, type Project } from "@playwright/test";
 import { crossingVideo } from "./tests/e2e/crossing-video";
 
-// What the tests run against: "pi" (the default), "standalone" (the phone-only build), or "sync" (the phone-only build
-// syncing with a Pi build next to it). Each has its own tests.
+// What the tests run against: "pi" (the default), "standalone" (the phone-only build), "sync" (the phone-only build
+// syncing with a Pi build next to it), or "cloud" (the phone-only build with a local Supabase, docs/cloud.md). Each
+// has its own tests.
 const target = process.env.E2E_TARGET ?? "pi";
 const CAMERA = "camera.spec.ts";
-const ONLY: Record<string, string[]> = { standalone: ["standalone.spec.ts", CAMERA], sync: ["sync.spec.ts"] };
+const ONLY: Record<string, string[]> = {
+  standalone: ["standalone.spec.ts", CAMERA],
+  sync: ["sync.spec.ts"],
+  cloud: ["cloud.spec.ts"],
+};
 const baseURLs: Record<string, string> = {
   pi: "http://127.0.0.1:3100",
   standalone: "http://127.0.0.1:3100/rc-lap-timer/",
   sync: "http://127.0.0.1:3200/rc-lap-timer/",
+  cloud: "http://127.0.0.1:3100/rc-lap-timer/",
 };
 
 const phone = {

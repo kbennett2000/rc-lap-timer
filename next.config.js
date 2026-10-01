@@ -10,12 +10,33 @@ if (target && target !== "pi" && target !== "standalone") {
 const standalone = target === "standalone";
 const basePath = standalone ? (process.env.PAGES_BASE_PATH ?? "") : "";
 
+// Accounts, cloud sync, shared tracks and leaderboards (docs/cloud.md) are in the phone app only when it's built with a
+// Supabase project's URL and key, as the Pages workflow does when the CLOUD_URL and CLOUD_KEY repository variables are
+// set. Otherwise they're left out of the build, and the Pi, which has no internet, never has them.
+const cloudUrl = standalone ? (process.env.NEXT_PUBLIC_CLOUD_URL ?? "").trim().replace(/\/+$/, "") : "";
+const cloudKey = standalone ? (process.env.NEXT_PUBLIC_CLOUD_KEY ?? "").trim() : "";
+if (Boolean(cloudUrl) !== Boolean(cloudKey)) {
+  throw new Error("Set both NEXT_PUBLIC_CLOUD_URL and NEXT_PUBLIC_CLOUD_KEY for the cloud features, or neither");
+}
+if (cloudUrl && !/^https?:\/\/[^/]+$/.test(cloudUrl)) {
+  throw new Error(
+    `NEXT_PUBLIC_CLOUD_URL must be a Supabase project's URL, like https://abcd.supabase.co, not "${cloudUrl}"`,
+  );
+}
+const cloudPrivacyUrl = cloudUrl ? (process.env.NEXT_PUBLIC_CLOUD_PRIVACY_URL ?? "").trim() : "";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Always defined, so the build can drop the other target's code: Next only inlines NEXT_PUBLIC_ variables that are
-  // set, and the Pi build leaves this one unset.
-  env: { NEXT_PUBLIC_TARGET: standalone ? "standalone" : "pi", NEXT_PUBLIC_BASE_PATH: basePath },
+  // Always defined, so the build can drop the code it doesn't use: Next only inlines NEXT_PUBLIC_ variables that are
+  // set, and the Pi build leaves NEXT_PUBLIC_TARGET unset.
+  env: {
+    NEXT_PUBLIC_TARGET: standalone ? "standalone" : "pi",
+    NEXT_PUBLIC_BASE_PATH: basePath,
+    NEXT_PUBLIC_CLOUD_URL: cloudUrl,
+    NEXT_PUBLIC_CLOUD_KEY: cloudKey,
+    NEXT_PUBLIC_CLOUD_PRIVACY_URL: cloudPrivacyUrl,
+  },
   ...(standalone
     ? {
         output: "export",
