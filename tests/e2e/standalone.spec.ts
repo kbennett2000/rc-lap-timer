@@ -22,8 +22,19 @@ function watchApiCalls(page: Page): string[] {
   return calls;
 }
 
-test("keeps its data on the phone, hides the Pi's features, and never calls an API", async ({ page }) => {
+// Every request to another site: built without a cloud service (docs/cloud.md), the app sends nothing anywhere.
+function watchOtherSites(page: Page, baseURL: string): string[] {
+  const requests: string[] = [];
+  page.on("request", (r) => {
+    const url = new URL(r.url());
+    if (url.protocol.startsWith("http") && url.origin !== new URL(baseURL).origin) requests.push(r.url());
+  });
+  return requests;
+}
+
+test("keeps its data on the phone, hides the Pi's features, and never calls an API", async ({ page }, testInfo) => {
   const apiCalls = watchApiCalls(page);
+  const otherSites = watchOtherSites(page, testInfo.project.use.baseURL!);
   await page.goto("./");
 
   await expect(page.getByRole("tab", { name: "Practice" })).toBeVisible();
@@ -63,10 +74,14 @@ test("keeps its data on the phone, hides the Pi's features, and never calls an A
   await page.getByRole("button", { name: "Cancel" }).click();
   for (const tab of [/Locations/, /Motion/, /Utilities/]) await page.getByRole("tab", { name: tab }).click();
   await page.getByRole("tab", { name: "Data" }).click();
-  await expect(page.getByText("stored on this device only")).toBeVisible();
+  await expect(
+    page.getByText("stored on this device. They leave it only when you save a backup or sync"),
+  ).toBeVisible();
   await expect(page.getByText("Install the app")).toBeVisible();
+  await expect(page.getByText("Account and cloud sync"), "no cloud service, so no account").toHaveCount(0);
 
   expect(apiCalls, "requests to an API").toEqual([]);
+  expect(otherSites, "requests to other sites").toEqual([]);
 });
 
 test("an interrupted IR run resumes with tap timing, so it can be stopped", async ({ page }) => {

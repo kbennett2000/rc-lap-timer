@@ -27,6 +27,9 @@ iPhone first needs the timer's certificate: see "Trusting the timer on a phone")
 These need the Raspberry Pi timer below: race mode, IR timing, remote control, following a session live from another
 phone, the LED display, and the timer's System Settings.
 
+The app can also have accounts and cloud sync, but only if whoever publishes it runs a cloud service for them
+([docs/cloud.md](docs/cloud.md)). The app at the link above doesn't, so it never sends your data anywhere.
+
 # Feature Overview
 
 Watch this short video to understand how RC Lap Timer works and some of the features available. It shows an earlier
@@ -310,6 +313,10 @@ IR timing is still in beta.
     timer's Wi-Fi, it shares everything both ways; an iPhone first needs the timer's certificate, see "Trusting the
     timer on a phone"), and **Your data** (**Keep data on this device** asks the browser not to clear the app's data
     when the phone runs low on space). The phone app reminds you if you haven't saved a backup for two weeks.
+  - In a phone app published with a cloud service ([docs/cloud.md](docs/cloud.md)), also **Account and cloud
+    sync**: sign in with a code sent to your email, then **Sync now** shares everything both ways between the phone
+    and your account, so each phone you sign in on has the same data. **Sign out** and **Delete account** leave the
+    phone's data as it is.
 - **System Settings** (timer only): change the timer's name and the `pi` user's password. **Save & Reboot**
   restarts the timer, ending any session. It needs the admin PIN set on the Pi (see
   [docs/raspberryPiSetup.md](docs/raspberryPiSetup.md)).
@@ -349,6 +356,12 @@ The phone app syncs with a timer by calling its `/api/sync` routes from GitHub P
 listed in `SYNC_ALLOWED_ORIGINS` (in `/etc/rc-lap-timer.env`; the default is `https://kbennett2000.github.io`), so a
 fork that publishes its own phone app adds its Pages site there.
 
+Accounts and cloud sync are in the phone app only when it's built with a Supabase project
+(`NEXT_PUBLIC_CLOUD_URL` and `NEXT_PUBLIC_CLOUD_KEY`, which the Pages workflow takes from the `CLOUD_URL` and
+`CLOUD_KEY` repository variables). Otherwise their code is left out of the build. The code is in
+[src/cloud](src/cloud) and [src/features/cloud](src/features/cloud), and the database is in [supabase/](supabase).
+[docs/cloud.md](docs/cloud.md) explains how to turn them on.
+
 The Pi's API routes are the `src/app/api/**/route.pi.ts` files: only the Pi build treats `.pi.ts` files as pages and
 routes (see `next.config.js`), so the static build leaves them out. Every route that changes data starts with
 `refuseWrite` ([src/lib/api-helpers.ts](src/lib/api-helpers.ts)), which refuses other sites and bodies that aren't
@@ -375,6 +388,9 @@ CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs these on every pu
 - The phone app's browser tests. Its camera tests play a video of a car crossing
   ([tests/e2e/crossing-video.ts](tests/e2e/crossing-video.ts)) as the camera and check every lap; the motion check
   itself is [src/timing/motion.ts](src/timing/motion.ts).
+- With a local Supabase: the cloud database's access rules (`supabase test db`), and the phone app built with it,
+  checked to contain the cloud code (`check-bundles.mjs standalone-cloud`), with its sign-in and cloud sync browser
+  tests ([tests/e2e/cloud.spec.ts](tests/e2e/cloud.spec.ts)).
 - The Pi's web server settings, in the nginx version the Pi runs
   ([scripts/system/test-pi-network.sh](scripts/system/test-pi-network.sh), which needs Docker), and the system
   settings helper ([scripts/system/test-config-helper.sh](scripts/system/test-config-helper.sh)).
@@ -408,6 +424,15 @@ E2E_TARGET=standalone npm run test:e2e
 
 # The upgrade's database step
 tests/upgrade/test-upgrade-db.sh
+
+# The cloud features, with a local Supabase (Docker): stop the phone app's server above first (port 3100)
+npx supabase@2.119.0 start
+npx supabase@2.119.0 test db
+eval "$(npx supabase@2.119.0 status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=')"
+NEXT_PUBLIC_CLOUD_URL="$API_URL" NEXT_PUBLIC_CLOUD_KEY="$PUBLISHABLE_KEY" npm run build:pages
+npm run serve:pages &
+E2E_TARGET=cloud npm run test:e2e
+npx supabase@2.119.0 stop
 ```
 - `LED_DEVICE_IP` points the Pi build at the fake LED display the API tests run.
 - If the servers are elsewhere, set `API_BASE_URL` (API tests), `E2E_BASE_URL` (browser tests) and `E2E_TIMER_URL`
