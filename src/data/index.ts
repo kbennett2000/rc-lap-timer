@@ -1,12 +1,14 @@
 import { createApiDataStore } from "./api-data-store";
-import { DataStoreError, type BackupStore, type DataStore } from "./types";
+import { DataStoreError, type BackupStore, type ChangeCounter, type DataStore } from "./types";
 
 export * from "./types";
 
 // A store that loads its implementation the first time it's used, and never before: the page is also prerendered
 // at build time, where there's no IndexedDB. A failed load is retried on the next call.
-function lazyStore(load: () => Promise<DataStore & BackupStore>): DataStore & BackupStore {
-  let loading: Promise<DataStore & BackupStore> | null = null;
+type LocalStore = DataStore & BackupStore & ChangeCounter;
+
+function lazyStore(load: () => Promise<LocalStore>): LocalStore {
+  let loading: Promise<LocalStore> | null = null;
   const store = () => {
     loading ??= load().catch((error: unknown) => {
       loading = null;
@@ -16,7 +18,7 @@ function lazyStore(load: () => Promise<DataStore & BackupStore>): DataStore & Ba
     return loading;
   };
   // Each method waits for the store, then calls it.
-  type Store = DataStore & BackupStore;
+  type Store = LocalStore;
   const via = <K extends keyof Store>(key: K): Store[K] =>
     (async (...args: unknown[]) => ((await store())[key] as (...a: unknown[]) => unknown)(...args)) as Store[K];
 
@@ -42,6 +44,7 @@ function lazyStore(load: () => Promise<DataStore & BackupStore>): DataStore & Ba
     importBundle: via("importBundle"),
     lastBackupAt: via("lastBackupAt"),
     markBackedUp: via("markBackedUp"),
+    changeCount: via("changeCount"),
   };
 }
 

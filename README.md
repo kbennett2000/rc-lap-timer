@@ -331,9 +331,10 @@ IR timing is still in beta.
     timer on a phone"), and **Your data** (**Keep data on this device** asks the browser not to clear the app's data
     when the phone runs low on space). The phone app reminds you if you haven't saved a backup for two weeks.
   - In a phone app published with a cloud service ([docs/cloud.md](docs/cloud.md)), also **Account and cloud
-    sync**: sign in with a code sent to your email, then **Sync now** shares everything both ways between the phone
-    and your account, so each phone you sign in on has the same data. **Sign out** and **Delete account** leave the
-    phone's data as it is.
+    sync**: sign in with a code sent to your email, and the phone syncs everything both ways with your account by
+    itself, so each phone you sign in on has the same data. It syncs after each change and every so often; changes
+    made without a connection (on a timer's Wi-Fi, say) wait and go when it's back. Turn **Sync automatically** off to
+    sync only with **Sync now**. **Sign out** and **Delete account** leave the phone's data as it is.
 - **System Settings** (timer only): change the timer's name and the `pi` user's password. **Save & Reboot**
   restarts the timer, ending any session. It needs the admin PIN set on the Pi (see
   [docs/raspberryPiSetup.md](docs/raspberryPiSetup.md)).
@@ -342,7 +343,9 @@ When a new version of the phone app is ready, a bar at the top says so: tap **Re
 
 ## Tracks (phone app with a cloud service)
 In a phone app published with a cloud service ([docs/cloud.md](docs/cloud.md)), a **Tracks** tab in the bottom bar
-lists shared tracks. Tap one to see its leaderboard: each driver's best lap, fastest first. Anyone can look.
+lists shared tracks. Tap one to see its leaderboard: each driver's best lap, fastest first, under the track record
+(and, signed in, your best and its place). Tap a driver to see their profile: their best lap and place at each track.
+Signed in, **Your drivers** lists yours. Anyone can look.
 - **Adding a track:** signed in (Manager → Data), you can **Add a track**, with where it is if you like.
 - **Posting a session:** each saved session in Practice and Session Mgmt has **Post to leaderboard**, which puts its
   best lap on a track's leaderboard. It shows exactly what becomes public first, and suggests the track you used last

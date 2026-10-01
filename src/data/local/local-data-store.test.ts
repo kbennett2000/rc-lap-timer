@@ -32,6 +32,42 @@ async function setUp(store = createLocalDataStore(freshDb())) {
   return { store, driver, car, location, session };
 }
 
+describe("counting changes, for cloud sync", () => {
+  it("counts each change to the data", async () => {
+    const store = createLocalDataStore(freshDb());
+    expect(await store.changeCount()).toBe(0);
+    const driver = await store.createDriver("Amy");
+    await store.renameDriver(driver.id, "Amelia");
+    expect(await store.changeCount()).toBe(2);
+    await store.deleteDriver(driver.id);
+    expect(await store.changeCount()).toBe(3);
+  });
+
+  it("doesn't count a change that failed, or bookkeeping", async () => {
+    const { store } = await setUp();
+    const before = await store.changeCount();
+    await expect(store.createDriver("amy")).rejects.toMatchObject({ kind: "duplicate" });
+    await store.exportBundle();
+    await store.markBackedUp("2026-10-01T00:00:00.000Z");
+    expect(await store.changeCount()).toBe(before);
+  });
+
+  it("counts a restore or sync that changed something, and not one that didn't", async () => {
+    const { store } = await setUp();
+    const other = createLocalDataStore(freshDb());
+    await other.createDriver("Bob");
+    const bundle = await other.exportBundle();
+
+    const before = await store.changeCount();
+    await store.importBundle(bundle, { dryRun: true });
+    expect(await store.changeCount(), "a dry run").toBe(before);
+    await store.importBundle(bundle);
+    expect(await store.changeCount()).toBe(before + 1);
+    await store.importBundle(bundle);
+    expect(await store.changeCount(), "nothing new the second time").toBe(before + 1);
+  });
+});
+
 describe("the phone's on-device store", () => {
   it("treats names that differ only in accents as the same", async () => {
     const store = createLocalDataStore(freshDb());

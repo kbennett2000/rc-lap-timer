@@ -26,6 +26,30 @@ export interface LeaderboardRow {
   sessionDate: string;
   // Posted by the signed-in account.
   mine: boolean;
+  // The driver: this driver name, as posted by one account (see DriverProfile).
+  driverKey: string;
+}
+
+// A driver's best lap at one track.
+export interface DriverBest {
+  trackId: string;
+  trackName: string;
+  trackArea: string;
+  carName: string;
+  bestLapMs: number;
+  sessionDate: string;
+  // Their place on that track's leaderboard, out of how many drivers.
+  place: number;
+  drivers: number;
+  // How many of their sessions are posted there.
+  posts: number;
+}
+
+// A driver, from what's posted: their name and their best lap at each track.
+export interface DriverProfile {
+  key: string;
+  name: string;
+  bests: DriverBest[];
 }
 
 // One of the signed-in account's posts.
@@ -88,7 +112,7 @@ export async function leaderboard(trackId: string): Promise<LeaderboardRow[]> {
     await client
       .from("leaderboard")
       .select(
-        "id, driverName:driver_name, carName:car_name, bestLapMs:best_lap_ms, bestLapNumber:best_lap_number, penalties, lapCount:lap_count, sessionDate:session_date, mine",
+        "id, driverName:driver_name, carName:car_name, bestLapMs:best_lap_ms, bestLapNumber:best_lap_number, penalties, lapCount:lap_count, sessionDate:session_date, mine, driverKey:driver_key",
       )
       .eq("track_id", trackId)
       .order("best_lap_ms")
@@ -134,4 +158,43 @@ export async function postSession(accountId: string, trackId: string, entry: Lea
 export async function removePost(id: string): Promise<void> {
   const client = await cloudClient();
   check(await client.from("lap_records").delete().eq("id", id));
+}
+
+const BEST_COLUMNS =
+  "driverKey:driver_key, driverName:driver_name, carName:car_name, trackId:track_id, trackName:track_name, trackArea:track_area, bestLapMs:best_lap_ms, sessionDate:session_date, place, drivers, posts";
+
+type BestRow = Omit<DriverBest, "place" | "drivers" | "posts"> & {
+  driverKey: string;
+  driverName: string;
+  place: number | string;
+  drivers: number | string;
+  posts: number | string;
+};
+
+// Profiles from rows of driver_bests, in the order the rows come.
+function profiles(rows: BestRow[]): DriverProfile[] {
+  const byKey = new Map<string, DriverProfile>();
+  for (const { driverKey, driverName, place, drivers, posts, ...best } of rows) {
+    const profile = byKey.get(driverKey) ?? { key: driverKey, name: driverName, bests: [] };
+    profile.bests.push({ ...best, place: Number(place), drivers: Number(drivers), posts: Number(posts) });
+    byKey.set(driverKey, profile);
+  }
+  return [...byKey.values()];
+}
+
+export async function driverProfile(key: string): Promise<DriverProfile | null> {
+  const client = await cloudClient();
+  const rows = check(
+    await client.from("driver_bests").select(BEST_COLUMNS).eq("driver_key", key).order("track_name"),
+  ) as unknown as BestRow[];
+  return profiles(rows)[0] ?? null;
+}
+
+// The signed-in account's drivers that have laps posted.
+export async function myDrivers(): Promise<DriverProfile[]> {
+  const client = await cloudClient();
+  const rows = check(
+    await client.from("driver_bests").select(BEST_COLUMNS).eq("mine", true).order("driver_name").order("track_name"),
+  ) as unknown as BestRow[];
+  return profiles(rows);
 }

@@ -15,7 +15,7 @@ import { mergeBundles, planWrites, type TableWrites } from "@/domain/sync/merge"
 import type { Car, Driver, Location, MotionSettings, SessionRecord } from "@/domain/types";
 import { parseSessionInput } from "@/lib/session-input";
 import { newId } from "@/lib/utils";
-import { DataStoreError, type BackupStore, type DataStore } from "../types";
+import { DataStoreError, type BackupStore, type ChangeCounter, type DataStore } from "../types";
 import {
   LapTimerDB,
   type CarRow,
@@ -62,7 +62,7 @@ function toStoreError(error: unknown): DataStoreError {
   return new DataStoreError("unavailable", `Couldn't save on this phone: ${detail}`);
 }
 
-export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataStore & BackupStore {
+export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataStore & BackupStore & ChangeCounter {
   const tables = [
     db.drivers,
     db.cars,
@@ -75,13 +75,26 @@ export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataSto
   ];
 
   // Every change runs in one read-write transaction, so it happens completely or not at all. Nothing but database
-  // calls may be awaited inside one: the transaction commits as soon as it has nothing left to do.
-  async function change<T>(work: () => Promise<T>): Promise<T> {
+  // calls may be awaited inside one: the transaction commits as soon as it has nothing left to do. A change to the
+  // data is counted (see changeCount); bookkeeping isn't.
+  async function change<T>(work: () => Promise<T>, { counted = true } = {}): Promise<T> {
     try {
-      return await db.transaction("rw", tables, work);
+      return await db.transaction("rw", tables, async () => {
+        const result = await work();
+        if (counted) await countChange();
+        return result;
+      });
     } catch (error) {
       throw toStoreError(error);
     }
+  }
+
+  async function changes(): Promise<number> {
+    return Number((await db.meta.get("changes"))?.value ?? 0);
+  }
+
+  async function countChange() {
+    await db.meta.put({ key: "changes", value: String((await changes()) + 1) });
   }
 
   async function read<T>(work: () => Promise<T>): Promise<T> {
@@ -397,50 +410,63 @@ export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataSto
     },
 
     async exportBundle(): Promise<Bundle> {
-      return change(async () => {
-        // Each phone names itself once, so merged data can tell where it came from.
-        let deviceId = (await db.meta.get("deviceId"))?.value;
-        if (!deviceId) {
-          deviceId = newId();
-          await db.meta.put({ key: "deviceId", value: deviceId });
-        }
-        return {
-          format: BUNDLE_FORMAT,
-          schemaVersion: BUNDLE_SCHEMA_VERSION,
-          exportedAt: now(),
-          deviceId,
-          ...(await readContents()),
-        };
-      });
+      return change(
+        async () => {
+          // Each phone names itself once, so merged data can tell where it came from.
+          let deviceId = (await db.meta.get("deviceId"))?.value;
+          if (!deviceId) {
+            deviceId = newId();
+            await db.meta.put({ key: "deviceId", value: deviceId });
+          }
+          return {
+            format: BUNDLE_FORMAT,
+            schemaVersion: BUNDLE_SCHEMA_VERSION,
+            exportedAt: now(),
+            deviceId,
+            ...(await readContents()),
+          };
+        },
+        { counted: false },
+      );
     },
 
     async importBundle(bundle, { dryRun = false } = {}) {
       // Read, merge and write in one transaction: the merge itself is plain code, so nothing else is awaited.
-      return change(async () => {
-        const before = await readContents();
-        const { merged, summary } = mergeBundles(before, bundle, now());
-        if (dryRun) return summary;
-        const writes = planWrites(before, merged);
-        // Deletes first, and changed records are written afresh, so a name that moves between records (even along a
-        // chain of renames) is always free by the time it arrives in a unique index.
-        const cleared = <T extends { id: string }>({ put, remove }: TableWrites<T>) => [
-          ...remove,
-          ...put.map((record) => record.id),
-        ];
-        await db.sessions.bulkDelete(writes.sessions.remove);
-        await db.cars.bulkDelete(cleared(writes.cars));
-        await db.drivers.bulkDelete(cleared(writes.drivers));
-        await db.locations.bulkDelete(cleared(writes.locations));
-        await db.motionSettings.bulkDelete(cleared(writes.motionSettings));
-        await db.drivers.bulkPut(writes.drivers.put.map(withNameKey));
-        await db.cars.bulkPut(writes.cars.put.map(withNameKey));
-        await db.locations.bulkPut(writes.locations.put.map(withNameKey));
-        await db.motionSettings.bulkPut(writes.motionSettings.put.map(withNameKey));
-        await db.sessions.bulkPut(writes.sessions.put);
-        await db.tombstones.bulkPut(writes.tombstones);
-        await db.aliases.bulkPut(writes.aliases);
-        return summary;
-      });
+      return change(
+        async () => {
+          const before = await readContents();
+          const { merged, summary } = mergeBundles(before, bundle, now());
+          if (dryRun) return summary;
+          const writes = planWrites(before, merged);
+          // Deletes first, and changed records are written afresh, so a name that moves between records (even along a
+          // chain of renames) is always free by the time it arrives in a unique index.
+          const cleared = <T extends { id: string }>({ put, remove }: TableWrites<T>) => [
+            ...remove,
+            ...put.map((record) => record.id),
+          ];
+          await db.sessions.bulkDelete(writes.sessions.remove);
+          await db.cars.bulkDelete(cleared(writes.cars));
+          await db.drivers.bulkDelete(cleared(writes.drivers));
+          await db.locations.bulkDelete(cleared(writes.locations));
+          await db.motionSettings.bulkDelete(cleared(writes.motionSettings));
+          await db.drivers.bulkPut(writes.drivers.put.map(withNameKey));
+          await db.cars.bulkPut(writes.cars.put.map(withNameKey));
+          await db.locations.bulkPut(writes.locations.put.map(withNameKey));
+          await db.motionSettings.bulkPut(writes.motionSettings.put.map(withNameKey));
+          await db.sessions.bulkPut(writes.sessions.put);
+          await db.tombstones.bulkPut(writes.tombstones);
+          await db.aliases.bulkPut(writes.aliases);
+          const wrote =
+            writes.tombstones.length > 0 ||
+            writes.aliases.length > 0 ||
+            [writes.drivers, writes.cars, writes.locations, writes.sessions, writes.motionSettings].some(
+              (table) => table.put.length > 0 || table.remove.length > 0,
+            );
+          if (wrote) await countChange();
+          return summary;
+        },
+        { counted: false },
+      );
     },
 
     async lastBackupAt() {
@@ -448,9 +474,16 @@ export function createLocalDataStore(db: LapTimerDB = new LapTimerDB()): DataSto
     },
 
     async markBackedUp(at) {
-      return change(async () => {
-        await db.meta.put({ key: "lastBackupAt", value: at });
-      });
+      return change(
+        async () => {
+          await db.meta.put({ key: "lastBackupAt", value: at });
+        },
+        { counted: false },
+      );
+    },
+
+    async changeCount() {
+      return read(changes);
     },
   };
 }

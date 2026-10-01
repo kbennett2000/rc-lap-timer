@@ -1,26 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { deleteAccount, sendCode, signInWithCode, signOut, useCloudAccount, type CloudAccount } from "@/cloud/account";
 import {
-  accountBundleStore,
-  deleteAccount,
-  sendCode,
-  signInWithCode,
-  signOut,
-  useCloudAccount,
-  type CloudAccount,
-} from "@/cloud/account";
+  readSyncRecord,
+  setAutoSyncEnabled,
+  setSyncState,
+  useAutoSyncEnabled,
+  useSyncState,
+  type SyncState,
+} from "@/cloud/auto-sync";
 import { toCloudError } from "@/cloud/errors";
-import { syncWithCloud, type CloudSyncResult } from "@/cloud/sync";
-import { DATA_KEY, MOTION_SETTINGS_KEY, useBackupStore, useMarkBackedUp } from "@/data/hooks";
+import type { CloudSyncResult } from "@/cloud/sync";
+import { useBackupStore, useDataVersion } from "@/data/hooks";
+import { useDataStore } from "@/data/provider";
+import { isChangeCounter } from "@/data/types";
 import { describeAge, describeMerge, type MergeWords } from "@/features/data/backup-text";
 import { changeBlocker } from "@/features/data/blockers";
+import { useCloudSync } from "./use-cloud-sync";
 
 const CLOUD_WORDS: MergeWords = { here: "your account", atHere: "in your account", there: "on this phone" };
 const PHONE_WORDS: MergeWords = { here: "this phone", atHere: "on this phone", there: "in your account" };
@@ -30,22 +34,32 @@ const PRIVACY_URL = /^https:\/\//.test(process.env.NEXT_PUBLIC_CLOUD_PRIVACY_URL
   ? process.env.NEXT_PUBLIC_CLOUD_PRIVACY_URL
   : null;
 
-const syncedAtKey = (account: CloudAccount) => `rc-lap-timer-cloud-synced-at:${account.id}`;
-
-function readSetting(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+// What automatic syncing is waiting for, if anything.
+function waitingFor(state: SyncState): string | null {
+  if (state.kind === "syncing") return "Syncing…";
+  if (state.kind !== "waiting") return null;
+  if (state.reason === "blocked") return "Changes will sync once the session is finished and saved.";
+  if (state.reason === "offline")
+    return "Can't reach the cloud service: changes will sync when the connection is back.";
+  return state.message ?? null;
 }
 
-function saveSetting(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // Private browsing: it shows "never" next time.
-  }
+// How many changes on this phone aren't in the account yet.
+function useUnsynced(account: CloudAccount, version: number): number {
+  const store = useDataStore();
+  const dataVersion = useDataVersion();
+  const [unsynced, setUnsynced] = useState(0);
+  useEffect(() => {
+    if (!isChangeCounter(store)) return;
+    let current = true;
+    void store.changeCount().then((count) => {
+      if (current) setUnsynced(Math.max(0, count - (readSyncRecord(account.id)?.count ?? 0)));
+    });
+    return () => {
+      current = false;
+    };
+  }, [store, account.id, version, dataVersion]);
+  return unsynced;
 }
 
 function Problem({ message }: { message: string | null }) {
@@ -186,29 +200,16 @@ function SignIn() {
 
 function SignedIn({ account }: { account: CloudAccount }) {
   const local = useBackupStore();
-  const queryClient = useQueryClient();
-  const markBackedUp = useMarkBackedUp();
-  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const sync = useCloudSync();
+  const automatic = useAutoSyncEnabled();
+  const { state, version } = useSyncState();
+  const unsynced = useUnsynced(account, version);
+  const syncedAt = readSyncRecord(account.id)?.at ?? null;
   const [result, setResult] = useState<CloudSyncResult | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  useEffect(() => setSyncedAt(readSetting(syncedAtKey(account))), [account]);
-
-  const sync = useMutation({
-    mutationFn: async () => syncWithCloud(local!, await accountBundleStore()),
-    onSuccess: async () => {
-      const now = new Date().toISOString();
-      saveSetting(syncedAtKey(account), now);
-      setSyncedAt(now);
-      // The account now holds everything this phone has, which is as good as a backup.
-      markBackedUp.mutate(now);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: DATA_KEY }),
-        queryClient.invalidateQueries({ queryKey: MOTION_SETTINGS_KEY }),
-      ]);
-    },
-  });
   const leave = useMutation({ mutationFn: (deleting: boolean) => (deleting ? deleteAccount() : signOut()) });
 
   const start = async () => {
@@ -219,10 +220,13 @@ function SignedIn({ account }: { account: CloudAccount }) {
     }
     setResult(null);
     setProblem(null);
+    setSyncing(true);
     try {
-      setResult(await sync.mutateAsync());
+      setResult(await sync(account));
     } catch (error) {
       setProblem(toCloudError(error).message);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -230,10 +234,13 @@ function SignedIn({ account }: { account: CloudAccount }) {
     setProblem(null);
     try {
       await leave.mutateAsync(deleting);
+      setSyncState({ kind: "idle" });
     } catch (error) {
       setProblem(toCloudError(error).message);
     }
   };
+
+  const waiting = waitingFor(state);
 
   return (
     <>
@@ -244,9 +251,22 @@ function SignedIn({ account }: { account: CloudAccount }) {
         Syncing shares drivers, cars, locations, sessions and motion settings both ways between this phone and your
         account.
       </p>
-      <p>Last synced: {syncedAt ? describeAge(syncedAt, new Date()) : "never"}.</p>
-      <Button onClick={() => void start()} disabled={!local || sync.isPending || leave.isPending}>
-        {sync.isPending ? "Syncing…" : "Sync now"}
+      <div className="flex items-center gap-2">
+        <Switch id="cloud-auto" checked={automatic} onCheckedChange={setAutoSyncEnabled} />
+        <Label htmlFor="cloud-auto">Sync automatically</Label>
+      </div>
+      <p className="text-muted-foreground">
+        {automatic
+          ? "After each change, and every so often to bring in your other phones' changes. Changes made without a connection wait, and go when it's back."
+          : "Only when you tap Sync now."}
+      </p>
+      <p>
+        Last synced: {syncedAt ? describeAge(new Date(syncedAt).toISOString(), new Date()) : "never"}.
+        {unsynced > 0 && ` ${unsynced} ${unsynced === 1 ? "change" : "changes"} on this phone not synced yet.`}
+      </p>
+      {automatic && waiting && !syncing && <p data-testid="sync-waiting">{waiting}</p>}
+      <Button onClick={() => void start()} disabled={!local || syncing || leave.isPending}>
+        {syncing ? "Syncing…" : "Sync now"}
       </Button>
 
       {result && (
@@ -285,14 +305,10 @@ function SignedIn({ account }: { account: CloudAccount }) {
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={sync.isPending || leave.isPending} onClick={() => void finish(false)}>
+          <Button variant="outline" disabled={syncing || leave.isPending} onClick={() => void finish(false)}>
             Sign out
           </Button>
-          <Button
-            variant="ghost"
-            disabled={sync.isPending || leave.isPending}
-            onClick={() => setConfirmingDelete(true)}
-          >
+          <Button variant="ghost" disabled={syncing || leave.isPending} onClick={() => setConfirmingDelete(true)}>
             Delete account…
           </Button>
         </div>

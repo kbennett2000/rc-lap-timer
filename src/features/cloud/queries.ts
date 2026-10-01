@@ -2,7 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CloudAccount } from "@/cloud/account";
-import { leaderboard, listTracks, myPosts, postSession, removePost, type Post } from "@/cloud/tracks";
+import {
+  driverProfile,
+  leaderboard,
+  listTracks,
+  myDrivers,
+  myPosts,
+  postSession,
+  removePost,
+  type Post,
+} from "@/cloud/tracks";
 import type { LeaderboardEntry } from "@/domain/leaderboard";
 
 export const TRACKS_KEY = ["cloud", "tracks"];
@@ -15,6 +24,19 @@ export function useTracks() {
 
 export function useLeaderboard(trackId: string) {
   return useQuery({ queryKey: leaderboardKey(trackId), queryFn: () => leaderboard(trackId), staleTime: 60_000 });
+}
+
+export function useDriverProfile(key: string) {
+  return useQuery({ queryKey: ["cloud", "driver", key], queryFn: () => driverProfile(key), staleTime: 60_000 });
+}
+
+export function useMyDrivers(account: CloudAccount | null | undefined) {
+  return useQuery({
+    queryKey: ["cloud", "my-drivers", account?.id],
+    queryFn: myDrivers,
+    enabled: Boolean(account),
+    staleTime: 60_000,
+  });
 }
 
 export function useMyPosts(account: CloudAccount | null | undefined) {
