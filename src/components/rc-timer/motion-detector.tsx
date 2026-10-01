@@ -11,16 +11,23 @@ import { logger } from "@/lib/logger";
 import { now } from "@/timing/clock";
 import {
   analysisSize,
+  boxFromCorners,
+  boxPixels,
   changedPercent,
   DEFAULT_SETTINGS,
+  frameNeeded,
   frameTime,
   nextFrame,
+  parseBox,
   parseSettings,
   skipping,
   START,
+  toFramePoint,
+  type Box,
   type DetectorSettings,
   type DetectorState,
   type FrameTimeSource,
+  type Point,
 } from "@/timing/motion";
 
 export interface MotionDetectorHandle {
@@ -48,6 +55,27 @@ const STATS_INTERVAL_MS = 250;
 // The settings last used on this device, so the camera is set up the same way next time.
 const SETTINGS_KEY = "rc-lap-timer-motion-settings";
 
+// The start/finish box last drawn for each camera on this device: it's a place in that camera's view, so it isn't part
+// of the saved motion settings, which can go to other phones and the timer.
+const boxKey = (cameraId: string) => `rc-lap-timer-motion-box:${cameraId || "default"}`;
+
+function readBox(cameraId: string): Box | null {
+  try {
+    return parseBox(JSON.parse(localStorage.getItem(boxKey(cameraId)) ?? "null"));
+  } catch {
+    return null;
+  }
+}
+
+function saveBox(cameraId: string, box: Box | null) {
+  try {
+    if (box) localStorage.setItem(boxKey(cameraId), JSON.stringify(box));
+    else localStorage.removeItem(boxKey(cameraId));
+  } catch {
+    // not remembered; still used now
+  }
+}
+
 // With requestVideoFrameCallback, no frame for this long while the video plays counts as a stall (see startLoop).
 const STALL_MS = 1000;
 
@@ -71,6 +99,7 @@ function freshStats() {
     work: 0,
     change: null as number | null,
     source: "checked" as FrameTimeSource,
+    area: "",
   };
 }
 
@@ -79,6 +108,8 @@ interface PreviewStats {
   framesPerSecond: number;
   msPerFrame: number;
   source: FrameTimeSource;
+  // The compared picture's size, such as "320×36".
+  area: string;
 }
 
 const TIMED_BY: Record<FrameTimeSource, string> = {
@@ -104,6 +135,8 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const camera = useCamera();
   const { start: startCamera, stop: stopCamera } = camera;
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The video and the box drawn over it, rotated together.
+  const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previousFrameRef = useRef<ImageData | null>(null);
   const detectorRef = useRef<DetectorState>(START);
@@ -125,6 +158,11 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const [detectedMotionStats, setDetectedMotionStats] = useState("");
   const [saveMDImages, setSaveMDImages] = useState(false);
   const [rotation, setRotation] = useState(0);
+  // The start/finish box (null: the whole picture), and the one being drawn. The frame loop reads boxRef, which changes
+  // at once, so no frame is compared with one from a different part of the picture.
+  const [box, setBox] = useState<Box | null>(null);
+  const boxRef = useRef<Box | null>(null);
+  const [drawing, setDrawing] = useState<{ start: Point; end: Point } | null>(null);
 
   // Remember the settings on this device. This runs before the effect below that reads them back, so the defaults of the
   // first render never overwrite what's stored.
@@ -147,6 +185,24 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     }
     settingsRestored.current = true;
   }, []);
+
+  const applyBox = useCallback((next: Box | null) => {
+    boxRef.current = next;
+    previousFrameRef.current = null;
+    setBox(next);
+  }, []);
+
+  // Each camera has its own box.
+  useEffect(() => applyBox(readBox(camera.cameraId)), [camera.cameraId, applyBox]);
+
+  const chooseBox = (next: Box | null) => {
+    applyBox(next);
+    saveBox(camera.cameraId, next);
+  };
+
+  // Where a pointer is in the camera's picture, through the preview's rotation.
+  const pointAt = (event: React.PointerEvent) =>
+    toFramePoint(event.clientX, event.clientY, frameRef.current!.getBoundingClientRect(), rotation);
 
   // Latest values for the frame loop, which outlives any single render.
   const latest = useRef({ settings, isPreviewing, saveMDImages, soundOn, onMotionDetected, onCameraChange });
@@ -187,19 +243,31 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d", { willReadFrequently: true });
     if (!video || !canvas || !ctx || video.videoWidth === 0) return;
+    // Hidden (the phone locked, or another app on top), nothing is timed: the run records the gap. The next frame
+    // starts afresh, rather than being compared with one from before.
+    if (document.visibilityState === "hidden") {
+      previousFrameRef.current = null;
+      return;
+    }
+    const { settings: current, isPreviewing: previewing } = latest.current;
+    // While the camera settles, frames that won't be compared aren't copied either.
+    if (!frameNeeded(detectorRef.current, current)) {
+      detectorRef.current = nextFrame(detectorRef.current, null, at, current).state;
+      return;
+    }
     const started = performance.now();
 
-    // Compare a scaled-down copy of the frame (see analysisSize). Its size follows the video's, which changes when the
-    // phone rotates.
-    const size = analysisSize(video.videoWidth, video.videoHeight);
+    // Compare a scaled-down copy of the start/finish box, or of the whole frame without one (see analysisSize). Its
+    // size follows the video's, which changes when the phone rotates.
+    const area = boxPixels(boxRef.current, video.videoWidth, video.videoHeight);
+    const size = analysisSize(area.width, area.height);
     if (canvas.width !== size.width || canvas.height !== size.height) {
       canvas.width = size.width;
       canvas.height = size.height;
       previousFrameRef.current = null;
     }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
     const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const { settings: current, isPreviewing: previewing } = latest.current;
 
     const previous = previousFrameRef.current;
     const change =
@@ -215,6 +283,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     stats.work += performance.now() - started;
     if (change !== null) stats.change = change;
     stats.source = source;
+    stats.area = `${canvas.width}×${canvas.height}`;
     const elapsed = performance.now() - stats.since;
     if (elapsed >= STATS_INTERVAL_MS) {
       if (previewing) {
@@ -223,6 +292,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
           framesPerSecond: (stats.frames * 1000) / elapsed,
           msPerFrame: stats.work / stats.frames,
           source,
+          area: stats.area,
         });
       }
       statsRef.current = { ...freshStats(), change: stats.change };
@@ -404,6 +474,22 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     }
   };
 
+  // Switching cameras while the camera is on: the video follows the new camera's stream.
+  const switchCamera = async (id: string) => {
+    try {
+      await camera.chooseCamera(id);
+      const video = videoRef.current;
+      const stream = camera.streamRef.current;
+      if (video && stream && video.srcObject !== stream) {
+        previousFrameRef.current = null;
+        video.srcObject = stream;
+        await video.play().catch((err) => logger.warn("The camera's video didn't start playing:", err));
+      }
+    } catch (err) {
+      setError("Couldn't switch cameras: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
   const handleCamOn = async () => {
     onUserStart?.();
     setIsLoading(true);
@@ -419,15 +505,70 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="relative bg-black rounded-lg overflow-hidden">
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          className="w-full"
-          style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
-        />
+        <div ref={frameRef} className="relative" style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}>
+          <video ref={videoRef} playsInline muted className="block w-full" />
+          {/* While previewing, a drag over the picture draws the start/finish box. */}
+          <div
+            data-testid="box-area"
+            className={`absolute inset-0 ${isPreviewing ? "cursor-crosshair touch-none" : "pointer-events-none"}`}
+            onPointerDown={(event) => {
+              if (!isPreviewing) return;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              const point = pointAt(event);
+              setDrawing({ start: point, end: point });
+            }}
+            onPointerMove={(event) => {
+              if (drawing) setDrawing({ ...drawing, end: pointAt(event) });
+            }}
+            onPointerUp={(event) => {
+              if (!drawing) return;
+              const drawn = boxFromCorners(drawing.start, pointAt(event));
+              setDrawing(null);
+              if (drawn) chooseBox(drawn);
+            }}
+            onPointerCancel={() => setDrawing(null)}
+          >
+            {(() => {
+              const shown = drawing ? boxFromCorners(drawing.start, drawing.end) : box;
+              return (
+                shown && (
+                  <div
+                    aria-label="Start/finish box"
+                    className="absolute border-2 border-yellow-400 bg-yellow-300/10"
+                    style={{
+                      left: `${shown.x * 100}%`,
+                      top: `${shown.y * 100}%`,
+                      width: `${shown.width * 100}%`,
+                      height: `${shown.height * 100}%`,
+                    }}
+                  />
+                )
+              );
+            })()}
+          </div>
+        </div>
         <canvas ref={canvasRef} className="hidden" />
       </div>
+
+      {(isPreviewing || box) && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <p className="flex-1">
+            {box
+              ? "Only what's inside the start/finish box is compared."
+              : "Drag over the start/finish line in the picture to draw a box: only what's inside it is compared."}
+            {box && isPreviewing && " Drag again to draw a new one."}
+          </p>
+          {box && (
+            <button
+              onClick={() => chooseBox(null)}
+              disabled={isRunning && !isPreviewing}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Whole picture
+            </button>
+          )}
+        </div>
+      )}
 
       {(error || camera.error) && <div className="text-red-500 bg-red-50 p-2 rounded">{error || camera.error}</div>}
 
@@ -440,7 +581,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
           {isPreviewing && previewStats && (
             <div className="text-sm" data-testid="frame-stats">
               Checking {previewStats.framesPerSecond.toFixed(0)} frames a second, {previewStats.msPerFrame.toFixed(1)}{" "}
-              ms each, {TIMED_BY[previewStats.source]}
+              ms each, {previewStats.area} pixels, {TIMED_BY[previewStats.source]}
             </div>
           )}
         </div>
@@ -482,7 +623,7 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
           <select
             id="cameraSelect"
             value={camera.cameraId}
-            onChange={(e) => camera.chooseCamera(e.target.value).catch(() => {})}
+            onChange={(e) => void switchCamera(e.target.value)}
             className="px-3 py-2 border rounded w-full"
           >
             <option value="">Default (back camera)</option>

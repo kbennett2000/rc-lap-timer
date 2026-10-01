@@ -6,8 +6,11 @@ import { crossingVideo } from "./tests/e2e/crossing-video";
 // has its own tests.
 const target = process.env.E2E_TARGET ?? "pi";
 const CAMERA = "camera.spec.ts";
+const CAMERA_SWITCH = "camera-switch.spec.ts";
+// Each of these runs in a project of its own, with its own fake cameras.
+const CAMERA_SPECS = [CAMERA, CAMERA_SWITCH];
 const ONLY: Record<string, string[]> = {
-  standalone: ["standalone.spec.ts", CAMERA],
+  standalone: ["standalone.spec.ts", CAMERA, CAMERA_SWITCH],
   sync: ["sync.spec.ts"],
   cloud: ["cloud.spec.ts"],
 };
@@ -30,21 +33,34 @@ const projects: Project[] = [
   {
     name: "phone",
     ...(target in ONLY
-      ? { testMatch: ONLY[target].filter((spec) => spec !== CAMERA) }
+      ? { testMatch: ONLY[target].filter((spec) => !CAMERA_SPECS.includes(spec)) }
       : { testIgnore: Object.values(ONLY).flat() }),
     use: { ...phone, launchOptions: { args: FAKE_CAMERA } },
   },
 ];
 // Camera timing in the phone-only app, with a video of a car crossing as the camera (tests/e2e/crossing-video.ts).
 if (target === "standalone") {
-  projects.push({
-    name: "phone-video",
-    testMatch: CAMERA,
-    use: {
-      ...phone,
-      launchOptions: { args: [...FAKE_CAMERA, `--use-file-for-fake-video-capture=${crossingVideo()}`] },
+  projects.push(
+    {
+      name: "phone-video",
+      testMatch: CAMERA,
+      use: {
+        ...phone,
+        launchOptions: { args: [...FAKE_CAMERA, `--use-file-for-fake-video-capture=${crossingVideo()}`] },
+      },
     },
-  });
+    // Two synthetic cameras, to switch between.
+    {
+      name: "phone-two-cameras",
+      testMatch: CAMERA_SWITCH,
+      use: {
+        ...phone,
+        launchOptions: {
+          args: ["--use-fake-device-for-media-stream=device-count=2", "--use-fake-ui-for-media-stream"],
+        },
+      },
+    },
+  );
 }
 
 // Browser tests against a running server (E2E_BASE_URL) and its database. See tests/e2e/phase0.spec.ts.
