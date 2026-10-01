@@ -3,8 +3,10 @@ import {
   analysisSize,
   boxFromCorners,
   boxPixels,
+  calibrate,
   changedPercent,
   DEFAULT_SETTINGS,
+  diffHistogram,
   frameNeeded,
   frameTime,
   nextFrame,
@@ -258,5 +260,76 @@ describe("parseSettings", () => {
   it("uses the defaults for something that isn't settings at all", () => {
     for (const value of [null, undefined, 42, "settings", [1, 2]])
       expect(parseSettings(value)).toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe("calibrate", () => {
+  // A 40 × 30 frame of grey with grain: each pixel off by up to `grain` levels, the same way every time for a seed.
+  function grainy(seed: number, grain: number) {
+    const picture = frame(40, 30);
+    let state = seed;
+    for (let i = 0; i < picture.data.length; i += 4) {
+      state = (state * 1103515245 + 12345) % 2147483648;
+      const offset = grain === 0 ? 0 : (state % (2 * grain + 1)) - grain;
+      picture.data[i] = picture.data[i + 1] = picture.data[i + 2] = 128 + offset;
+    }
+    return picture;
+  }
+  // The histograms of `count` pairs of frames, with a car (a dark 12 × 10 block) in the pairs `withCar` picks.
+  function pairs(count: number, grain: number, withCar: (pair: number) => boolean = () => false) {
+    return Array.from({ length: count }, (_, pair) => {
+      const after = grainy(pair + 1, grain);
+      if (withCar(pair)) after.fill(10 + pair, 10, 12, 10, [20, 20, 20]);
+      return diffHistogram(grainy(pair, grain).data, after.data);
+    });
+  }
+
+  it("counts each pixel by the most any colour changed", () => {
+    const before = frame(2, 1);
+    const after = frame(2, 1).fill(0, 0, 1, 1, [128, 140, 120]);
+    const histogram = diffHistogram(before.data, after.data);
+    expect(histogram[12]).toBe(1);
+    expect(histogram[0]).toBe(1);
+  });
+
+  it("sets the most sensitive settings for a still, clean picture", () => {
+    expect(calibrate(pairs(60, 0))).toEqual({ ok: true, sensitivity: 10, threshold: 0.3 });
+  });
+
+  it("sets sensitivity above the camera's grain, so grain alone never counts", () => {
+    const result = calibrate(pairs(60, 12));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sensitivity).toBeGreaterThan(24); // two frames' grain can differ by up to 24
+    for (let pair = 0; pair < 20; pair++) {
+      const grain = changedPercent(grainy(pair, 12).data, grainy(pair + 1, 12).data, result.sensitivity);
+      expect(grain).toBeLessThan(result.threshold);
+    }
+  });
+
+  it("isn't thrown by a car passing during it", () => {
+    // A car in a quarter of the pairs, as when one passes the line once in two seconds.
+    expect(calibrate(pairs(60, 6, (pair) => pair % 4 === 0))).toEqual(calibrate(pairs(60, 6)));
+  });
+
+  it("gives up when the picture keeps changing, or there are too few frames", () => {
+    expect(
+      calibrate(pairs(60, 0, () => true).map(() => diffHistogram(frame(4, 4, 0).data, frame(4, 4, 255).data))),
+    ).toEqual({ ok: false, reason: "moving" });
+    expect(calibrate(pairs(4, 0))).toEqual({ ok: false, reason: "too-few" });
+  });
+
+  it("finds a car the settings it gives can see", () => {
+    const result = calibrate(pairs(60, 8));
+    if (!result.ok) throw new Error("not calibrated");
+    const empty = grainy(100, 8);
+    const car = grainy(101, 8).fill(10, 10, 12, 10, [20, 20, 20]); // 10% of the picture
+    const change = changedPercent(empty.data, car.data, result.sensitivity);
+    const { crossing } = nextFrame({ frames: 10, lastCrossingAt: null }, change, 0, {
+      ...DEFAULT_SETTINGS,
+      ...result,
+      framesToSkip: 1,
+    });
+    expect(crossing).toBe(true);
   });
 });

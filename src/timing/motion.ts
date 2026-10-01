@@ -156,6 +156,70 @@ export function changedPercent(previous: Uint8ClampedArray, current: Uint8Clampe
   return pixels === 0 ? 0 : (changed / pixels) * 100;
 }
 
+// Calibration: the camera watches the empty track (or start/finish box) for a couple of seconds, and the Sensitivity
+// and Threshold are set from how much its picture changes between frames with nothing passing: the camera's own grain
+// and flicker.
+export const CALIBRATION_MS = 2000;
+
+// How many pixels changed by each amount (0-255, the most any of red, green or blue changed) between two RGBA frames
+// of the same size.
+export function diffHistogram(previous: Uint8ClampedArray, current: Uint8ClampedArray): Uint32Array {
+  const histogram = new Uint32Array(256);
+  const length = Math.min(previous.length, current.length);
+  for (let i = 0; i < length; i += 4) {
+    histogram[
+      Math.max(
+        Math.abs(current[i] - previous[i]),
+        Math.abs(current[i + 1] - previous[i + 1]),
+        Math.abs(current[i + 2] - previous[i + 2]),
+      )
+    ]++;
+  }
+  return histogram;
+}
+
+export type Calibration =
+  | { ok: true; sensitivity: number; threshold: number }
+  // "moving": most frames changed a lot (people walking past, or the phone moving); "too-few": not enough frames.
+  | { ok: false; reason: "moving" | "too-few" };
+
+const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+const total = (histogram: Uint32Array) => histogram.reduce((sum, n) => sum + n, 0);
+
+// The change that `share` (0-1) of a histogram's pixels stay at or below.
+function percentile(histogram: Uint32Array, share: number): number {
+  const target = total(histogram) * share;
+  let seen = 0;
+  for (let change = 0; change < 256; change++) {
+    seen += histogram[change];
+    if (seen >= target) return change;
+  }
+  return 255;
+}
+
+// The percentage of a histogram's pixels that changed by more than `sensitivity`, as changedPercent counts them.
+function changedShare(histogram: Uint32Array, sensitivity: number): number {
+  let changed = 0;
+  for (let change = sensitivity + 1; change < 256; change++) changed += histogram[change];
+  const pixels = total(histogram);
+  return pixels === 0 ? 0 : (changed / pixels) * 100;
+}
+
+// The camera's grain, taken from a typical pair of frames (the median), so a car passing during calibration doesn't
+// count: a pixel must change by clearly more than that to count, and a little more of the picture must change than
+// the grain ever does.
+export function calibrate(histograms: Uint32Array[]): Calibration {
+  if (histograms.length < 5) return { ok: false, reason: "too-few" };
+  const noise = median(histograms.map((histogram) => percentile(histogram, 0.99)));
+  if (noise > 60) return { ok: false, reason: "moving" };
+  const [minSensitivity, maxSensitivity] = SETTING_RANGES.sensitivity;
+  const sensitivity = Math.min(maxSensitivity, Math.max(minSensitivity, Math.round(noise * 1.5 + 10)));
+  const quiet = median(histograms.map((histogram) => changedShare(histogram, sensitivity)));
+  const [minThreshold, maxThreshold] = SETTING_RANGES.threshold;
+  const threshold = Math.min(maxThreshold, Math.max(minThreshold, Math.round((quiet * 3 + 0.3) * 10) / 10));
+  return { ok: true, sensitivity, threshold };
+}
+
 export interface DetectorState {
   // Frames seen since the camera started.
   frames: number;

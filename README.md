@@ -225,8 +225,15 @@ The first time, the browser asks to use the camera: allow it.
 - **The start/finish box**: while you preview, drag over the picture to draw a box across the start/finish line.
   Only what's inside it is compared, so people, trees and cars elsewhere in view don't count, and the phone has less
   to check. Drag again to draw a new box, or tap **Whole picture** to compare everything. The phone remembers the box
-  for each camera. It isn't part of saved settings, since it's a place in this phone's view. A box changes how much of
-  the compared picture a car fills, so check the Threshold after drawing one.
+  for each camera. It isn't part of saved settings, since it's a place in this phone's view. Drawing a box calibrates
+  for it straight away (see Calibrate).
+- **Calibrate** (while you preview): watches the track for 2 seconds and sets Sensitivity and Threshold from how much
+  the empty picture changes by itself (the camera's grain and flicker). Keep the track clear: a car passing once
+  doesn't spoil it, but a scene that keeps changing (people walking past, the phone moving) does, and then nothing is
+  changed. **Undo** puts the previous settings back.
+- **Camera speed**: **Up to 60 frames a second** (the default) times each crossing to the nearest 1/60 of a second on
+  phones that can; **30 frames a second** uses less battery and keeps the phone cooler. While you preview, the app
+  says what the camera actually sends. The phone remembers the choice.
 - **Rotate preview** turns the picture if it shows sideways. It doesn't change detection, and the box turns with it.
 - **Camera**: with more than one camera, pick one, even with the camera on. The phone remembers it, and goes back to
   the default camera if the chosen one isn't there any more.
@@ -235,14 +242,14 @@ The first time, the browser asks to use the camera: allow it.
 #### Motion Detection Settings
 Changes take effect straight away, even with the camera on, and the phone remembers them for next time.
 - **Sensitivity**: raise it if the car isn't detected, lower it if other things set it off. Higher means a smaller
-  change in a pixel's colour counts.
+  change in a pixel's colour counts. Calibrate sets it, and Threshold, for you.
 - **Threshold**: how much of the compared picture (the box, or the whole picture) has to change for a detection. A car
   that passes further from the camera needs a lower threshold. 0.5% to 5% usually works for the whole picture; a car
   fills more of a box, so a box can take a higher one.
 - **Cooldown**: how long after a detection to ignore the camera, in milliseconds, so one pass isn't counted twice.
   Make it shorter than your fastest lap: for laps of about 15 seconds, try 10000 to 12000.
 - **Frames to Skip**: camera frames ignored after the camera turns on, so tapping the phone isn't counted as a lap.
-  Most cameras send 30 frames a second, so the default of 60 is about 2 seconds.
+  At 30 frames a second the default of 60 is about 2 seconds; at 60 frames a second, about 1.
 - **Save** keeps the current settings under a name, and **Load settings...** brings a saved set back. Rename and
   delete saved sets in Manager → Motion Settings.
 
@@ -256,8 +263,8 @@ was.
 
 While you preview, the app shows how that's going, for example "Checking 30 frames a second, 1.2 ms each, 320×48
 pixels, timed by the camera":
-- **frames a second** should match the camera, usually 30. A much higher number means the browser can't say when
-  frames arrive, so the app checks on every screen refresh instead.
+- **frames a second** should match what the camera sends (shown below it), usually 30 or 60. A much higher number
+  means the browser can't say when frames arrive, so the app checks on every screen refresh instead.
 - **ms each** is how long checking a frame takes. A few milliseconds is plenty fast.
 - **pixels** is the size of the compared copy: smaller with a box, which saves battery.
 - **timed by the camera** is the most accurate. "Timed by the screen" and "timed as they arrive" are close behind.
