@@ -18,12 +18,9 @@ export interface Capabilities {
   piSystemConfig: boolean;
   // The data lives on the phone itself (the phone-only app): install, storage and backup help.
   onDeviceData: boolean;
-  // Accounts, cloud sync, shared tracks and leaderboards (docs/cloud.md): only in a phone-only app built with a
-  // Supabase project to use.
-  cloud: boolean;
 }
 
-export function capabilitiesFor(target: BuildTarget, { cloudConfigured = false } = {}): Capabilities {
+export function capabilitiesFor(target: BuildTarget): Capabilities {
   const pi = target === "pi";
   return {
     races: pi,
@@ -33,7 +30,6 @@ export function capabilitiesFor(target: BuildTarget, { cloudConfigured = false }
     ledDisplay: pi,
     piSystemConfig: pi,
     onDeviceData: !pi,
-    cloud: !pi && cloudConfigured,
   };
 }
 
@@ -41,7 +37,4 @@ export function capabilitiesFor(target: BuildTarget, { cloudConfigured = false }
 // Unset means the Pi build (the Pi's upgrade script builds without it); next.config.js rejects any other value.
 export const BUILD_TARGET: BuildTarget = process.env.NEXT_PUBLIC_TARGET === "standalone" ? "standalone" : "pi";
 
-// next.config.js sets these only in a phone-only build given a Supabase project.
-export const CAPABILITIES: Capabilities = capabilitiesFor(BUILD_TARGET, {
-  cloudConfigured: Boolean(process.env.NEXT_PUBLIC_CLOUD_URL),
-});
+export const CAPABILITIES: Capabilities = capabilitiesFor(BUILD_TARGET);
