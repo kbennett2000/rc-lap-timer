@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { logger } from "@/lib/logger";
-import { cameraGone, videoConstraints } from "./constraints";
+import { cameraGone, parseSpeed, pictureConstraints, videoConstraints, type CameraSpeed } from "./constraints";
 
 const CAMERA_KEY = "rc-lap-timer-camera-id";
+const SPEED_KEY = "rc-lap-timer-camera-speed";
 
 export type CameraStatus = "off" | "starting" | "on" | "error";
 
@@ -14,6 +15,20 @@ function savedCameraId(): string {
   } catch {
     return "";
   }
+}
+
+function savedSpeed(): CameraSpeed {
+  try {
+    return parseSpeed(localStorage.getItem(SPEED_KEY));
+  } catch {
+    return "fast";
+  }
+}
+
+// The frames a second the camera says it sends, if it says.
+function frameRateOf(stream: MediaStream | null): number | null {
+  const rate = stream?.getVideoTracks()[0]?.getSettings().frameRate;
+  return typeof rate === "number" && Number.isFinite(rate) ? rate : null;
 }
 
 // One camera stream for the motion detector. start() reuses a live stream instead of asking again (iOS asks for
@@ -26,6 +41,15 @@ export function useCamera() {
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [cameraId, setCameraId] = useState(savedCameraId);
   const cameraIdRef = useRef(cameraId);
+  const [speed, setSpeed] = useState<CameraSpeed>("fast");
+  const speedRef = useRef<CameraSpeed>("fast");
+  const [frameRate, setFrameRate] = useState<number | null>(null);
+
+  // Read back after mounting: the page is first drawn without storage.
+  useEffect(() => {
+    speedRef.current = savedSpeed();
+    setSpeed(speedRef.current);
+  }, []);
 
   const rememberCamera = useCallback((id: string) => {
     cameraIdRef.current = id;
@@ -57,7 +81,7 @@ export function useCamera() {
     setError("");
     const id = cameraIdRef.current;
     const open = (cameraId: string) =>
-      navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints(cameraId) });
+      navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints(cameraId, speedRef.current) });
     const starting = open(id)
       .catch((err) => {
         if (!id || !cameraGone(err)) throw err;
@@ -68,6 +92,7 @@ export function useCamera() {
       })
       .then((stream) => {
         streamRef.current = stream;
+        setFrameRate(frameRateOf(stream));
         setStatus("on");
         void refreshCameras(); // labels are only available after permission is granted
         return stream;
@@ -87,6 +112,7 @@ export function useCamera() {
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setFrameRate(null);
     setStatus("off");
   }, []);
 
@@ -102,6 +128,25 @@ export function useCamera() {
     [start, stop, rememberCamera],
   );
 
+  // A new speed applies to a running camera at once, without restarting it.
+  const chooseSpeed = useCallback(async (next: CameraSpeed) => {
+    speedRef.current = next;
+    setSpeed(next);
+    try {
+      localStorage.setItem(SPEED_KEY, next);
+    } catch {
+      // not remembered; still used for this page
+    }
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track || track.readyState !== "live") return;
+    try {
+      await track.applyConstraints(pictureConstraints(next));
+    } catch (err) {
+      logger.warn("The camera didn't take the new frame rate:", err);
+    }
+    setFrameRate(frameRateOf(streamRef.current));
+  }, []);
+
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -109,5 +154,5 @@ export function useCamera() {
     };
   }, []);
 
-  return { streamRef, status, error, start, stop, cameras, cameraId, chooseCamera };
+  return { streamRef, status, error, start, stop, cameras, cameraId, chooseCamera, speed, chooseSpeed, frameRate };
 }

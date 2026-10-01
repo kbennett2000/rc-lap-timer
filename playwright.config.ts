@@ -6,11 +6,11 @@ import { crossingVideo } from "./tests/e2e/crossing-video";
 // has its own tests.
 const target = process.env.E2E_TARGET ?? "pi";
 const CAMERA = "camera.spec.ts";
-const CAMERA_SWITCH = "camera-switch.spec.ts";
+const CAMERA_DEVICES = "camera-devices.spec.ts";
 // Each of these runs in a project of its own, with its own fake cameras.
-const CAMERA_SPECS = [CAMERA, CAMERA_SWITCH];
+const CAMERA_SPECS = [CAMERA, CAMERA_DEVICES];
 const ONLY: Record<string, string[]> = {
-  standalone: ["standalone.spec.ts", CAMERA, CAMERA_SWITCH],
+  standalone: ["standalone.spec.ts", CAMERA, CAMERA_DEVICES],
   sync: ["sync.spec.ts"],
   cloud: ["cloud.spec.ts"],
 };
@@ -49,10 +49,10 @@ if (target === "standalone") {
         launchOptions: { args: [...FAKE_CAMERA, `--use-file-for-fake-video-capture=${crossingVideo()}`] },
       },
     },
-    // Two synthetic cameras, to switch between.
+    // Two synthetic cameras, to switch between, which say what frame rate they send.
     {
       name: "phone-two-cameras",
-      testMatch: CAMERA_SWITCH,
+      testMatch: CAMERA_DEVICES,
       use: {
         ...phone,
         launchOptions: {

@@ -55,6 +55,8 @@ async function frameStats(page: Page, whilePreviewing?: () => Promise<void>) {
 
 // Drags a start/finish box over the preview, between two corners given as fractions of the picture.
 async function drawBox(page: Page, from: [number, number], to: [number, number]) {
+  // The mouse only reaches what's on the screen.
+  await page.getByTestId("box-area").scrollIntoViewIfNeeded();
   const area = (await page.getByTestId("box-area").boundingBox())!;
   const at = ([x, y]: [number, number]) => [area.x + x * area.width, area.y + y * area.height] as const;
   await page.mouse.move(...at(from));
@@ -193,4 +195,41 @@ test("remembers the box on the phone, and Whole picture goes back to comparing e
   await page.getByRole("button", { name: "Whole picture" }).click();
   await expect(page.getByLabel("Start/finish box")).toHaveCount(0);
   expect((await frameStats(page)).area).toEqual({ width: 320, height: 180 });
+});
+
+// The sliders' labels, which show the settings in force.
+const sensitivityLabel = (page: Page) => page.getByText(/^Sensitivity \(\d+\/200\)$/);
+const thresholdLabel = (page: Page) => page.getByText(/^Threshold \([\d.]+%\)$/);
+
+test("calibrates for a box drawn on the car's path, even as the car passes, then times every lap", async ({ page }) => {
+  await setUp(page, "Calibrated");
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
+  await expect(page.getByTestId("frame-stats")).toBeVisible();
+  await drawBox(page, ...ON_THE_PATH);
+  // The car crosses the box once in the 2 seconds; the still picture between sets the most sensitive settings.
+  const result = page.getByRole("status").filter({ hasText: "Calibrated" });
+  await expect(result).toHaveText(/Calibrated: Sensitivity 195\/200, Threshold 0\.3%\./, { timeout: 10_000 });
+  await expect(sensitivityLabel(page)).toHaveText("Sensitivity (195/200)");
+  await expect(thresholdLabel(page)).toHaveText("Threshold (0.3%)");
+  await page.getByRole("button", { name: "Stop Preview" }).click();
+
+  expectLoopLaps(await timeRun(page), 10);
+});
+
+test("Calibrate sets the settings from the empty track, and Undo puts them back", async ({ page }) => {
+  await setUp(page, "Undo");
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
+  await expect(page.getByTestId("frame-stats")).toBeVisible();
+  await expect(sensitivityLabel(page)).toHaveText("Sensitivity (105/200)");
+  await expect(thresholdLabel(page)).toHaveText("Threshold (1%)");
+
+  await page.getByRole("button", { name: "Calibrate" }).click();
+  await expect(page.getByText("Keep the track clear for 2 seconds.")).toBeVisible();
+  // Over the whole picture the car passes too, in a quarter of the frames: the typical frame is still.
+  await expect(page.getByRole("status").filter({ hasText: "Calibrated" })).toBeVisible({ timeout: 10_000 });
+  await expect(sensitivityLabel(page)).toHaveText("Sensitivity (195/200)");
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(sensitivityLabel(page)).toHaveText("Sensitivity (105/200)");
+  await expect(thresholdLabel(page)).toHaveText("Threshold (1%)");
+  await page.getByRole("button", { name: "Stop Preview" }).click();
 });

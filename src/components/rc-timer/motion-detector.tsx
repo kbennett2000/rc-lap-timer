@@ -3,6 +3,7 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { RotateCw } from "lucide-react";
 import { beep } from "@/audio";
+import { FRAME_RATES, type CameraSpeed } from "@/camera/constraints";
 import { useCamera } from "@/camera/use-camera";
 import { errorMessage, useCreateMotionSettings, useMotionSettings } from "@/data/hooks";
 import { sameName } from "@/domain/rules";
@@ -13,8 +14,11 @@ import {
   analysisSize,
   boxFromCorners,
   boxPixels,
+  calibrate,
+  CALIBRATION_MS,
   changedPercent,
   DEFAULT_SETTINGS,
+  diffHistogram,
   frameNeeded,
   frameTime,
   nextFrame,
@@ -24,6 +28,7 @@ import {
   START,
   toFramePoint,
   type Box,
+  type Calibration,
   type DetectorSettings,
   type DetectorState,
   type FrameTimeSource,
@@ -163,6 +168,14 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
   const [box, setBox] = useState<Box | null>(null);
   const boxRef = useRef<Box | null>(null);
   const [drawing, setDrawing] = useState<{ start: Point; end: Point } | null>(null);
+  // Calibrating (see calibrate in src/timing/motion.ts): the frame loop collects how each frame changed, for a couple
+  // of seconds. Then the result, with the settings it replaced, to undo.
+  const calibrationRef = useRef<{ startedAt: number; histograms: Uint32Array[] } | null>(null);
+  const [calibrating, setCalibrating] = useState(false);
+  const [calibrated, setCalibrated] = useState<{
+    message: string;
+    undo?: Pick<DetectorSettings, "sensitivity" | "threshold">;
+  } | null>(null);
 
   // Remember the settings on this device. This runs before the effect below that reads them back, so the defaults of the
   // first render never overwrite what's stored.
@@ -237,77 +250,115 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
     });
   };
 
-  // Checks one camera frame, which happened at `at` (on now()'s clock).
-  const checkFrame = useCallback((at: number, source: FrameTimeSource) => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d", { willReadFrequently: true });
-    if (!video || !canvas || !ctx || video.videoWidth === 0) return;
-    // Hidden (the phone locked, or another app on top), nothing is timed: the run records the gap. The next frame
-    // starts afresh, rather than being compared with one from before.
-    if (document.visibilityState === "hidden") {
-      previousFrameRef.current = null;
+  const startCalibration = () => {
+    calibrationRef.current = { startedAt: performance.now(), histograms: [] };
+    setCalibrating(true);
+    setCalibrated(null);
+  };
+
+  // Called by the frame loop when the calibration's time is up.
+  const finishCalibration = useCallback((result: Calibration) => {
+    setCalibrating(false);
+    if (!result.ok) {
+      setCalibrated({
+        message:
+          result.reason === "moving"
+            ? "The picture kept changing, so the settings weren't changed. Keep the track clear and the phone still, then tap Calibrate again."
+            : "Not enough frames came from the camera to calibrate. Tap Calibrate to try again.",
+      });
       return;
     }
-    const { settings: current, isPreviewing: previewing } = latest.current;
-    // While the camera settles, frames that won't be compared aren't copied either.
-    if (!frameNeeded(detectorRef.current, current)) {
-      detectorRef.current = nextFrame(detectorRef.current, null, at, current).state;
-      return;
-    }
-    const started = performance.now();
-
-    // Compare a scaled-down copy of the start/finish box, or of the whole frame without one (see analysisSize). Its
-    // size follows the video's, which changes when the phone rotates.
-    const area = boxPixels(boxRef.current, video.videoWidth, video.videoHeight);
-    const size = analysisSize(area.width, area.height);
-    if (canvas.width !== size.width || canvas.height !== size.height) {
-      canvas.width = size.width;
-      canvas.height = size.height;
-      previousFrameRef.current = null;
-    }
-    ctx.drawImage(video, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
-    const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    const previous = previousFrameRef.current;
-    const change =
-      previous && !skipping(detectorRef.current, current)
-        ? changedPercent(previous.data, currentFrame.data, current.sensitivity)
-        : null;
-    const { state, crossing } = nextFrame(detectorRef.current, change, at, current);
-    detectorRef.current = state;
-    previousFrameRef.current = currentFrame;
-
-    const stats = (statsRef.current ??= freshStats());
-    stats.frames++;
-    stats.work += performance.now() - started;
-    if (change !== null) stats.change = change;
-    stats.source = source;
-    stats.area = `${canvas.width}×${canvas.height}`;
-    const elapsed = performance.now() - stats.since;
-    if (elapsed >= STATS_INTERVAL_MS) {
-      if (previewing) {
-        setPreviewStats({
-          change: stats.change,
-          framesPerSecond: (stats.frames * 1000) / elapsed,
-          msPerFrame: stats.work / stats.frames,
-          source,
-          area: stats.area,
-        });
-      }
-      statsRef.current = { ...freshStats(), change: stats.change };
-    }
-
-    if (change !== null && crossing) {
-      setDetectedMotionStats("Motion detected: " + change.toFixed(1));
-      if (latest.current.saveMDImages) saveToGallery(fullFrame(video), change);
-      if (previewing) {
-        if (latest.current.soundOn) void beep();
-      } else {
-        latest.current.onMotionDetected?.(change, at);
-      }
-    }
+    const { sensitivity, threshold } = latest.current.settings;
+    setCalibrated({
+      message: `Calibrated: Sensitivity ${205 - result.sensitivity}/200, Threshold ${result.threshold}%.`,
+      undo: { sensitivity, threshold },
+    });
+    setSettings((previous) => ({ ...previous, sensitivity: result.sensitivity, threshold: result.threshold }));
   }, []);
+
+  // Checks one camera frame, which happened at `at` (on now()'s clock).
+  const checkFrame = useCallback(
+    (at: number, source: FrameTimeSource) => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d", { willReadFrequently: true });
+      if (!video || !canvas || !ctx || video.videoWidth === 0) return;
+      // Hidden (the phone locked, or another app on top), nothing is timed: the run records the gap. The next frame
+      // starts afresh, rather than being compared with one from before.
+      if (document.visibilityState === "hidden") {
+        previousFrameRef.current = null;
+        return;
+      }
+      const { settings: current, isPreviewing: previewing } = latest.current;
+      // While the camera settles, frames that won't be compared aren't copied either.
+      if (!frameNeeded(detectorRef.current, current)) {
+        detectorRef.current = nextFrame(detectorRef.current, null, at, current).state;
+        return;
+      }
+      const started = performance.now();
+
+      // Compare a scaled-down copy of the start/finish box, or of the whole frame without one (see analysisSize). Its
+      // size follows the video's, which changes when the phone rotates.
+      const area = boxPixels(boxRef.current, video.videoWidth, video.videoHeight);
+      const size = analysisSize(area.width, area.height);
+      if (canvas.width !== size.width || canvas.height !== size.height) {
+        canvas.width = size.width;
+        canvas.height = size.height;
+        previousFrameRef.current = null;
+      }
+      ctx.drawImage(video, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
+      const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      const previous = previousFrameRef.current;
+      const change =
+        previous && !skipping(detectorRef.current, current)
+          ? changedPercent(previous.data, currentFrame.data, current.sensitivity)
+          : null;
+      const { state, crossing } = nextFrame(detectorRef.current, change, at, current);
+      detectorRef.current = state;
+      const calibration = calibrationRef.current;
+      if (calibration && change !== null) {
+        calibration.histograms.push(diffHistogram(previousFrameRef.current!.data, currentFrame.data));
+      }
+      if (calibration && performance.now() - calibration.startedAt >= CALIBRATION_MS) {
+        calibrationRef.current = null;
+        finishCalibration(calibrate(calibration.histograms));
+      }
+      previousFrameRef.current = currentFrame;
+
+      const stats = (statsRef.current ??= freshStats());
+      stats.frames++;
+      stats.work += performance.now() - started;
+      if (change !== null) stats.change = change;
+      stats.source = source;
+      stats.area = `${canvas.width}×${canvas.height}`;
+      const elapsed = performance.now() - stats.since;
+      if (elapsed >= STATS_INTERVAL_MS) {
+        if (previewing) {
+          setPreviewStats({
+            change: stats.change,
+            framesPerSecond: (stats.frames * 1000) / elapsed,
+            msPerFrame: stats.work / stats.frames,
+            source,
+            area: stats.area,
+          });
+        }
+        statsRef.current = { ...freshStats(), change: stats.change };
+      }
+
+      // While calibrating, the track should be clear: anything that passes isn't a lap.
+      if (change !== null && crossing && !calibration) {
+        setDetectedMotionStats("Motion detected: " + change.toFixed(1));
+        if (latest.current.saveMDImages) saveToGallery(fullFrame(video), change);
+        if (previewing) {
+          if (latest.current.soundOn) void beep();
+        } else {
+          latest.current.onMotionDetected?.(change, at);
+        }
+      }
+    },
+    [finishCalibration],
+  );
 
   // The frame loop. Where the browser says when each camera frame arrives (requestVideoFrameCallback: Chrome, and
   // Safari from 15.4), each frame is checked once and timed by when the camera captured it (frameTime). Elsewhere it
@@ -421,6 +472,8 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
 
   const handleStop = useCallback(() => {
     stopLoop();
+    calibrationRef.current = null;
+    setCalibrating(false);
     stopCamera();
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsRunning(false);
@@ -524,7 +577,10 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
               if (!drawing) return;
               const drawn = boxFromCorners(drawing.start, pointAt(event));
               setDrawing(null);
-              if (drawn) chooseBox(drawn);
+              if (!drawn) return;
+              // A box changes how much of the compared picture a car fills: calibrate for it.
+              chooseBox(drawn);
+              startCalibration();
             }}
             onPointerCancel={() => setDrawing(null)}
           >
@@ -584,6 +640,11 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
               ms each, {previewStats.area} pixels, {TIMED_BY[previewStats.source]}
             </div>
           )}
+          {isPreviewing && camera.frameRate !== null && (
+            <div className="text-sm" data-testid="camera-rate">
+              The camera sends {Math.round(camera.frameRate)} frames a second (asked for {FRAME_RATES[camera.speed]}).
+            </div>
+          )}
         </div>
       </div>
 
@@ -613,6 +674,55 @@ export const MotionDetector = forwardRef<MotionDetectorHandle, MotionDetectorPro
           <RotateCw className="h-4 w-4" />
           Rotate preview
         </button>
+      </div>
+
+      {isPreviewing && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <button
+            onClick={startCalibration}
+            disabled={calibrating}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            {calibrating ? "Calibrating…" : "Calibrate"}
+          </button>
+          <span>
+            {calibrating
+              ? "Keep the track clear for 2 seconds."
+              : "Sets Sensitivity and Threshold from 2 seconds of the empty track."}
+          </span>
+        </div>
+      )}
+      {calibrated && (
+        <div role="status" className="flex flex-wrap items-center gap-2 rounded bg-gray-100 p-2 text-sm">
+          <span>{calibrated.message}</span>
+          {calibrated.undo && (
+            <button
+              className="underline"
+              onClick={() => {
+                const undo = calibrated.undo!;
+                setSettings((previous) => ({ ...previous, ...undo }));
+                setCalibrated(null);
+              }}
+            >
+              Undo
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-1">
+        <label htmlFor="cameraSpeed" className="block text-sm">
+          Camera speed
+        </label>
+        <select
+          id="cameraSpeed"
+          value={camera.speed}
+          onChange={(e) => void camera.chooseSpeed(e.target.value as CameraSpeed)}
+          className="px-3 py-2 border rounded w-full"
+        >
+          <option value="fast">Up to 60 frames a second</option>
+          <option value="saver">30 frames a second (uses less battery)</option>
+        </select>
       </div>
 
       {camera.cameras.length > 1 && (
