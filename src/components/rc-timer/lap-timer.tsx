@@ -20,6 +20,11 @@ const RaceTab =
         loading: () => <p className="p-4 text-sm text-muted-foreground">Loading race mode…</p>,
       });
 
+// Syncing with the signed-in account by itself, only in a phone app built with a cloud service (docs/cloud.md).
+const CloudAutoSync = process.env.NEXT_PUBLIC_CLOUD_URL
+  ? dynamic(() => import("@/features/cloud/auto-sync"), { ssr: false })
+  : null;
+
 // Shared tracks and their leaderboards, only in a phone app built with a cloud service (docs/cloud.md).
 const TracksTab = process.env.NEXT_PUBLIC_CLOUD_URL
   ? dynamic(() => import("@/features/cloud/tracks-screen"), {
@@ -136,6 +141,7 @@ export default function LapTimer() {
         </Tabs>
       </div>
       {AppShell && <AppShell />}
+      {CloudAutoSync && <CloudAutoSync />}
     </div>
   );
 }

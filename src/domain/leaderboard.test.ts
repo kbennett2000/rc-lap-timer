@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanTrack, entryForSession } from "./leaderboard";
+import { cleanTrack, entryForSession, ordinal } from "./leaderboard";
 import type { SessionRecord } from "./types";
 
 const session = (laps: number[], penalties: { lapNumber: number; count: number }[] = []): SessionRecord => ({
@@ -65,5 +65,25 @@ describe("cleanTrack", () => {
     expect(cleanTrack("x".repeat(80), "y".repeat(80)).ok).toBe(true);
     expect(cleanTrack("x".repeat(81), "")).toMatchObject({ ok: false });
     expect(cleanTrack("Garage", "y".repeat(81))).toMatchObject({ ok: false });
+  });
+});
+
+describe("ordinal", () => {
+  it("says a place the way people do", () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111, 112].map(ordinal)).toEqual([
+      "1st",
+      "2nd",
+      "3rd",
+      "4th",
+      "11th",
+      "12th",
+      "13th",
+      "21st",
+      "22nd",
+      "23rd",
+      "101st",
+      "111th",
+      "112th",
+    ]);
   });
 });

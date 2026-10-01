@@ -11,8 +11,13 @@ half an hour.
 ## What people get
 - **An account, without a password.** In **Manager → Data → Account and cloud sync**, you enter your email address
   and type in the code that arrives. The same steps create the account the first time.
-- **Sync now.** This copies the phone's drivers, cars, locations, sessions and motion settings into the account, then
-  brings back anything the account has that the phone doesn't.
+- **Syncing**, automatic by default. This copies the phone's drivers, cars, locations, sessions and motion settings
+  into the account, then brings back anything the account has that the phone doesn't.
+  - **When:** after every change (a saved session, say), when the app opens or comes back to the screen, and every 15
+    minutes to bring in other phones' changes.
+  - **Offline:** changes made without a connection wait, and go when it's back. The card says how many are waiting,
+    and why.
+  - **The switch:** "Sync automatically" turns it off on a phone, and then **Sync now** syncs by hand.
   - It merges with the same rules as restoring a backup or syncing with a timer: deletes carry over, and records with
     the same name become one.
   - Every phone signed in to the account ends up with the same data.
@@ -26,8 +31,15 @@ half an hour.
     the best lap (its number, the session's lap count and its penalties) and the date.
   - **Ranking:** each driver's best lap counts, once per account. The app labels laps as posted by the people who
     drove them, timed by their own phone or timer.
+  - **The board's header** shows the track record, and, signed in, your best and its place.
+  - **Driver profiles:** tapping a driver opens their best lap at each track, with their place there. Signed in, the
+    Tracks tab also lists **Your drivers**.
   - **Taking posts down:** you can remove your own posts.
   - **Changing a track:** whoever added it can rename it, and can delete it while nobody else has laps on it.
+
+**With a timer:** a phone that syncs with a timer over its Wi-Fi brings the timer's sessions onto the phone. With
+automatic syncing, they go on to the account once the phone is back on the internet, and from there to the other
+phones, and onto leaderboards. The timer itself never goes online. Race results stay on the timer.
 
 What doesn't change:
 - The data still lives on the phone, and the app works offline.
@@ -92,7 +104,7 @@ A fork works the same way: do these steps in the fork, with its GitHub Pages tur
   - **An account's data** can be read and changed only by that account.
   - **Tracks and leaderboard posts** can be seen by everyone, and changed only by whoever added them.
   - **Each post records which account made it.** That's a random id, not the email address, and it isn't shown in
-    the app.
+    the app. Profiles tell drivers apart by a hash of that id and the driver's name.
 - **Moderation.** Delete unwanted rows in Table Editor:
   - `lap_records` holds the posts;
   - `tracks` holds the tracks, and deleting one deletes its posts.
@@ -123,14 +135,19 @@ A fork works the same way: do these steps in the fork, with its GitHub Pages tur
   - `client.ts` loads the Supabase library the first time it's needed;
   - `account.ts` handles signing in with a code;
   - `tracks.ts` handles the tracks and posts;
+  - `auto-sync.ts` decides when to sync: after a change (the phone's store counts changes, see `changeCount` in
+    `src/data/types.ts`), every 15 minutes, and after a failure, again after 1, 2, 5, then 10 minutes, or as soon as
+    the connection is back;
   - `sync.ts` merges with the same code a timer uses ([src/domain/sync](../src/domain/sync)), and saves through
     `put_bundle`, which refuses a save if another device saved since this one read. The phone then reads again and
     merges, up to three times.
-- **The UI** is [src/features/cloud](../src/features/cloud): the account card in Manager → Data, the Tracks tab,
-  and Post to leaderboard on the session cards.
+- **The UI** is [src/features/cloud](../src/features/cloud): the account card in Manager → Data, the Tracks tab
+  with its leaderboards and profiles, Post to leaderboard on the session cards, and the automatic syncing (mounted
+  once for the whole app).
 - **Tests:**
   - [supabase/tests](../supabase/tests) tests who can do what, in the database itself;
-  - [tests/e2e/cloud.spec.ts](../tests/e2e/cloud.spec.ts) tests sign-in, sync and leaderboards in the browser;
+  - [tests/e2e/cloud.spec.ts](../tests/e2e/cloud.spec.ts) tests sign-in, syncing (by hand, automatically, and
+    offline), leaderboards and profiles in the browser;
   - [src/cloud](../src/cloud)'s unit tests cover the merging and the error messages, and
     [src/domain/leaderboard.ts](../src/domain/leaderboard.ts)'s tests cover what a post holds.
 

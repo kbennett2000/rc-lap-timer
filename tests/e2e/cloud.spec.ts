@@ -11,18 +11,25 @@ test.beforeEach(async ({ page }) => {
   page.on("dialog", (dialog) => dialog.accept());
 });
 
+// For tests of Sync now's results: automatic syncing, on by default, would have synced already.
+async function syncOnlyByHand(page: Page) {
+  await page.addInitScript(() => localStorage.setItem("rc-lap-timer-cloud-auto", "off"));
+}
+
 // Another phone: a browser with nothing in it.
-async function anotherPhone(browser: Browser, testInfo: TestInfo) {
+async function anotherPhone(browser: Browser, testInfo: TestInfo, { byHand = false } = {}) {
   const { baseURL, viewport, hasTouch } = testInfo.project.use;
   const context = await browser.newContext({ baseURL, viewport, hasTouch });
   const page = await context.newPage();
   page.on("dialog", (dialog) => dialog.accept());
+  if (byHand) await syncOnlyByHand(page);
   await page.goto("./");
   return { context, page };
 }
 
 test("signs in with an emailed code, and syncs both ways between two phones", async ({ page, browser }, testInfo) => {
   const email = newEmail();
+  await syncOnlyByHand(page);
   await page.goto("./");
   const first = await addFixtures(page, "First Phone");
   await runSession(page);
@@ -47,7 +54,7 @@ test("signs in with an emailed code, and syncs both ways between two phones", as
   // As good as a backup.
   await expect(page.getByText("Last backup or sync: today.")).toBeVisible();
 
-  const { context, page: other } = await anotherPhone(browser, testInfo);
+  const { context, page: other } = await anotherPhone(browser, testInfo, { byHand: true });
   const second = await addFixtures(other, "Second Phone");
   await runSession(other);
   await signIn(other, email);
@@ -76,6 +83,7 @@ test("signs in with an emailed code, and syncs both ways between two phones", as
 });
 
 test("keeps timing when the cloud can't be reached", async ({ page }) => {
+  await syncOnlyByHand(page);
   await page.goto("./");
   await signIn(page, newEmail());
   await page.route(`${CLOUD_URL}/**`, (route) => route.abort("internetdisconnected"));
@@ -100,6 +108,7 @@ test("keeps timing when the cloud can't be reached", async ({ page }) => {
 
 test("deletes the account and what it holds, and keeps the phone's data", async ({ page }) => {
   const email = newEmail();
+  await syncOnlyByHand(page);
   await page.goto("./");
   const fixture = await addFixtures(page, "Delete");
   await runSession(page);
@@ -169,6 +178,12 @@ test("posts sessions to a new track's leaderboard, which anyone can see", async 
 
   await openTrack(page, fixture.location);
   await expect(page.getByText("Test Town")).toBeVisible();
+  // The only lap posted is the record, and this account's best.
+  const record = page.getByTestId("track-record");
+  await expect(record).toContainText(
+    new RegExp(`Track record: \\d\\d:\\d\\d\\.\\d{3}, ${fixture.driver} \\(${fixture.car}\\)`),
+  );
+  await expect(record).toContainText(/Your best: \d\d:\d\d\.\d{3}, 1st/);
   const [first] = await leaderboardTimes(page);
   expect(first).toBeGreaterThanOrEqual(900);
   await expect(page.getByRole("button", { name: "Remove my post" })).toBeVisible();
@@ -193,10 +208,30 @@ test("posts sessions to a new track's leaderboard, which anyone can see", async 
   const { context, page: other } = await anotherPhone(browser, testInfo);
   await openTrack(other, fixture.location);
   expect(await leaderboardTimes(other)).toEqual([best]);
-  await expect(other.getByText(fixture.driver)).toBeVisible();
+  await expect(other.getByRole("list", { name: "Leaderboard" }).getByText(fixture.driver)).toBeVisible();
   await expect(other.getByRole("button", { name: "Remove my post" })).toHaveCount(0);
+  await expect(other.getByTestId("track-record")).toContainText("Track record");
+  await expect(other.getByTestId("track-record")).not.toContainText("Your best");
+
+  // The driver's profile, from the leaderboard: their best lap at each track.
+  await other.getByRole("button", { name: fixture.driver }).click();
+  await expect(other.getByText("Best lap at each track.")).toBeVisible();
+  const bests = other.getByRole("list", { name: "Best laps" }).getByRole("listitem");
+  await expect(bests).toHaveCount(1);
+  await expect(bests).toContainText(`${fixture.location} (Test Town)`);
+  await expect(bests).toContainText("1st of 1");
+  await other.getByRole("button", { name: "Back" }).click();
+  await expect(other.getByRole("list", { name: "Leaderboard" })).toBeVisible();
   await expect(other.getByRole("button", { name: "Add a track" })).toHaveCount(0);
   await context.close();
+
+  // This account's drivers are listed with the tracks.
+  await page.getByRole("button", { name: "All tracks" }).click();
+  await expect(page.getByText("Your drivers")).toBeVisible();
+  await page.getByRole("button", { name: new RegExp(`${fixture.driver}.*1 track`) }).click();
+  await expect(page.getByRole("list", { name: "Best laps" })).toContainText("1st of 1");
+  await page.getByRole("button", { name: "Back" }).click();
+  await openTrack(page, fixture.location);
 
   // Taking down the faster post leaves the slower one; then that one goes too, from its session.
   await page.getByRole("button", { name: "Remove my post" }).click();
@@ -224,4 +259,72 @@ test("shows the tracks when the cloud can't be reached as an error to retry", as
   await page.unroute(`${CLOUD_URL}/**`);
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("alert").filter({ hasText: /Couldn't reach/ })).toHaveCount(0);
+});
+
+test("syncs by itself: a session saved on one phone reaches another", async ({ page, browser }, testInfo) => {
+  const email = newEmail();
+  await page.goto("./");
+  await signIn(page, email);
+  await expect(page.getByLabel("Sync automatically")).toBeChecked();
+  await expect(page.getByText("Last synced: today.")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Practice" }).click();
+  const fixture = await addFixtures(page, "Automatic");
+  await runSession(page);
+  await expect(sessionCard(page, fixture)).toBeVisible();
+  await openDataTab(page);
+  await expect(page.getByText(/not synced yet/), "everything sent").toHaveCount(0, { timeout: 15_000 });
+
+  const { context, page: other } = await anotherPhone(browser, testInfo);
+  await signIn(other, email);
+  await other.getByRole("tab", { name: "Practice" }).click();
+  await expect(sessionCard(other, fixture), "brought in without tapping Sync now").toBeVisible({ timeout: 15_000 });
+  await context.close();
+});
+
+test("keeps changes made offline, and sends them when the connection is back", async ({ page, browser }, testInfo) => {
+  const email = newEmail();
+  await page.goto("./");
+  const fixture = await addFixtures(page, "Offline Queue");
+  await signIn(page, email);
+  await expect(page.getByText("Last synced: today.")).toBeVisible();
+  await expect(page.getByText(/not synced yet/)).toHaveCount(0, { timeout: 15_000 });
+
+  // On a timer's Wi-Fi, say: no internet.
+  await page.context().setOffline(true);
+  await page.getByRole("tab", { name: "Practice" }).click();
+  await runSession(page);
+  await openDataTab(page);
+  await expect(page.getByText("1 change on this phone not synced yet.", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("sync-waiting")).toHaveText(/changes will sync when the connection is back/, {
+    timeout: 20_000,
+  });
+
+  await page.context().setOffline(false);
+  await expect(page.getByText(/not synced yet/), "sent once the connection is back").toHaveCount(0, {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId("sync-waiting")).toHaveCount(0);
+
+  const { context, page: other } = await anotherPhone(browser, testInfo);
+  await signIn(other, email);
+  await other.getByRole("tab", { name: "Practice" }).click();
+  await expect(sessionCard(other, fixture)).toBeVisible({ timeout: 15_000 });
+  await context.close();
+});
+
+test("with Sync automatically off, changes wait for Sync now", async ({ page }) => {
+  await page.goto("./");
+  await signIn(page, newEmail());
+  await expect(page.getByText("Last synced: today.")).toBeVisible();
+  await page.getByLabel("Sync automatically").click();
+  await expect(page.getByText("Only when you tap Sync now.")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Practice" }).click();
+  await addFixtures(page, "By Hand");
+  await openDataTab(page);
+  await page.waitForTimeout(3000);
+  await expect(page.getByText("3 changes on this phone not synced yet.", { exact: false })).toBeVisible();
+  await syncNow(page);
+  await expect(page.getByText(/not synced yet/)).toHaveCount(0);
 });

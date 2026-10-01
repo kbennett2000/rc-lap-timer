@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Trophy } from "lucide-react";
+import { ArrowLeft, Trophy, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,9 @@ import { useCloudAccount } from "@/cloud/account";
 import { toCloudError } from "@/cloud/errors";
 import { createTrack, deleteTrack, renameTrack, type Track } from "@/cloud/tracks";
 import { formatLapTime } from "@/domain/format";
-import { cleanTrack, MAX_TRACK_NAME_LENGTH, type TrackName } from "@/domain/leaderboard";
+import { cleanTrack, MAX_TRACK_NAME_LENGTH, ordinal, type TrackName } from "@/domain/leaderboard";
 import { nameKey } from "@/domain/rules";
-import { useLeaderboard, useRefreshPosts, useRemovePost, useTracks } from "./queries";
+import { useDriverProfile, useLeaderboard, useMyDrivers, useRefreshPosts, useRemovePost, useTracks } from "./queries";
 
 function Problem({ message, onRetry }: { message: string | null; onRetry?: () => void }) {
   if (!message) return null;
@@ -30,6 +30,9 @@ function Problem({ message, onRetry }: { message: string | null; onRetry?: () =>
 }
 
 const trackLabel = (track: Pick<Track, "name" | "area">) => (track.area ? `${track.name} (${track.area})` : track.name);
+
+// What the Tracks tab shows: the list, a track's leaderboard, or a driver's profile (with where to go back to).
+type View = { kind: "list" } | { kind: "track"; id: string } | { kind: "driver"; key: string; back: View };
 
 // A track's name and area, for adding or renaming one.
 function TrackForm({
@@ -100,20 +103,30 @@ function TrackForm({
 // The Tracks tab, in an app built with a cloud service (docs/cloud.md): the shared tracks, and each one's
 // leaderboard.
 export default function TracksScreen() {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [view, setView] = useState<View>({ kind: "list" });
   const tracks = useTracks();
-  const open = tracks.data?.find((track) => track.id === openId);
+  const open = view.kind === "track" ? tracks.data?.find((track) => track.id === view.id) : undefined;
+  const list = () => setView({ kind: "list" });
+  const openTrack = (id: string) => setView({ kind: "track", id });
+  const openDriver = (key: string) => setView({ kind: "driver", key, back: view });
 
   return (
     <div className="space-y-4 px-2 sm:px-0">
-      {open ? <TrackBoard track={open} onBack={() => setOpenId(null)} /> : <TrackList onOpen={setOpenId} />}
+      {view.kind === "driver" ? (
+        <DriverView driverKey={view.key} onBack={() => setView(view.back)} onOpenTrack={openTrack} />
+      ) : open ? (
+        <TrackBoard track={open} onBack={list} onOpenDriver={openDriver} />
+      ) : (
+        <TrackList onOpen={openTrack} onOpenDriver={openDriver} />
+      )}
     </div>
   );
 }
 
-function TrackList({ onOpen }: { onOpen: (id: string) => void }) {
+function TrackList({ onOpen, onOpenDriver }: { onOpen: (id: string) => void; onOpenDriver: (key: string) => void }) {
   const account = useCloudAccount();
   const tracks = useTracks();
+  const drivers = useMyDrivers(account);
   const refresh = useRefreshPosts();
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
@@ -174,6 +187,29 @@ function TrackList({ onOpen }: { onOpen: (id: string) => void }) {
           </ul>
         )}
 
+        {drivers.data && drivers.data.length > 0 && (
+          <div className="space-y-2">
+            <p className="font-medium">Your drivers</p>
+            <ul className="space-y-2">
+              {drivers.data.map((driver) => (
+                <li key={driver.key}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded border p-3 text-left hover:bg-accent"
+                    onClick={() => onOpenDriver(driver.key)}
+                  >
+                    <User className="h-4 w-4" />
+                    <span className="font-medium">{driver.name}</span>
+                    <span className="text-muted-foreground">
+                      · {driver.bests.length === 1 ? "1 track" : `${driver.bests.length} tracks`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {account &&
           (adding ? (
             <TrackForm
@@ -198,8 +234,18 @@ function TrackList({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
-function TrackBoard({ track, onBack }: { track: Track; onBack: () => void }) {
+function TrackBoard({
+  track,
+  onBack,
+  onOpenDriver,
+}: {
+  track: Track;
+  onBack: () => void;
+  onOpenDriver: (key: string) => void;
+}) {
   const board = useLeaderboard(track.id);
+  const record = board.data?.[0];
+  const myPlace = board.data?.findIndex((row) => row.mine) ?? -1;
   const remove = useRemovePost();
   const refresh = useRefreshPosts();
   const [editing, setEditing] = useState(false);
@@ -220,6 +266,20 @@ function TrackBoard({ track, onBack }: { track: Track; onBack: () => void }) {
         {track.area && <p className="text-sm text-muted-foreground">{track.area}</p>}
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
+        {record && (
+          <div className="space-y-1 rounded bg-gray-100 p-3" data-testid="track-record">
+            <p>
+              Track record: <strong className="font-mono">{formatLapTime(record.bestLapMs)}</strong>,{" "}
+              {record.driverName} ({record.carName})
+            </p>
+            {myPlace >= 0 && (
+              <p>
+                Your best: <strong className="font-mono">{formatLapTime(board.data![myPlace].bestLapMs)}</strong>,{" "}
+                {ordinal(myPlace + 1)}
+              </p>
+            )}
+          </div>
+        )}
         <p className="text-muted-foreground">
           Each driver&apos;s best lap. Laps are posted by the people who drove them, timed by their own phone or timer.
         </p>
@@ -236,7 +296,14 @@ function TrackBoard({ track, onBack }: { track: Track; onBack: () => void }) {
                 <span className="w-6 shrink-0 font-semibold">{index + 1}</span>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
-                    {row.driverName} <span className="font-normal text-muted-foreground">· {row.carName}</span>
+                    <button
+                      type="button"
+                      className="underline-offset-2 hover:underline"
+                      onClick={() => onOpenDriver(row.driverKey)}
+                    >
+                      {row.driverName}
+                    </button>{" "}
+                    <span className="font-normal text-muted-foreground">· {row.carName}</span>
                   </p>
                   <p className="text-muted-foreground">
                     Lap {row.bestLapNumber} of {row.lapCount}
@@ -306,6 +373,67 @@ function TrackBoard({ track, onBack }: { track: Track; onBack: () => void }) {
             </div>
           ))}
         <Problem message={problem} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// A driver's profile: their best lap at each track they've posted on.
+function DriverView({
+  driverKey,
+  onBack,
+  onOpenTrack,
+}: {
+  driverKey: string;
+  onBack: () => void;
+  onOpenTrack: (id: string) => void;
+}) {
+  const profile = useDriverProfile(driverKey);
+
+  return (
+    <Card>
+      <CardHeader className="space-y-2">
+        <Button variant="ghost" size="sm" className="w-fit px-0" onClick={onBack}>
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back
+        </Button>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          {profile.data?.name ?? "Driver"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {profile.isPending && <p>Loading…</p>}
+        <Problem
+          message={profile.error ? toCloudError(profile.error).message : null}
+          onRetry={() => void profile.refetch()}
+        />
+        {profile.data === null && <p>This driver has no laps posted any more.</p>}
+        {profile.data && (
+          <>
+            <p className="text-muted-foreground">Best lap at each track.</p>
+            <ul aria-label="Best laps" className="divide-y rounded border">
+              {profile.data.bests.map((best) => (
+                <li key={best.trackId}>
+                  <button
+                    type="button"
+                    className="flex w-full items-start gap-3 p-3 text-left hover:bg-accent"
+                    onClick={() => onOpenTrack(best.trackId)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{trackLabel({ name: best.trackName, area: best.trackArea })}</p>
+                      <p className="text-muted-foreground">
+                        {ordinal(best.place)} of {best.drivers} · {best.carName} ·{" "}
+                        {new Date(best.sessionDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-mono font-semibold">{formatLapTime(best.bestLapMs)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </CardContent>
     </Card>
   );

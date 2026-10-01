@@ -76,6 +76,16 @@ export function isBackupStore(store: DataStore): store is DataStore & BackupStor
   return "exportBundle" in store;
 }
 
+// For a store that keeps the data itself (the phone-only app's): a count that goes up with every change to the data,
+// so cloud sync can tell when there's something new to send.
+export interface ChangeCounter {
+  changeCount(): Promise<number>;
+}
+
+export function isChangeCounter(store: DataStore): store is DataStore & ChangeCounter {
+  return "changeCount" in store;
+}
+
 // duplicate: the name is in use. invalid: the request breaks a rule (or refers to a record that's gone).
 // not-found: the record to change doesn't exist. unavailable: the store can't be reached; trying again may work.
 export type DataErrorKind = "duplicate" | "invalid" | "not-found" | "unavailable";

@@ -55,3 +55,10 @@ export function cleanTrack(name: string, area: string): Checked<TrackName> {
   }
   return { ok: true, value: trimmed };
 }
+
+// A place on a leaderboard: 1st, 2nd, 3rd, 4th … 11th, 12th, 13th … 21st.
+export function ordinal(place: number): string {
+  const teen = place % 100 >= 11 && place % 100 <= 13;
+  const suffix = teen ? "th" : (["th", "st", "nd", "rd"][place % 10] ?? "th");
+  return `${place}${suffix}`;
+}
