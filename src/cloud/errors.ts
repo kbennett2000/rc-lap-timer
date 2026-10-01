@@ -12,7 +12,10 @@ export type CloudProblem =
   | "signed-out"
   | "busy"
   | "update-app"
-  | "invalid";
+  | "invalid"
+  | "track-taken"
+  | "track-in-use"
+  | "not-yours";
 
 const MESSAGES: Record<CloudProblem, string> = {
   offline:
@@ -26,6 +29,9 @@ const MESSAGES: Record<CloudProblem, string> = {
   busy: "Another device was syncing with your account at the same time. Try again.",
   "update-app": "Your account's data was saved by a newer version of the app. Reload the app to update it.",
   invalid: "The data in your account can't be read. Nothing was changed on this phone.",
+  "track-taken": "There's already a track with that name and area. Choose it from the list, or add where it is.",
+  "track-in-use": "Other people have laps on this track, so it can't be deleted.",
+  "not-yours": "Only whoever added a track can change it.",
 };
 
 export class CloudError extends Error {

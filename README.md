@@ -27,8 +27,8 @@ iPhone first needs the timer's certificate: see "Trusting the timer on a phone")
 These need the Raspberry Pi timer below: race mode, IR timing, remote control, following a session live from another
 phone, the LED display, and the timer's System Settings.
 
-The app can also have accounts and cloud sync, but only if whoever publishes it runs a cloud service for them
-([docs/cloud.md](docs/cloud.md)). The app at the link above doesn't, so it never sends your data anywhere.
+The app can also have accounts, cloud sync, and shared tracks with leaderboards, but only if whoever publishes it runs
+a cloud service for them ([docs/cloud.md](docs/cloud.md)). The app at the link above doesn't, so it never sends your data anywhere.
 
 # Feature Overview
 
@@ -133,7 +133,8 @@ Everything here works in the phone app and on the timer (the Raspberry Pi), exce
 ![navigation](/images/navigation.jpg)
 
 The bar at the bottom has **Practice** (timing, and your sessions), **Race** (timer only) and **Manager** (drivers,
-cars, locations, settings and your data). Practice has its own tabs along the top: **Current** (set up and time a
+cars, locations, settings and your data), and **Tracks** in a phone app published with a cloud service (see Tracks
+below). Practice has its own tabs along the top: **Current** (set up and time a
 session), **Session Mgmt**, **Best**, **Compare** and **Notes**.
 
 A session keeps running while you look at another tab, and so does the camera.
@@ -323,6 +324,16 @@ IR timing is still in beta.
 
 When a new version of the phone app is ready, a bar at the top says so: tap **Reload** to use it.
 
+## Tracks (phone app with a cloud service)
+In a phone app published with a cloud service ([docs/cloud.md](docs/cloud.md)), a **Tracks** tab in the bottom bar
+lists shared tracks. Tap one to see its leaderboard: each driver's best lap, fastest first. Anyone can look.
+- **Adding a track:** signed in (Manager → Data), you can **Add a track**, with where it is if you like.
+- **Posting a session:** each saved session in Practice and Session Mgmt has **Post to leaderboard**, which puts its
+  best lap on a track's leaderboard. It shows exactly what becomes public first, and suggests the track you used last
+  for that location.
+- **Taking a post down:** use **Remove from leaderboard** on the session, or **Remove my post** on the leaderboard.
+- **Changing a track:** whoever added it can rename it, and can delete it while nobody else has laps on it.
+
 
 # 🛠️ Development & Contributing
 Contributions are welcome! Please follow these steps:
@@ -356,7 +367,7 @@ The phone app syncs with a timer by calling its `/api/sync` routes from GitHub P
 listed in `SYNC_ALLOWED_ORIGINS` (in `/etc/rc-lap-timer.env`; the default is `https://kbennett2000.github.io`), so a
 fork that publishes its own phone app adds its Pages site there.
 
-Accounts and cloud sync are in the phone app only when it's built with a Supabase project
+Accounts, cloud sync, shared tracks and leaderboards are in the phone app only when it's built with a Supabase project
 (`NEXT_PUBLIC_CLOUD_URL` and `NEXT_PUBLIC_CLOUD_KEY`, which the Pages workflow takes from the `CLOUD_URL` and
 `CLOUD_KEY` repository variables). Otherwise their code is left out of the build. The code is in
 [src/cloud](src/cloud) and [src/features/cloud](src/features/cloud), and the database is in [supabase/](supabase).
@@ -389,8 +400,8 @@ CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs these on every pu
   ([tests/e2e/crossing-video.ts](tests/e2e/crossing-video.ts)) as the camera and check every lap; the motion check
   itself is [src/timing/motion.ts](src/timing/motion.ts).
 - With a local Supabase: the cloud database's access rules (`supabase test db`), and the phone app built with it,
-  checked to contain the cloud code (`check-bundles.mjs standalone-cloud`), with its sign-in and cloud sync browser
-  tests ([tests/e2e/cloud.spec.ts](tests/e2e/cloud.spec.ts)).
+  checked to contain the cloud code (`check-bundles.mjs standalone-cloud`), with its sign-in, cloud sync and
+  leaderboard browser tests ([tests/e2e/cloud.spec.ts](tests/e2e/cloud.spec.ts)).
 - The Pi's web server settings, in the nginx version the Pi runs
   ([scripts/system/test-pi-network.sh](scripts/system/test-pi-network.sh), which needs Docker), and the system
   settings helper ([scripts/system/test-config-helper.sh](scripts/system/test-config-helper.sh)).

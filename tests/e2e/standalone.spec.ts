@@ -39,6 +39,7 @@ test("keeps its data on the phone, hides the Pi's features, and never calls an A
 
   await expect(page.getByRole("tab", { name: "Practice" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Race" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Tracks" }), "no cloud service, so no shared tracks").toHaveCount(0);
   // The bottom bar's labels are on the screen, not cut off below it.
   const manager = await page.getByRole("tab", { name: "Manager" }).boundingBox();
   expect(manager!.y + manager!.height, "the Manager tab's bottom edge").toBeLessThanOrEqual(
