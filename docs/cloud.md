@@ -32,7 +32,8 @@ half an hour.
 What doesn't change:
 - The data still lives on the phone, and the app works offline.
 - Signing out or deleting the account leaves the phone's data as it is.
-- If the cloud service is down, only the account card notices.
+- If the cloud service is down, only the cloud features notice: the account card, the Tracks tab and Post to
+  leaderboard show an error.
 
 ## What it costs
 - **Supabase:** check its [pricing](https://supabase.com/pricing).
