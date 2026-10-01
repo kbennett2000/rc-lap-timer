@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { logger } from "@/lib/logger";
+import { cameraGone, videoConstraints } from "./constraints";
 
 const CAMERA_KEY = "rc-lap-timer-camera-id";
 
@@ -26,6 +27,18 @@ export function useCamera() {
   const [cameraId, setCameraId] = useState(savedCameraId);
   const cameraIdRef = useRef(cameraId);
 
+  const rememberCamera = useCallback((id: string) => {
+    cameraIdRef.current = id;
+    setCameraId(id);
+    try {
+      if (id) localStorage.setItem(CAMERA_KEY, id);
+      else localStorage.removeItem(CAMERA_KEY);
+    } catch {
+      // not remembered; still used for this page
+    }
+  }, []);
+  const forgetCamera = useCallback(() => rememberCamera(""), [rememberCamera]);
+
   const refreshCameras = useCallback(async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -43,15 +56,15 @@ export function useCamera() {
     setStatus("starting");
     setError("");
     const id = cameraIdRef.current;
-    const starting = navigator.mediaDevices
-      .getUserMedia({
-        audio: false,
-        video: {
-          // A chosen camera, because iOS can otherwise switch lenses mid-stream (each switch looks like motion).
-          ...(id ? { deviceId: { ideal: id } } : { facingMode: { ideal: "environment" } }),
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+    const open = (cameraId: string) =>
+      navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints(cameraId) });
+    const starting = open(id)
+      .catch((err) => {
+        if (!id || !cameraGone(err)) throw err;
+        // The chosen camera has gone: use the default one, and forget the choice.
+        logger.warn("The chosen camera isn't there any more, so the default camera is used:", err);
+        forgetCamera();
+        return open("");
       })
       .then((stream) => {
         streamRef.current = stream;
@@ -69,7 +82,7 @@ export function useCamera() {
       });
     startingRef.current = starting;
     return starting;
-  }, [refreshCameras]);
+  }, [refreshCameras, forgetCamera]);
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -80,20 +93,13 @@ export function useCamera() {
   // Switching cameras while the stream is on restarts it with the new one.
   const chooseCamera = useCallback(
     async (id: string) => {
-      cameraIdRef.current = id;
-      setCameraId(id);
-      try {
-        if (id) localStorage.setItem(CAMERA_KEY, id);
-        else localStorage.removeItem(CAMERA_KEY);
-      } catch {
-        // not remembered; still used for this page
-      }
+      rememberCamera(id);
       if (streamRef.current) {
         stop();
         await start();
       }
     },
-    [start, stop],
+    [start, stop, rememberCamera],
   );
 
   useEffect(() => {

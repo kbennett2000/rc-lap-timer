@@ -222,16 +222,23 @@ The first time, the browser asks to use the camera: allow it.
 - **Stop Timer** (above the camera, while a session runs) ends the session. The lap in progress isn't counted: only
   real crossings are laps. A session with a number of laps ends, and turns the camera off, by itself.
 - **Cam Off** only turns the camera off. The session keeps going, and Cam On carries on timing.
-- **Rotate preview** turns the picture if it shows sideways. It doesn't change detection.
-- **Camera**: with more than one camera, pick one. The phone remembers it.
+- **The start/finish box**: while you preview, drag over the picture to draw a box across the start/finish line.
+  Only what's inside it is compared, so people, trees and cars elsewhere in view don't count, and the phone has less
+  to check. Drag again to draw a new box, or tap **Whole picture** to compare everything. The phone remembers the box
+  for each camera. It isn't part of saved settings, since it's a place in this phone's view. A box changes how much of
+  the compared picture a car fills, so check the Threshold after drawing one.
+- **Rotate preview** turns the picture if it shows sideways. It doesn't change detection, and the box turns with it.
+- **Camera**: with more than one camera, pick one, even with the camera on. The phone remembers it, and goes back to
+  the default camera if the chosen one isn't there any more.
 - **Save MD Images** saves a photo of each detection, to check what set it off.
 
 #### Motion Detection Settings
 Changes take effect straight away, even with the camera on, and the phone remembers them for next time.
 - **Sensitivity**: raise it if the car isn't detected, lower it if other things set it off. Higher means a smaller
   change in a pixel's colour counts.
-- **Threshold**: how much of the picture has to change for a detection. A car that passes further from the camera
-  needs a lower threshold. 0.5% to 5% usually works.
+- **Threshold**: how much of the compared picture (the box, or the whole picture) has to change for a detection. A car
+  that passes further from the camera needs a lower threshold. 0.5% to 5% usually works for the whole picture; a car
+  fills more of a box, so a box can take a higher one.
 - **Cooldown**: how long after a detection to ignore the camera, in milliseconds, so one pass isn't counted twice.
   Make it shorter than your fastest lap: for laps of about 15 seconds, try 10000 to 12000.
 - **Frames to Skip**: camera frames ignored after the camera turns on, so tapping the phone isn't counted as a lap.
@@ -240,17 +247,19 @@ Changes take effect straight away, even with the camera on, and the phone rememb
   delete saved sets in Manager → Motion Settings.
 
 #### How the camera times a lap
-The app compares each frame from the camera with the one before, on a copy scaled so its longer side is 320 pixels,
-and counts the pixels whose colour changed by more than the Sensitivity allows. When that's more than the Threshold,
+The app compares each frame from the camera with the one before, on a copy of the start/finish box (or the whole
+picture) scaled so its longer side is at most 320 pixels, and counts the pixels whose colour changed by more than the
+Sensitivity allows. When that's more than the Threshold,
 outside the Cooldown, the car has crossed. Most phone browsers (Chrome, and Safari on iOS 15.4 or later) say when the
 camera took each frame, so a crossing is timed by the moment the car appeared in the picture, however busy the phone
 was.
 
-While you preview, the app shows how that's going, for example "Checking 30 frames a second, 1.2 ms each, timed by the
-camera":
+While you preview, the app shows how that's going, for example "Checking 30 frames a second, 1.2 ms each, 320×48
+pixels, timed by the camera":
 - **frames a second** should match the camera, usually 30. A much higher number means the browser can't say when
   frames arrive, so the app checks on every screen refresh instead.
 - **ms each** is how long checking a frame takes. A few milliseconds is plenty fast.
+- **pixels** is the size of the compared copy: smaller with a box, which saves battery.
 - **timed by the camera** is the most accurate. "Timed by the screen" and "timed as they arrive" are close behind.
   "Timed when checked" means lap times can be off by a frame or two.
 

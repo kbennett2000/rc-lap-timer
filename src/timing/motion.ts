@@ -55,6 +55,89 @@ export function analysisSize(width: number, height: number): { width: number; he
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
 
+// The start/finish box: the part of the camera's picture that's compared, so a car only counts at the line and
+// everything else in view (people, trees, other cars) is ignored. Fractions (0-1) of the frame's width and height, in
+// the camera's own orientation, whatever way the preview is rotated.
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+// A box must be at least this share of the picture each way, so a tap doesn't make one.
+export const MIN_BOX_SIZE = 0.05;
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+// A box read back from the device's storage, or null if it isn't one.
+export function parseBox(value: unknown): Box | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { x, y, width, height } = value as Record<string, unknown>;
+  const numbers = [x, y, width, height];
+  if (!numbers.every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+  const box = { x, y, width, height } as Box;
+  const fits =
+    box.x >= 0 &&
+    box.y >= 0 &&
+    box.width >= MIN_BOX_SIZE &&
+    box.height >= MIN_BOX_SIZE &&
+    box.x + box.width <= 1 + 1e-9 &&
+    box.y + box.height <= 1 + 1e-9;
+  return fits ? box : null;
+}
+
+// The box between two corners of a drag (each 0-1, and kept inside the picture), or null if it's too small.
+export function boxFromCorners(a: Point, b: Point): Box | null {
+  const left = clamp01(Math.min(a.x, b.x));
+  const top = clamp01(Math.min(a.y, b.y));
+  const width = clamp01(Math.max(a.x, b.x)) - left;
+  const height = clamp01(Math.max(a.y, b.y)) - top;
+  return width >= MIN_BOX_SIZE && height >= MIN_BOX_SIZE ? { x: left, y: top, width, height } : null;
+}
+
+// The box in a width × height frame's pixels (the whole frame without one): whole pixels, at least one each way.
+export function boxPixels(box: Box | null, width: number, height: number) {
+  if (!box) return { x: 0, y: 0, width, height };
+  const x = Math.min(width - 1, Math.max(0, Math.round(box.x * width)));
+  const y = Math.min(height - 1, Math.max(0, Math.round(box.y * height)));
+  return {
+    x,
+    y,
+    width: Math.max(1, Math.min(width - x, Math.round(box.width * width))),
+    height: Math.max(1, Math.min(height - y, Math.round(box.height * height))),
+  };
+}
+
+// Where a point on the screen is in the camera's picture (0-1 each way). The preview is rotated `rotation` degrees
+// clockwise (0, 90, 180 or 270) about its centre, and `rect` is where it is on the screen once rotated (its
+// getBoundingClientRect).
+export function toFramePoint(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number },
+  rotation: number,
+): Point {
+  const sideways = rotation % 180 !== 0;
+  // The preview's own size, before rotating.
+  const width = sideways ? rect.height : rect.width;
+  const height = sideways ? rect.width : rect.height;
+  const dx = clientX - (rect.left + rect.width / 2);
+  const dy = clientY - (rect.top + rect.height / 2);
+  // Undo the rotation.
+  const radians = (rotation * Math.PI) / 180;
+  const cos = Math.round(Math.cos(radians));
+  const sin = Math.round(Math.sin(radians));
+  const x = dx * cos + dy * sin;
+  const y = -dx * sin + dy * cos;
+  return { x: clamp01((x + width / 2) / width), y: clamp01((y + height / 2) / height) };
+}
+
 // The percentage of pixels whose red, green or blue changed by more than `sensitivity`, between two RGBA frames of
 // the same size.
 export function changedPercent(previous: Uint8ClampedArray, current: Uint8ClampedArray, sensitivity: number): number {
@@ -85,6 +168,12 @@ export const START: DetectorState = { frames: 0, lastCrossingAt: null };
 // Whether the next frame falls in the frames skipped after the camera starts (so there's no need to compare it).
 export function skipping(state: DetectorState, settings: DetectorSettings): boolean {
   return state.frames < settings.framesToSkip;
+}
+
+// Whether the next frame is needed at all: the first frame compared needs the one before it, so only the frames
+// skipped before that can go unread (which saves the phone copying them).
+export function frameNeeded(state: DetectorState, settings: DetectorSettings): boolean {
+  return state.frames + 1 >= settings.framesToSkip;
 }
 
 // One frame: `change` is its changedPercent, or null when it wasn't compared (skipped, or nothing to compare with).

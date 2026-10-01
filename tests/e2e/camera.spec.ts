@@ -35,16 +35,45 @@ async function setUp(page: Page, label: string) {
   await sliders.nth(3).fill("1"); // frames to skip
 }
 
-// The preview's frame stats: how many frames a second it checks, and what times them.
-async function frameStats(page: Page) {
+// The preview's frame stats: how many frames a second it checks, what times them, and the compared picture's size.
+// `whilePreviewing` runs first, with the preview on.
+async function frameStats(page: Page, whilePreviewing?: () => Promise<void>) {
   await page.getByRole("button", { name: "Preview", exact: true }).click();
   const stats = page.getByTestId("frame-stats");
   await expect(stats).toBeVisible();
+  await whilePreviewing?.();
   await page.waitForTimeout(1500);
   const text = (await stats.textContent()) ?? "";
   await page.getByRole("button", { name: "Stop Preview" }).click();
-  return { text, framesPerSecond: Number(/Checking (\d+) frames a second/.exec(text)?.[1]) };
+  const [, width, height] = /(\d+)×(\d+) pixels/.exec(text) ?? [];
+  return {
+    text,
+    framesPerSecond: Number(/Checking (\d+) frames a second/.exec(text)?.[1]),
+    area: { width: Number(width), height: Number(height) },
+  };
 }
+
+// Drags a start/finish box over the preview, between two corners given as fractions of the picture.
+async function drawBox(page: Page, from: [number, number], to: [number, number]) {
+  const area = (await page.getByTestId("box-area").boundingBox())!;
+  const at = ([x, y]: [number, number]) => [area.x + x * area.width, area.y + y * area.height] as const;
+  await page.mouse.move(...at(from));
+  await page.mouse.down();
+  await page.mouse.move(...at([(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]), { steps: 5 });
+  await page.mouse.move(...at(to), { steps: 5 });
+  await page.mouse.up();
+  await expect(page.getByLabel("Start/finish box")).toBeVisible();
+}
+
+// The car crosses rows 40% to 60% of the way down the picture (crossing-video.ts).
+const ON_THE_PATH: [[number, number], [number, number]] = [
+  [0.05, 0.36],
+  [0.95, 0.64],
+];
+const ABOVE_THE_PATH: [[number, number], [number, number]] = [
+  [0.05, 0.05],
+  [0.95, 0.3],
+];
 
 // Times a run of about four loops, and returns its laps. `meanwhile` runs once the run has started.
 async function timeRun(page: Page, meanwhile?: () => Promise<void>): Promise<number[]> {
@@ -128,4 +157,40 @@ test("remembers the motion settings on the phone", async ({ page }) => {
   await page.getByLabel("Time Using Motion Detection").click();
   await expect(page.getByText("Cooldown (1000ms)")).toBeVisible();
   await expect(page.getByText("Frames to Skip (1)")).toBeVisible();
+});
+
+test("times laps with a start/finish box on the car's path, comparing only the box", async ({ page }) => {
+  await setUp(page, "Box");
+  const whole = await frameStats(page);
+  expect(whole.area, "the whole picture, scaled down").toEqual({ width: 320, height: 180 });
+
+  const boxed = await frameStats(page, () => drawBox(page, ...ON_THE_PATH));
+  expect(boxed.area.width).toBe(320);
+  expect(boxed.area.height, "only the box's strip of the picture").toBeLessThan(60);
+  expect(boxed.text).toContain("timed by the camera");
+
+  expectLoopLaps(await timeRun(page), 10);
+});
+
+test("ignores what moves outside the start/finish box", async ({ page }) => {
+  await setUp(page, "Outside");
+  await frameStats(page, () => drawBox(page, ...ABOVE_THE_PATH));
+  await page.getByRole("button", { name: "Cam On" }).click();
+  await page.waitForTimeout(2.5 * LOOP_MS);
+  await expect(page.getByRole("button", { name: "Stop Timer" }), "no crossing, so no run").toHaveCount(0);
+  await page.getByRole("button", { name: "Cam Off" }).click();
+});
+
+test("remembers the box on the phone, and Whole picture goes back to comparing everything", async ({ page }) => {
+  await setUp(page, "Kept");
+  await frameStats(page, () => drawBox(page, ...ON_THE_PATH));
+  await page.reload();
+  await page.getByLabel("Time Using Motion Detection").click();
+  await expect(page.getByText("Only what's inside the start/finish box is compared.")).toBeVisible();
+  await expect(page.getByLabel("Start/finish box")).toBeVisible();
+  expect((await frameStats(page)).area.height).toBeLessThan(60);
+
+  await page.getByRole("button", { name: "Whole picture" }).click();
+  await expect(page.getByLabel("Start/finish box")).toHaveCount(0);
+  expect((await frameStats(page)).area).toEqual({ width: 320, height: 180 });
 });
