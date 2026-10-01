@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Car as CarIcon, UserCog, Flag } from "lucide-react";
+import { Car as CarIcon, UserCog, Flag, Trophy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import DriverCarManager from "@/components/driver-car-manager";
@@ -10,10 +10,6 @@ import PracticeControl from "./practice-control";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { watchTimerClock } from "@/integrations/timer-clock";
 import { gridCols } from "@/lib/utils";
-import { CAPABILITIES } from "@/platform/capabilities";
-
-// Practice, Race (Pi only) and Manager.
-const TAB_COUNT = CAPABILITIES.races ? 3 : 2;
 
 // Race mode is loaded when the Race tab is first opened. The phone-only build has no race mode, and the condition is
 // written out in full so that build leaves the code out altogether.
@@ -23,6 +19,17 @@ const RaceTab =
     : dynamic(() => import("../racing-session/race-tab"), {
         loading: () => <p className="p-4 text-sm text-muted-foreground">Loading race mode…</p>,
       });
+
+// Shared tracks and their leaderboards, only in a phone app built with a cloud service (docs/cloud.md).
+const TracksTab = process.env.NEXT_PUBLIC_CLOUD_URL
+  ? dynamic(() => import("@/features/cloud/tracks-screen"), {
+      ssr: false,
+      loading: () => <p className="p-4 text-sm text-muted-foreground">Loading tracks…</p>,
+    })
+  : null;
+
+// Practice, Race (Pi only) or Tracks (phone app with a cloud service), and Manager.
+const TAB_COUNT = 2 + (RaceTab ? 1 : 0) + (TracksTab ? 1 : 0);
 
 // The phone-only app's offline copy and update offer (src/pwa/app-shell.tsx); the Pi build doesn't have it.
 const AppShell =
@@ -67,6 +74,15 @@ export default function LapTimer() {
             </TabsContent>
           )}
 
+          {/* Tracks Tab */}
+          {TracksTab && (
+            <TabsContent value="tracks" className="px-0 sm:px-4 space-y-4 h-full overflow-y-auto">
+              <ErrorBoundary>
+                <TracksTab />
+              </ErrorBoundary>
+            </TabsContent>
+          )}
+
           {/* Driver Car Manager Tab */}
           <TabsContent value="drivercarmanager" className="space-y-4">
             <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
@@ -94,6 +110,16 @@ export default function LapTimer() {
                   <div className="flex flex-col items-center">
                     <Flag className="h-5 w-5" />
                     <span className="text-xs mt-1">Race</span>
+                  </div>
+                </TabsTrigger>
+              )}
+
+              {/* Tracks */}
+              {TracksTab && (
+                <TabsTrigger value="tracks" className="py-3">
+                  <div className="flex flex-col items-center">
+                    <Trophy className="h-5 w-5" />
+                    <span className="text-xs mt-1">Tracks</span>
                   </div>
                 </TabsTrigger>
               )}

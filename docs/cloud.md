@@ -1,6 +1,6 @@
-# Accounts and cloud sync
+# Accounts, cloud sync, shared tracks and leaderboards
 
-The phone app can have accounts and cloud sync. They're built in and tested, but they're **off** unless someone runs
+The phone app can have accounts, cloud sync, and shared tracks with leaderboards. They're built in and tested, but they're **off** unless someone runs
 a cloud service for them and builds the app with it. The public app at https://kbennett2000.github.io/rc-lap-timer/
 doesn't have one at the moment, because a cloud service costs money and the project has no budget.
 
@@ -17,7 +17,17 @@ half an hour.
     the same name become one.
   - Every phone signed in to the account ends up with the same data.
   - A sync counts as a backup.
-- **Delete account**, in the same card. It deletes everything the account holds in the cloud.
+- **Delete account**, in the same card. It deletes everything the account holds in the cloud, including its
+  leaderboard posts.
+- **A Tracks tab** with shared tracks and their leaderboards, which anyone can browse, signed in or not.
+  - **Adding a track:** signed in, you add a track with a name and, optionally, where it is (such as "Austin, TX").
+  - **Posting a session:** **Post to leaderboard**, on a saved session in Practice or Session Mgmt, puts the
+    session's best lap on a track's leaderboard. The app shows what becomes public first: the driver and car names,
+    the best lap (its number, the session's lap count and its penalties) and the date.
+  - **Ranking:** each driver's best lap counts, once per account. The app labels laps as posted by the people who
+    drove them, timed by their own phone or timer.
+  - **Taking posts down:** you can remove your own posts.
+  - **Changing a track:** whoever added it can rename it, and can delete it while nobody else has laps on it.
 
 What doesn't change:
 - The data still lives on the phone, and the app works offline.
@@ -77,13 +87,22 @@ A fork works the same way: do these steps in the fork, with its GitHub Pages tur
 "GitHub Actions").
 
 ## Running it
-- **Who sees what.** Each account's data can be read and changed only by that account. The rules are in the
-  migrations, and [supabase/tests](../supabase/tests) checks them.
+- **Who sees what.** The rules are in the migrations, and [supabase/tests](../supabase/tests) checks them.
+  - **An account's data** can be read and changed only by that account.
+  - **Tracks and leaderboard posts** can be seen by everyone, and changed only by whoever added them.
+  - **Each post records which account made it.** That's a random id, not the email address, and it isn't shown in
+    the app.
+- **Moderation.** Delete unwanted rows in Table Editor:
+  - `lap_records` holds the posts;
+  - `tracks` holds the tracks, and deleting one deletes its posts.
+
+  There's no report button. People reach whoever runs the service the way you tell them to, for example in your
+  privacy notice.
 - **Accounts and data.** Authentication → Users lists the accounts; deleting one deletes its data.
   - **Table Editor → `cloud_bundles`** has one row per account that has synced. Its `bundle` is in the same format
     as a backup file.
   - People can delete their own account from the app.
-- **Privacy.** You'll be keeping people's email addresses and their lap data. Publish a privacy notice and set
+- **Privacy.** You'll be keeping people's email addresses and their lap data, and showing the posts publicly. Publish a privacy notice and set
   `CLOUD_PRIVACY_URL`.
 - **Updating the app.** When a new version adds a file to `supabase/migrations`, apply it before publishing that
   version: run `db push` again, or paste the new file into the SQL Editor.
@@ -91,7 +110,8 @@ A fork works the same way: do these steps in the fork, with its GitHub Pages tur
 
 ## Turning it off
 1. Delete the `CLOUD_URL` and `CLOUD_KEY` variables.
-2. Run **Publish the phone app** again. The account card disappears, and the data on people's phones stays.
+2. Run **Publish the phone app** again. The account card and the Tracks tab disappear, and the data on people's
+   phones stays.
 3. If you like, delete the Supabase project, which deletes everyone's cloud copy.
 
 ## How it works (for developers)
@@ -101,13 +121,16 @@ A fork works the same way: do these steps in the fork, with its GitHub Pages tur
 - [src/cloud](../src/cloud):
   - `client.ts` loads the Supabase library the first time it's needed;
   - `account.ts` handles signing in with a code;
+  - `tracks.ts` handles the tracks and posts;
   - `sync.ts` merges with the same code a timer uses ([src/domain/sync](../src/domain/sync)), and saves through
     `put_bundle`, which refuses a save if another device saved since this one read. The phone then reads again and
     merges, up to three times.
-- **The UI** is [src/features/cloud](../src/features/cloud).
+- **The UI** is [src/features/cloud](../src/features/cloud): the account card in Manager → Data, the Tracks tab,
+  and Post to leaderboard on the session cards.
 - **Tests:**
   - [supabase/tests](../supabase/tests) tests who can do what, in the database itself;
-  - [tests/e2e/cloud.spec.ts](../tests/e2e/cloud.spec.ts) tests sign-in and sync in the browser;
-  - [src/cloud](../src/cloud)'s unit tests cover the merging and the error messages.
+  - [tests/e2e/cloud.spec.ts](../tests/e2e/cloud.spec.ts) tests sign-in, sync and leaderboards in the browser;
+  - [src/cloud](../src/cloud)'s unit tests cover the merging and the error messages, and
+    [src/domain/leaderboard.ts](../src/domain/leaderboard.ts)'s tests cover what a post holds.
 
   CI runs them all against a local Supabase. The README's Checks section has the local steps.

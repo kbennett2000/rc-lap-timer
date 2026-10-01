@@ -61,8 +61,12 @@ select is((select bundle ->> 'n' from public.cloud_bundles), '2', 'B''s update a
 select public.delete_my_account();
 reset role;
 select is((select count(*) from auth.users where email = 'a@example.com'), 0::bigint, 'A''s account is gone');
-select is((select array_agg(bundle ->> 'n') from public.cloud_bundles), array['B'],
-  'A''s data went with it, and B''s is still there');
+select is(
+  (select array_agg(bundle ->> 'n') from public.cloud_bundles
+    where user_id in ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000b')),
+  array['B'],
+  'A''s data went with it, and B''s is still there'
+);
 
 select * from finish();
 rollback;

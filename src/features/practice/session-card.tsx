@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { AlertTriangle, Loader2, Trash2, Turtle, Zap } from "lucide-react";
 import {
   AlertDialog,
@@ -15,6 +16,12 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime, formatLapTime } from "@/domain/format";
 import type { Session } from "@/domain/types";
 import { cn } from "@/lib/utils";
+
+// Posting the session to a shared track's leaderboard, only in an app built with a cloud service (docs/cloud.md). The
+// condition is written out in full so that otherwise the build leaves the code out altogether.
+const LeaderboardPost = process.env.NEXT_PUBLIC_CLOUD_URL
+  ? dynamic(() => import("@/features/cloud/leaderboard-post").then((m) => m.LeaderboardPost), { ssr: false })
+  : null;
 
 // One saved session: its laps (fastest, slowest and penalties flagged) and stats.
 export function SessionCard({ session, onDelete }: { session: Session; onDelete: (session: Session) => void }) {
@@ -111,6 +118,7 @@ export function SessionCard({ session, onDelete }: { session: Session; onDelete:
           )}
         </div>
       </div>
+      {LeaderboardPost && <LeaderboardPost session={session} />}
     </div>
   );
 }

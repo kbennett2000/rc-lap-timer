@@ -1,9 +1,9 @@
-// Browser tests for the cloud features (docs/cloud.md): the phone app built with a local Supabase, as CI's cloud job
-// runs them. The steps are in the README (Development & Contributing → Checks): npx supabase@2.119.0 start, then
+// Browser tests for the cloud features (docs/cloud.md): accounts, cloud sync, shared tracks and leaderboards, in the
+// phone app built with a local Supabase, as CI's cloud job runs them. The steps are in the README (Development & Contributing → Checks): npx supabase@2.119.0 start, then
 // build the phone app with its URL and publishable key, serve it (npm run serve:pages), and run
 // E2E_TARGET=cloud npm run test:e2e. Every test signs up with a new email address, so each has its own account.
 
-import { expect, test, type Browser, type TestInfo } from "@playwright/test";
+import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 import { CLOUD_URL, emailedCode, newEmail, signIn, syncNow } from "./cloud-helpers";
 import { addFixtures, openDataTab, runSession, sessionCard } from "./phone-helpers";
 
@@ -120,4 +120,108 @@ test("deletes the account and what it holds, and keeps the phone's data", async 
   await expect(page.getByRole("status")).toContainText(
     /In your account:\s*Added 1 session, 1 driver, 1 car and 1 location\./,
   );
+});
+
+// A session whose best lap is about `lapMs`, from Practice's setup. Stopping counts as a lap too, a slower one.
+async function lapOf(page: Page, lapMs: number) {
+  await page.getByRole("tab", { name: "Practice" }).click();
+  await page.getByRole("button", { name: "Start Lap Timer" }).click();
+  await page.waitForTimeout(lapMs);
+  await page.getByRole("button", { name: "Record Lap" }).click();
+  await page.waitForTimeout(lapMs + 1000);
+  await page.getByRole("button", { name: "Stop Lap Timer" }).click();
+}
+
+// The lap times on a track's leaderboard, in ms, fastest first.
+async function leaderboardTimes(page: Page): Promise<number[]> {
+  const rows = await page.getByRole("list", { name: "Leaderboard" }).getByRole("listitem").allTextContents();
+  return rows.map((row) => {
+    const [, minutes, seconds, ms] = row.match(/(\d\d):(\d\d)\.(\d\d\d)/)!;
+    return (Number(minutes) * 60 + Number(seconds)) * 1000 + Number(ms);
+  });
+}
+
+async function openTrack(page: Page, name: string) {
+  await page.getByRole("tab", { name: "Tracks" }).click();
+  await page.getByPlaceholder("Search tracks").fill(name);
+  await page.getByRole("button", { name: new RegExp(name) }).click();
+  await expect(page.getByText("Each driver's best lap")).toBeVisible();
+}
+
+test("posts sessions to a new track's leaderboard, which anyone can see", async ({ page, browser }, testInfo) => {
+  await page.goto("./");
+  await expect(page.getByRole("button", { name: "Post to leaderboard" }), "signed out, no posting").toHaveCount(0);
+  const fixture = await addFixtures(page, `Board ${Date.now().toString(36)}`);
+  await lapOf(page, 900);
+  await signIn(page, newEmail());
+
+  // Post the session to a new track named after its location.
+  await page.getByRole("tab", { name: "Practice" }).click();
+  await page.getByRole("button", { name: "Post to leaderboard" }).click();
+  const panel = page.locator("div.rounded.border").filter({ hasText: "Post to a track's leaderboard" });
+  await expect(panel).toContainText(`Everyone will be able to see: ${fixture.driver}, ${fixture.car}, best lap`);
+  await panel.getByRole("combobox").click();
+  await page.getByRole("option", { name: "A new track…" }).click();
+  await expect(panel.getByLabel("New track's name")).toHaveValue(fixture.location);
+  await panel.getByLabel("Where it is (optional)").fill("Test Town");
+  await panel.getByRole("button", { name: "Post" }).click();
+  await expect(page.getByText(`On the leaderboard at ${fixture.location}.`)).toBeVisible();
+
+  await openTrack(page, fixture.location);
+  await expect(page.getByText("Test Town")).toBeVisible();
+  const [first] = await leaderboardTimes(page);
+  expect(first).toBeGreaterThanOrEqual(900);
+  await expect(page.getByRole("button", { name: "Remove my post" })).toBeVisible();
+
+  // A faster session at the same location goes to the same track, and replaces the driver's place.
+  await lapOf(page, 300);
+  await page.getByRole("button", { name: "Post to leaderboard" }).first().click();
+  await expect(panel.getByRole("combobox")).toHaveText(`${fixture.location} (Test Town)`);
+  await panel.getByRole("button", { name: "Post" }).click();
+  await expect(page.getByText(`On the leaderboard at ${fixture.location}.`)).toHaveCount(2);
+  await openTrack(page, fixture.location);
+  // The board shows what it had while it reloads.
+  await expect
+    .poll(async () => {
+      const times = await leaderboardTimes(page);
+      return times.length === 1 && times[0] < first;
+    }, "one place per driver, now the faster lap")
+    .toBe(true);
+  const [best] = await leaderboardTimes(page);
+
+  // Anyone can see it, signed out.
+  const { context, page: other } = await anotherPhone(browser, testInfo);
+  await openTrack(other, fixture.location);
+  expect(await leaderboardTimes(other)).toEqual([best]);
+  await expect(other.getByText(fixture.driver)).toBeVisible();
+  await expect(other.getByRole("button", { name: "Remove my post" })).toHaveCount(0);
+  await expect(other.getByRole("button", { name: "Add a track" })).toHaveCount(0);
+  await context.close();
+
+  // Taking down the faster post leaves the slower one; then that one goes too, from its session.
+  await page.getByRole("button", { name: "Remove my post" }).click();
+  await expect.poll(() => leaderboardTimes(page)).toEqual([first]);
+  await page.getByRole("tab", { name: "Practice" }).click();
+  await page.getByRole("button", { name: "Remove from leaderboard" }).click();
+  await expect(page.getByRole("button", { name: "Post to leaderboard" })).toHaveCount(2);
+  await openTrack(page, fixture.location);
+  await expect(page.getByText("No laps posted yet.")).toBeVisible();
+
+  // Its creator can delete it once it's empty.
+  await page.getByRole("button", { name: "Delete track" }).click();
+  await expect(page.getByPlaceholder("Search tracks")).toBeVisible();
+  await page.getByPlaceholder("Search tracks").fill(fixture.location);
+  await expect(page.getByText("No tracks match.")).toBeVisible();
+});
+
+test("shows the tracks when the cloud can't be reached as an error to retry", async ({ page }) => {
+  await page.route(`${CLOUD_URL}/**`, (route) => route.abort("internetdisconnected"));
+  await page.goto("./");
+  await page.getByRole("tab", { name: "Tracks" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: /Couldn't reach the cloud service/ })).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.unroute(`${CLOUD_URL}/**`);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: /Couldn't reach/ })).toHaveCount(0);
 });
